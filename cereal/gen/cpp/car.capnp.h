@@ -276,6 +276,7 @@ enum class SafetyModel_95551e5b1edaf451: uint16_t {
   FCA_GIORGIO,
   RIVIAN,
   VOLKSWAGEN_MEB,
+  VINFAST,
 };
 CAPNP_DECLARE_ENUM(SafetyModel, 95551e5b1edaf451);
 CAPNP_DECLARE_SCHEMA(d661512be2def77f);
@@ -1790,6 +1791,12 @@ public:
 
   inline bool getMeasured() const;
 
+  inline  ::uint8_t getMotionStatus() const;
+
+  inline  ::uint8_t getMotionOrientation() const;
+
+  inline  ::uint8_t getLaneAssignment() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1838,6 +1845,15 @@ public:
 
   inline bool getMeasured();
   inline void setMeasured(bool value);
+
+  inline  ::uint8_t getMotionStatus();
+  inline void setMotionStatus( ::uint8_t value);
+
+  inline  ::uint8_t getMotionOrientation();
+  inline void setMotionOrientation( ::uint8_t value);
+
+  inline  ::uint8_t getLaneAssignment();
+  inline void setLaneAssignment( ::uint8_t value);
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -2097,6 +2113,8 @@ public:
 
   inline float getTorqueOutputCan() const;
 
+  inline bool getReengageStatus() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -2151,6 +2169,9 @@ public:
 
   inline float getTorqueOutputCan();
   inline void setTorqueOutputCan(float value);
+
+  inline bool getReengageStatus();
+  inline void setReengageStatus(bool value);
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -5775,6 +5796,48 @@ inline void RadarData::RadarPoint::Builder::setMeasured(bool value) {
       ::capnp::bounded<224>() * ::capnp::ELEMENTS, value);
 }
 
+inline  ::uint8_t RadarData::RadarPoint::Reader::getMotionStatus() const {
+  return _reader.getDataField< ::uint8_t>(
+      ::capnp::bounded<29>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint8_t RadarData::RadarPoint::Builder::getMotionStatus() {
+  return _builder.getDataField< ::uint8_t>(
+      ::capnp::bounded<29>() * ::capnp::ELEMENTS);
+}
+inline void RadarData::RadarPoint::Builder::setMotionStatus( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
+      ::capnp::bounded<29>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint8_t RadarData::RadarPoint::Reader::getMotionOrientation() const {
+  return _reader.getDataField< ::uint8_t>(
+      ::capnp::bounded<30>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint8_t RadarData::RadarPoint::Builder::getMotionOrientation() {
+  return _builder.getDataField< ::uint8_t>(
+      ::capnp::bounded<30>() * ::capnp::ELEMENTS);
+}
+inline void RadarData::RadarPoint::Builder::setMotionOrientation( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
+      ::capnp::bounded<30>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint8_t RadarData::RadarPoint::Reader::getLaneAssignment() const {
+  return _reader.getDataField< ::uint8_t>(
+      ::capnp::bounded<31>() * ::capnp::ELEMENTS);
+}
+
+inline  ::uint8_t RadarData::RadarPoint::Builder::getLaneAssignment() {
+  return _builder.getDataField< ::uint8_t>(
+      ::capnp::bounded<31>() * ::capnp::ELEMENTS);
+}
+inline void RadarData::RadarPoint::Builder::setLaneAssignment( ::uint8_t value) {
+  _builder.setDataField< ::uint8_t>(
+      ::capnp::bounded<31>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool CarControl::Reader::getEnabled() const {
   return _reader.getDataField<bool>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
@@ -6299,6 +6362,20 @@ inline float CarControl::Actuators::Builder::getTorqueOutputCan() {
 inline void CarControl::Actuators::Builder::setTorqueOutputCan(float value) {
   _builder.setDataField<float>(
       ::capnp::bounded<8>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool CarControl::Actuators::Reader::getReengageStatus() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<176>() * ::capnp::ELEMENTS);
+}
+
+inline bool CarControl::Actuators::Builder::getReengageStatus() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<176>() * ::capnp::ELEMENTS);
+}
+inline void CarControl::Actuators::Builder::setReengageStatus(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<176>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool CarControl::CruiseControl::Reader::getCancel() const {

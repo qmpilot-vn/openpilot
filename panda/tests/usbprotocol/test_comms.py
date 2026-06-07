@@ -31,7 +31,6 @@ def random_can_messages(n, bus=None):
 
 class TestPandaComms(unittest.TestCase):
   def setUp(self):
-    lpp.set_safety_hooks(CarParams.SafetyModel.allOutput, 0)
     lpp.comms_can_reset()
 
   def test_tx_queues(self):
@@ -79,17 +78,17 @@ class TestPandaComms(unittest.TestCase):
   def test_comms_reset_tx(self):
     # store some test messages in the queue
     test_msg = (0x100, b"test", 0)
-    packed = pack_can_buffer([test_msg for _ in range(100)], chunk=True)
+    packed = pack_can_buffer([test_msg for _ in range(100)])
 
     # write a small chunk such that we have some overflow
     TINY_CHUNK_SIZE = 6
-    lpp.comms_can_write(bytes(packed[0][:TINY_CHUNK_SIZE]), TINY_CHUNK_SIZE)
+    lpp.comms_can_write(packed[0][:TINY_CHUNK_SIZE], TINY_CHUNK_SIZE)
 
     # reset the comms to clear the overflow buffer on the panda side
     lpp.comms_can_reset()
 
     # write a full valid chunk, which should now contain valid messages
-    lpp.comms_can_write(bytes(packed[1]), len(packed[1]))
+    lpp.comms_can_write(packed[1], len(packed[1]))
 
     # read the messages from the queue and make sure they're valid
     queue_msgs = []
@@ -103,6 +102,8 @@ class TestPandaComms(unittest.TestCase):
 
 
   def test_can_send_usb(self):
+    lpp.set_safety_hooks(CarParams.SafetyModel.allOutput, 0)
+
     for bus in range(3):
       with self.subTest(bus=bus):
         for _ in range(100):
@@ -113,7 +114,7 @@ class TestPandaComms(unittest.TestCase):
           for buf in packed:
             for i in range(0, len(buf), CHUNK_SIZE):
               chunk_len = min(CHUNK_SIZE, len(buf) - i)
-              lpp.comms_can_write(bytes(buf[i:i+chunk_len]), chunk_len)
+              lpp.comms_can_write(buf[i:i+chunk_len], chunk_len)
 
           # Check that they ended up in the right buffers
           queue_msgs = []

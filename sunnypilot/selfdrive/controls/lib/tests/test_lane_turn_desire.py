@@ -56,9 +56,9 @@ def test_lane_turn_overrides_lane_change():
 
 
 @pytest.mark.parametrize("v_ego,expected", [
-  (8.93, TurnDirection.turnLeft),  # just below threshold
-  (8.96, TurnDirection.none),  # above threshold
-  (8.95, TurnDirection.none),  # just above threshold
+  (6.65, TurnDirection.turnLeft),  # just below threshold (24 km/h)
+  (6.70, TurnDirection.none),  # above threshold
+  (6.67, TurnDirection.none),  # just above threshold
 ])
 def test_lane_turn_desire_speed_boundary(v_ego, expected):
   dh = DesireHelper()
@@ -94,7 +94,7 @@ def set_lane_turn_params():
   # Lane turn desire overrides lane change desire
   (DummyCarState(vEgo=5, leftBlinker=True, rightBlinker=False, leftBlindspot=False, rightBlindspot=False), True, 1.0,
    log.Desire.turnLeft),
-  (DummyCarState(vEgo=7, leftBlinker=False, rightBlinker=True, leftBlindspot=False, rightBlindspot=False), True, 1.0,
+  (DummyCarState(vEgo=6, leftBlinker=False, rightBlinker=True, leftBlindspot=False, rightBlindspot=False), True, 1.0,
    log.Desire.turnRight),
   # Lane change desire only (no turn desires)
   (DummyCarState(vEgo=9, leftBlinker=True, rightBlinker=False, leftBlindspot=False, rightBlindspot=False,

@@ -3884,6 +3884,39 @@
     ],
     "package": "All"
   },
+  "VinFast VF6 2024-25": {
+    "platform": "VINFAST_VF6",
+    "make": "VinFast",
+    "brand": "vinfast",
+    "model": "VF6",
+    "year": [
+      "2024",
+      "2025"
+    ],
+    "package": "All"
+  },
+  "VinFast VF8 2023-24": {
+    "platform": "VINFAST_VF8",
+    "make": "VinFast",
+    "brand": "vinfast",
+    "model": "VF8",
+    "year": [
+      "2023",
+      "2024"
+    ],
+    "package": "All"
+  },
+  "VinFast VF9 2023-24": {
+    "platform": "VINFAST_VF9",
+    "make": "VinFast",
+    "brand": "vinfast",
+    "model": "VF9",
+    "year": [
+      "2023",
+      "2024"
+    ],
+    "package": "All"
+  },
   "Volkswagen Arteon 2018-23": {
     "platform": "VOLKSWAGEN_ARTEON_MK1",
     "make": "Volkswagen",

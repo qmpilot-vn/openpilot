@@ -11,7 +11,7 @@ from openpilot.common.params import Params
 
 TurnDirection = custom.ModelDataV2SP.TurnDirection
 
-LANE_CHANGE_SPEED_MIN = 20 * CV.MPH_TO_MS
+LANE_CHANGE_SPEED_MIN = 24 * CV.KPH_TO_MS
 
 
 class LaneTurnController:

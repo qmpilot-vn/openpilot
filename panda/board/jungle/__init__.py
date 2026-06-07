@@ -4,7 +4,7 @@ import struct
 from functools import wraps
 
 from panda import Panda, PandaDFU
-from panda.python.constants import McuType, compute_version_hash
+from panda.python.constants import McuType
 
 BASEDIR = os.path.dirname(os.path.realpath(__file__))
 FW_PATH = os.path.join(BASEDIR, "../obj/")
@@ -34,12 +34,13 @@ class PandaJungle(Panda):
   USB_PIDS = (0xddef, 0xddcf)
 
   HW_TYPE_UNKNOWN = b'\x00'
+  HW_TYPE_V1 = b'\x01'
   HW_TYPE_V2 = b'\x02'
 
+  F4_DEVICES = [HW_TYPE_V1, ]
   H7_DEVICES = [HW_TYPE_V2, ]
-  SUPPORTED_DEVICES = H7_DEVICES
 
-  HEALTH_PACKET_VERSION = compute_version_hash(os.path.join(BASEDIR, "jungle_health.h"))
+  HEALTH_PACKET_VERSION = 1
   HEALTH_STRUCT = struct.Struct("<IffffffHHHHHHHHHHHH")
 
   HARNESS_ORIENTATION_NONE = 0
@@ -48,11 +49,11 @@ class PandaJungle(Panda):
 
   @classmethod
   def spi_connect(cls, serial, ignore_version=False):
-    return None, None, None, None
+    return None, None, None, None, None
 
   def flash(self, fn=None, code=None, reconnect=True):
     if not fn:
-      fn = os.path.join(FW_PATH, McuType.H7.config.app_fn.replace("panda", "panda_jungle"))
+      fn = os.path.join(FW_PATH, self._mcu_type.config.app_fn.replace("panda", "panda_jungle"))
     super().flash(fn=fn, code=code, reconnect=reconnect)
 
   def recover(self, timeout: int | None = 60, reset: bool = True) -> bool:
@@ -73,9 +74,23 @@ class PandaJungle(Panda):
     self.flash()
     return True
 
+  def get_mcu_type(self) -> McuType:
+    hw_type = self.get_type()
+    if hw_type in PandaJungle.F4_DEVICES:
+      return McuType.F4
+    elif hw_type in PandaJungle.H7_DEVICES:
+      return McuType.H7
+    else:
+      # have to assume F4, see comment in Panda.connect
+      # initially Jungle V1 has HW type: bytearray(b'')
+      if hw_type == b'' or self._assume_f4_mcu:
+        return McuType.F4
+
+    raise ValueError(f"unknown HW type: {hw_type}")
+
   def up_to_date(self, fn=None) -> bool:
     if fn is None:
-      fn = os.path.join(FW_PATH, McuType.H7.config.app_fn.replace("panda", "panda_jungle"))
+      fn = os.path.join(FW_PATH, self.get_mcu_type().config.app_fn.replace("panda", "panda_jungle"))
     return super().up_to_date(fn=fn)
 
   # ******************* health *******************
@@ -108,11 +123,13 @@ class PandaJungle(Panda):
 
   # ******************* control *******************
 
+  # Returns tuple with health packet version and CAN packet/USB packet version
   def get_packets_versions(self):
-    dat = self._handle.controlRead(PandaJungle.REQUEST_IN, 0xdd, 0, 0, 8)
-    if dat and len(dat) == 8:
-      return struct.unpack("<II", dat)
-    return (0, 0)
+    dat = self._handle.controlRead(PandaJungle.REQUEST_IN, 0xdd, 0, 0, 3)
+    if dat and len(dat) == 3:
+      a = struct.unpack("BBB", dat)
+      return (a[0], a[1], a[2])
+    return (-1, -1, -1)
 
   # ******************* jungle stuff *******************
 
