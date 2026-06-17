@@ -3,16 +3,18 @@ import math
 from cereal import log
 from openpilot.selfdrive.controls.lib.latcontrol import LatControl
 from openpilot.common.pid import PIDController
+from opendbc.car.vinfast.values import is_vf6_safety_platform
 
 # TODO This is speed dependent
 STEER_ANGLE_SATURATION_THRESHOLD = 2.5  # Degrees
 VINFAST_PI_ENABLED = True
 
 VINFAST_ANGLE_KP_BP = [0.0, 3.5, 5.56, 8.33, 11.11, 55.56]  # m/s breakpoints
-VINFAST_ANGLE_KP_VF8 = [0.6, 0.7, 0.9, 1.0, 1.1, 1.3]
+VINFAST_ANGLE_KP_VF8 = [0.2, 0.3, 0.5, 0.6, 0.7, 0.8]
+# VINFAST_ANGLE_KP_VF8 = [0.5, 0.6, 0.7, 0.8, 0.9, 1]
 VINFAST_ANGLE_KP_VF9 = [0.8, 0.9, 0.95, 1.0, 1.1, 1.3]
 VINFAST_ANGLE_KP_VF6 = [1.15, 1.25, 1.35, 1.45, 1.55, 1.7]
-VINFAST_ANGLE_KI_VF8 = 0.05
+VINFAST_ANGLE_KI_VF8 = 0.005
 VINFAST_ANGLE_KI_VF9 = 0.035
 VINFAST_ANGLE_KI_VF6 = 0.042
 VINFAST_ANGLE_KD = 0.0
@@ -21,7 +23,7 @@ VINFAST_ANGLE_KD_VF6 = 0.06  # Light D to damp small-angle oscillation without k
 HIGH_ANGLE_START_DEG = 50.0
 HIGH_ANGLE_END_DEG = 470.0
 HIGH_ANGLE_KP_SCALE_MIN = 0.45
-HIGH_ANGLE_END_DEG_VF6 = 150.0
+HIGH_ANGLE_END_DEG_VF6 = 180.0  # VF6 OEM current max angle @ 0 km/h
 HIGH_ANGLE_KP_SCALE_MIN_VF6 = 0.7
 MAX_PI_CORR_RATE_DEG_PER_CYCLE = 0.35
 MAX_PI_CORR_RATE_VF6_DEG_PER_CYCLE = 0.75
@@ -58,7 +60,7 @@ class LatControlAngle(LatControl):
     if CP.brand == "vinfast" and VINFAST_PI_ENABLED:
       self.vinfast_car_fingerprint = getattr(CP, "carFingerprint", "")
 
-      if self.vinfast_car_fingerprint == "VINFAST_VF6":
+      if is_vf6_safety_platform(self.vinfast_car_fingerprint):
         vinfast_kp = [VINFAST_ANGLE_KP_BP, VINFAST_ANGLE_KP_VF6]
         vinfast_ki = VINFAST_ANGLE_KI_VF6
         vinfast_kd = VINFAST_ANGLE_KD_VF6
@@ -126,7 +128,7 @@ class LatControlAngle(LatControl):
 
       if self.pid is not None:
         angle_error = angle_steers_des_ff - CS.steeringAngleDeg
-        use_vf6_tune = self.vinfast_car_fingerprint == "VINFAST_VF6"
+        use_vf6_tune = is_vf6_safety_platform(self.vinfast_car_fingerprint)
         use_vf9_tune = self.vinfast_car_fingerprint == "VINFAST_VF9"
         abs_des_ff = abs(angle_steers_des_ff)
 

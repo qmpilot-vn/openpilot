@@ -158,14 +158,14 @@ class Controls(ControlsExt, ModelStateBase):
       if v_ego_kph < 60.0:
         # Different max offsets for different speed ranges
         if v_ego_kph < 20.0:
-          offset_max = -0.0001  # Stronger offset below 20 km/h
+          offset_max = 0.0005  # Stronger offset below 20 km/h
         elif v_ego_kph < 40.0:
-          offset_max = -0.0001  # Moderate offset between 20-40 km/h
+          offset_max = -0.0005  # Moderate offset between 20-40 km/h
         else:
           # Exponential decay from -0.0004 to zero between 40-60 km/h
           v_scale_kph = 10.0  # km/h, controls decay rate (smaller = faster decay)
           v_normalized = (v_ego_kph - 40.0) / (60.0 - 40.0)  # 0 at 40 km/h, 1 at 60 km/h
-          offset_max = -0.0001 * math.exp(-v_normalized * (40.0 / v_scale_kph))
+          offset_max = -0.0005 * math.exp(-v_normalized * (40.0 / v_scale_kph))
         
         # Apply constant offset below 40 km/h, exponential fade above 40 km/h
         if v_ego_kph < 40.0:

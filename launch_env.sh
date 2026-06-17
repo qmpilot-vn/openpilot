@@ -20,3 +20,8 @@ if [ -z "$AGNOS_VERSION" ]; then
 fi
 
 export STAGING_ROOT="/data/safe_staging"
+
+# Normal C3X: use real panda (pandad enabled). Manager skips pandad if NOBOARD is set
+# to any value — it must be unset, not 0. Bench mode overrides via bench_env.sh below.
+unset NOBOARD
+

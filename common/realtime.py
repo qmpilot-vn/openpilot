@@ -29,7 +29,9 @@ class Priority:
 
 
 def set_core_affinity(cores: list[int]) -> None:
-  if sys.platform == 'linux' and not PC:
+  # Bench/sim (SIMULATION=1) skips pinning: C3X bench exposes only cores 0-3 while
+  # onroad daemons request 4-5, which would crash at startup.
+  if sys.platform == 'linux' and not PC and not os.getenv("SIMULATION"):
     os.sched_setaffinity(0, cores)
 
 

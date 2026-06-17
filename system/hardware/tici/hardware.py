@@ -373,6 +373,17 @@ class Tici(HardwareBase):
       if not powersave_enabled:
         self.amplifier.initialize_configuration()
 
+    camera_irqs = ("a5", "cci", "cpas_camnoc", "cpas-cdm", "csid", "ife", "csid-lite", "ife-lite")
+
+    # Bench/sim (SIMULATION=1): keep cores 4-7 offline (onlining them can reboot C3X bench),
+    # but still route camera/GPU IRQs to the small cluster when onroad.
+    if os.getenv("SIMULATION"):
+      if not powersave_enabled:
+        for n in camera_irqs:
+          affine_irq(2, n)
+        affine_irq(3, "kgsl-3d0")
+      return
+
     # *** CPU config ***
 
     # offline big cluster
@@ -392,7 +403,6 @@ class Tici(HardwareBase):
     affine_irq(7, "kgsl-3d0")
 
     # camerad core
-    camera_irqs = ("a5", "cci", "cpas_camnoc", "cpas-cdm", "csid", "ife", "csid-lite", "ife-lite")
     for n in camera_irqs:
       affine_irq(6, n)
 

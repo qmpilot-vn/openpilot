@@ -3895,6 +3895,18 @@
     ],
     "package": "All"
   },
+  "VinFast VF7 Plus 2024-26": {
+    "platform": "VINFAST_VF7_PLUS",
+    "make": "VinFast",
+    "brand": "vinfast",
+    "model": "VF7 Plus",
+    "year": [
+      "2024",
+      "2025",
+      "2026"
+    ],
+    "package": "All"
+  },
   "VinFast VF8 2023-24": {
     "platform": "VINFAST_VF8",
     "make": "VinFast",

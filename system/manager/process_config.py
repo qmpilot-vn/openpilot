@@ -15,6 +15,9 @@ from openpilot.sunnypilot.sunnylink.utils import sunnylink_need_register, sunnyl
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
 
+# C3X bench (SIMULATION=1) only has cores 0-3 online; pin camerad to core 2 without rebuilding.
+CAMERAD_CMD = ["taskset", "-c", "2", "./camerad"] if os.getenv("SIMULATION") else ["./camerad"]
+
 def driverview(started: bool, params: Params, CP: car.CarParams) -> bool:
   return started or params.get_bool("IsDriverViewEnabled")
 
@@ -114,7 +117,7 @@ procs = [
   NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
   PythonProcess("logmessaged", "system.logmessaged", always_run),
 
-  NativeProcess("camerad", "system/camerad", ["./camerad"], driverview, enabled=not WEBCAM),
+  NativeProcess("camerad", "system/camerad", CAMERAD_CMD, driverview, enabled=not WEBCAM),
   PythonProcess("webcamerad", "tools.webcam.camerad", driverview, enabled=WEBCAM),
   PythonProcess("proclogd", "system.proclogd", only_onroad, enabled=platform.system() != "Darwin"),
   PythonProcess("journald", "system.journald", only_onroad, platform.system() != "Darwin"),
