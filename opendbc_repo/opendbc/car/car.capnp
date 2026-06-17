@@ -176,6 +176,8 @@ struct CarState {
 
   gasPressed @4 :Bool;    # this is user pedal only
 
+  # brake pedal, 0.0-1.0
+  brake @5 :Float32;      # this is user pedal only
   brakePressed @6 :Bool;  # this is user pedal only
   regenBraking @45 :Bool; # this is user pedal only
   parkingBrake @39 :Bool;
@@ -283,8 +285,7 @@ struct CarState {
 
   # deprecated
   errorsDEPRECATED @0 :List(OnroadEventDEPRECATED.EventName);
-  gasDEPRECATED @3 :Float32;
-  brakeDEPRECATED @5 :Float32;
+  gasDEPRECATED @3 :Float32;        # this is user pedal only
   brakeLightsDEPRECATED @19 :Bool;
   steeringRateLimitedDEPRECATED @29 :Bool;
   canMonoTimesDEPRECATED @12: List(UInt64);
@@ -323,6 +324,11 @@ struct RadarData @0x888ad6581cf0aacb {
 
     # some radars flag measurements VS estimates
     measured @6 :Bool;
+
+    # radar-hardware motion classification (0 = invalid / not available)
+    motionStatus @7 :UInt8;       # 0=invalid 2=moving 3=stationary 4=stopped 5=moving_slowly
+    motionOrientation @8 :UInt8;  # 0=invalid 1=drift_R 3=cross_R 6=oncoming 9=cross_L 11=drift_L 12=preceding
+    laneAssignment @9 :UInt8;     # 0=unknown 1=LL 2=L 3=host 4=R 5=RR
   }
 
   enum ErrorDEPRECATED {
@@ -373,6 +379,7 @@ struct CarControl {
     brake @1: Float32; # [0.0, 1.0]
     torqueOutputCan @8: Float32;   # value sent over can to the car
     speed @6: Float32;  # m/s
+    reengageStatus @9: Bool;  # VinFast re-engage override (logging)
 
     enum LongControlState @0xe40f3a917d908282{
       off @0;
@@ -634,6 +641,7 @@ struct CarParams {
     fcaGiorgio @32;
     rivian @33;
     volkswagenMeb @34;
+    vinfast @35;
   }
 
   enum SteerControlType {

@@ -90,6 +90,15 @@ class CarSpecificEvents:
       # if CC.eps_timer_soft_disable_alert:
       #   events.add(EventName.steerTimeLimit)
 
+    elif self.CP.brand == 'vinfast':
+      # OP longitudinal: pcmCruise=False → create_common_events pcm_enable is always False,
+      # so stock ACC rising edge never becomes pcmEnable unless we add it here (Honda-style).
+      if self.CP.openpilotLongitudinalControl:
+        if CS.cruiseState.enabled and not CS_prev.cruiseState.enabled and not CS.blockPcmEnable:
+          events.add(EventName.pcmEnable)
+        elif not CS.cruiseState.enabled and CS_prev.cruiseState.enabled:
+          events.add(EventName.pcmDisable)
+
     return events
 
   def create_common_events(self, CS: structs.CarState, CS_prev: car.CarState):

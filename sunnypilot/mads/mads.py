@@ -78,6 +78,10 @@ class ModularAssistiveDrivingSystem:
     return True
 
   def block_unified_engagement_mode(self) -> bool:
+    # VinFast: stock ACC → OP-long uses pcmEnable/buttonEnable from car; never strip those here.
+    if self.CP.brand == "vinfast":
+      return False
+
     # UEM disabled
     if not self.unified_engagement_mode:
       return True

@@ -17,12 +17,15 @@ from opendbc.car.carlog import carlog
 from opendbc.car.fw_versions import ObdCallback
 from opendbc.car.car_helpers import get_car, interfaces
 from opendbc.car.interfaces import CarInterfaceBase, RadarInterfaceBase
+from opendbc.car.vinfast.values import CAR as VINFAST_CAR
 from openpilot.selfdrive.pandad import can_capnp_to_list, can_list_to_can_capnp
 from openpilot.selfdrive.car.cruise import VCruiseHelper
 from openpilot.selfdrive.car.helpers import convert_carControlSP, convert_to_capnp
 
 from openpilot.sunnypilot.mads.helpers import set_alternative_experience, set_car_specific_params
 from openpilot.sunnypilot.selfdrive.car import interfaces as sunnypilot_interfaces
+
+from opendbc.safety import ALTERNATIVE_EXPERIENCE
 
 REPLAY = "REPLAY" in os.environ
 
@@ -97,6 +100,16 @@ class Car:
         if len(can.can) > 0:
           break
 
+      num_pandas = len(messaging.recv_one_retry(self.sm.sock['pandaStates']).pandaStates)
+
+      fixed_fingerprint = (self.params.get("CarPlatformBundle") or {}).get("platform", None)
+      # VinFast: default to VF9 when no platform is chosen (avoids MOCK / dashcam fallback).
+      if fixed_fingerprint in (None, ""):
+        fixed_fingerprint = VINFAST_CAR.VINFAST_VF9.name
+        cloudlog.warning(f"No CarPlatformBundle.platform; using default fixed fingerprint {fixed_fingerprint}")
+      # VF9: default alpha longitudinal so Experimental mode and OP long are available without dev settings.
+      if fixed_fingerprint in (VINFAST_CAR.VINFAST_VF8.name, VINFAST_CAR.VINFAST_VF9.name) and self.params.get("AlphaLongitudinalEnabled") is None:
+        self.params.put_bool("AlphaLongitudinalEnabled", True)
       alpha_long_allowed = self.params.get_bool("AlphaLongitudinalEnabled")
 
       cached_params = None
@@ -105,10 +118,9 @@ class Car:
         with car.CarParams.from_bytes(cached_params_raw) as _cached_params:
           cached_params = _cached_params
 
-      fixed_fingerprint = (self.params.get("CarPlatformBundle") or {}).get("platform", None)
       init_params_list_sp = sunnypilot_interfaces.initialize_params(self.params)
 
-      self.CI = get_car(*self.can_callbacks, obd_callback(self.params), alpha_long_allowed, is_release, cached_params,
+      self.CI = get_car(*self.can_callbacks, obd_callback(self.params), alpha_long_allowed, is_release, num_pandas, cached_params,
                         fixed_fingerprint, init_params_list_sp, is_release_sp)
       sunnypilot_interfaces.setup_interfaces(self.CI, self.params)
       self.RI = interfaces[self.CI.CP.carFingerprint].RadarInterface(self.CI.CP, self.CI.CP_SP)
@@ -125,6 +137,16 @@ class Car:
     # mads
     set_alternative_experience(self.CP, self.CP_SP, self.params)
     set_car_specific_params(self.CP, self.CP_SP, self.params)
+
+    # VinFast: MADS is not used; force off so CarParams/Panda match (no ENABLE_MADS=1024 in selfdrived).
+    if self.CP.brand == "vinfast":
+      self.params.put_bool("Mads", False)
+      _mads_mask = (
+        ALTERNATIVE_EXPERIENCE.ENABLE_MADS
+        | ALTERNATIVE_EXPERIENCE.MADS_DISENGAGE_LATERAL_ON_BRAKE
+        | ALTERNATIVE_EXPERIENCE.MADS_PAUSE_LATERAL_ON_BRAKE
+      )
+      self.CP.alternativeExperience &= ~_mads_mask
 
     # Dynamic Experimental Control
     self.dynamic_experimental_control = self.params.get_bool("DynamicExperimentalControl")

@@ -217,6 +217,7 @@ class LongitudinalMpc:
   def __init__(self, dt=DT_MDL):
     self.dt = dt
     self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
+    self.stop_lead_obstacle_adjust_m = 0.0
     self.reset()
     self.source = LongitudinalPlanSource.cruise
 
@@ -326,6 +327,15 @@ class LongitudinalMpc:
     # and then treat that as a stopped car/obstacle at this new distance.
     lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
     lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
+
+    # VinFast: reduce standstill gap behind a stopped lead (set by LongitudinalPlanner)
+    stop_adjust = float(getattr(self, "stop_lead_obstacle_adjust_m", 0.0))
+    if stop_adjust > 0.0 and v_ego < 3.0:
+      min_safe = CRASH_DISTANCE + 1.0
+      if lead_xv_0[0, 1] < 0.5:
+        lead_0_obstacle = np.maximum(lead_0_obstacle - stop_adjust, min_safe)
+      if lead_xv_1[0, 1] < 0.5:
+        lead_1_obstacle = np.maximum(lead_1_obstacle - stop_adjust, min_safe)
 
     # Fake an obstacle for cruise, this ensures smooth acceleration to set speed
     # when the leads are no factor.

@@ -1,0 +1,2 @@
+# Private VinFast safety — keep only on flash/build machines (see vinfast_stub.h).
+safety/modes/vinfast.h

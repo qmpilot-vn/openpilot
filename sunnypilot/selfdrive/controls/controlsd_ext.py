@@ -60,6 +60,14 @@ class ControlsExt(ModelStateBase):
     if self.blinker_pause_lateral.update(sm['carState']):
       return False
 
+    # VinFast: no MADS; carstate matches sunnypilot (gasPressed not from CAN). Inhibit lateral when ACC
+    # is available but not actively controlling (ADAS_ACC_Mode != 4 — driver override / standby).
+    if self.CP.brand == 'vinfast':
+      cs = sm['carState']
+      if cs.cruiseState.available and not cs.cruiseState.enabled:
+        return False
+      return bool(sm['selfdriveState'].active)
+
     ss_sp = sm['selfdriveStateSP']
     if ss_sp.mads.available:
       return bool(ss_sp.mads.active)

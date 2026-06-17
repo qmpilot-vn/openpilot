@@ -139,6 +139,31 @@ class Controls(ControlsExt):
       new_desired_curvature = self.sm['lateralManeuverPlan'].desiredCurvature if CC.latActive else self.curvature
     else:
       new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
+    lateral_offset_curvature = 0.0
+    if self.CP.brand == "vinfast" and CC.latActive:
+      const_bias = -0.000
+      straight_curv_scale = 0.0003
+      straight_fade = math.exp(-abs(float(new_desired_curvature)) / straight_curv_scale)
+      new_desired_curvature += const_bias * straight_fade
+
+      v_ego = max(float(CS.vEgo), 0.0)
+      v_ego_kph = v_ego * CV.MS_TO_KPH
+      is_vf9 = self.CP.carFingerprint == "VINFAST_VF9"
+      if v_ego_kph < 60.0:
+        if v_ego_kph < 20.0:
+          offset_max = -0.0007 if is_vf9 else -0.0001
+        elif v_ego_kph < 40.0:
+          offset_max = -0.0006 if is_vf9 else -0.0001
+        else:
+          v_scale_kph = 10.0
+          v_normalized = (v_ego_kph - 40.0) / (60.0 - 40.0)
+          base_offset_max = -0.0006 if is_vf9 else -0.0001
+          offset_max = base_offset_max * math.exp(-v_normalized * (40.0 / v_scale_kph))
+        base_offset = offset_max
+        curv_scale = 0.002
+        fade = math.exp(-abs(float(new_desired_curvature)) / curv_scale)
+        lateral_offset_curvature = base_offset * fade
+    new_desired_curvature = new_desired_curvature + lateral_offset_curvature
     self.desired_curvature, curvature_limited = clip_curvature(CS.vEgo, self.desired_curvature, new_desired_curvature, lp.roll)
     lat_delay = self.sm["liveDelay"].lateralDelay + LAT_SMOOTH_SECONDS
 
@@ -191,8 +216,9 @@ class Controls(ControlsExt):
     if self.get_lat_active(self.sm):
       CO = self.sm['carOutput']
       if self.CP.steerControlType == car.CarParams.SteerControlType.angle:
+        saturation_threshold = 20.0 if self.CP.brand == "vinfast" else STEER_ANGLE_SATURATION_THRESHOLD
         self.steer_limited_by_safety = abs(CC.actuators.steeringAngleDeg - CO.actuatorsOutput.steeringAngleDeg) > \
-                                              STEER_ANGLE_SATURATION_THRESHOLD
+                                              saturation_threshold
       else:
         self.steer_limited_by_safety = abs(CC.actuators.torque - CO.actuatorsOutput.torque) > 1e-2
 
