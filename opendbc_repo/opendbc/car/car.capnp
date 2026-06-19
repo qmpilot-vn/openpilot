@@ -642,6 +642,7 @@ struct CarParams {
     rivian @33;
     volkswagenMeb @34;
     vinfast @35;
+    vinfastVf6 @36;
   }
 
   enum SteerControlType {

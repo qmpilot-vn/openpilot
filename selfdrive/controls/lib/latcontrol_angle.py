@@ -3,26 +3,42 @@ import math
 from cereal import log
 from openpilot.selfdrive.controls.lib.latcontrol import LatControl
 from openpilot.common.pid import PIDController
+from opendbc.car.vinfast.values import is_vf6_safety_platform
 
 # TODO This is speed dependent
 STEER_ANGLE_SATURATION_THRESHOLD = 2.5  # Degrees
-
-# VinFast only: extra PID wraps feedforward desired angle vs measured angle. Latest EPS often
-# tracks feedforward well — disable PI to try pure feedforward angle (still angle actuation in CAN).
-# Keep exactly one of the next two lines active (prefix the other with #).
-VINFAST_USE_STEERING_ANGLE_PID = True
-# VINFAST_USE_STEERING_ANGLE_PID = False
+VINFAST_PI_ENABLED = True
 
 VINFAST_ANGLE_KP_BP = [0.0, 3.5, 5.56, 8.33, 11.11, 55.56]  # m/s breakpoints
 VINFAST_ANGLE_KP_VF8 = [0.7, 0.75, 0.85, 0.9, 1.1, 1.3]
 VINFAST_ANGLE_KP_VF9 = [0.8, 0.9, 0.95, 1.0, 1.1, 1.3]
+VINFAST_ANGLE_KP_VF6 = [1.15, 1.25, 1.35, 1.45, 1.55, 1.7]
 VINFAST_ANGLE_KI_VF8 = 0.035
 VINFAST_ANGLE_KI_VF9 = 0.005
+VINFAST_ANGLE_KI_VF6 = 0.042
 VINFAST_ANGLE_KD = 0.0
+VINFAST_ANGLE_KD_VF6 = 0.06
+
 HIGH_ANGLE_START_DEG = 50.0
 HIGH_ANGLE_END_DEG = 470.0
 HIGH_ANGLE_KP_SCALE_MIN = 0.1
+HIGH_ANGLE_END_DEG_VF6 = 180.0
+HIGH_ANGLE_KP_SCALE_MIN_VF6 = 0.7
 MAX_PI_CORR_RATE_DEG_PER_CYCLE = 0.35
+MAX_PI_CORR_RATE_VF6_DEG_PER_CYCLE = 0.75
+VINFAST_MAX_ANGLE_CORR_VF6 = 22.0
+VINFAST_MAX_ANGLE_CORR_DEFAULT = 15.0
+
+VF6_SMALL_ANGLE_DES_DEG = 8.0
+VF6_SMALL_ANGLE_ERR_DEADBAND_DEG = 0.18
+VF6_SMALL_ANGLE_MAX_CORR_RATE_DEG_PER_CYCLE = 0.22
+VF6_SMALL_ANGLE_I_BLEED = 0.9
+VF6_SMALL_CORR_ZERO_DEG = 0.04
+VF6_SMALL_CENTER_DECAY = 0.88
+VF6_MID_ANGLE_START_DEG = 10.0
+VF6_MID_ANGLE_END_DEG = 26.0
+VF6_MID_ANGLE_PI_BOOST = 1.28
+
 VF9_SMALL_ANGLE_DES_DEG = 12.0
 VF9_SMALL_ANGLE_ERR_DEADBAND_DEG = 0.30
 VF9_SMALL_ANGLE_MAX_CORR_RATE_DEG_PER_CYCLE = 0.12
@@ -38,26 +54,37 @@ class LatControlAngle(LatControl):
     self.use_steer_limited_by_safety = CP.brand in ("tesla", "hyundai")
     self.steer_angle_saturation_threshold = 20.0 if CP.brand == "vinfast" else STEER_ANGLE_SATURATION_THRESHOLD
 
-    if CP.brand == "vinfast" and VINFAST_USE_STEERING_ANGLE_PID:
+    if CP.brand == "vinfast" and VINFAST_PI_ENABLED:
       self.vinfast_car_fingerprint = getattr(CP, "carFingerprint", "")
-      if self.vinfast_car_fingerprint == "VINFAST_VF8":
-        vinfast_kp = [VINFAST_ANGLE_KP_BP, VINFAST_ANGLE_KP_VF8]
-        vinfast_ki = VINFAST_ANGLE_KI_VF8
+
+      if is_vf6_safety_platform(self.vinfast_car_fingerprint):
+        vinfast_kp = [VINFAST_ANGLE_KP_BP, VINFAST_ANGLE_KP_VF6]
+        vinfast_ki = VINFAST_ANGLE_KI_VF6
+        vinfast_kd = VINFAST_ANGLE_KD_VF6
+        max_angle_correction = VINFAST_MAX_ANGLE_CORR_VF6
       elif self.vinfast_car_fingerprint == "VINFAST_VF9":
         vinfast_kp = [VINFAST_ANGLE_KP_BP, VINFAST_ANGLE_KP_VF9]
         vinfast_ki = VINFAST_ANGLE_KI_VF9
+        vinfast_kd = VINFAST_ANGLE_KD
+        max_angle_correction = VINFAST_MAX_ANGLE_CORR_DEFAULT
+      elif self.vinfast_car_fingerprint == "VINFAST_VF8":
+        vinfast_kp = [VINFAST_ANGLE_KP_BP, VINFAST_ANGLE_KP_VF8]
+        vinfast_ki = VINFAST_ANGLE_KI_VF8
+        vinfast_kd = VINFAST_ANGLE_KD
+        max_angle_correction = VINFAST_MAX_ANGLE_CORR_DEFAULT
       else:
         vinfast_kp = [VINFAST_ANGLE_KP_BP, VINFAST_ANGLE_KP_VF8]
         vinfast_ki = VINFAST_ANGLE_KI_VF8
+        vinfast_kd = VINFAST_ANGLE_KD
+        max_angle_correction = VINFAST_MAX_ANGLE_CORR_DEFAULT
 
-      max_angle_correction = 15.0
       self.pid = PIDController(
         vinfast_kp,
         vinfast_ki,
-        VINFAST_ANGLE_KD,
+        vinfast_kd,
         pos_limit=max_angle_correction,
         neg_limit=-max_angle_correction,
-        rate=100
+        rate=100,
       )
       self.prev_angle_error = 0.0
       self.prev_angle_correction = 0.0
@@ -73,6 +100,14 @@ class LatControlAngle(LatControl):
     self.prev_angle_error = 0.0
     self.prev_angle_correction = 0.0
     super().reset()
+
+  def _vf6_mid_angle_boost(self, abs_des_ff: float) -> float:
+    if abs_des_ff < VF6_MID_ANGLE_START_DEG or abs_des_ff > VF6_MID_ANGLE_END_DEG:
+      return 1.0
+    mid = 0.5 * (VF6_MID_ANGLE_START_DEG + VF6_MID_ANGLE_END_DEG)
+    half_width = 0.5 * (VF6_MID_ANGLE_END_DEG - VF6_MID_ANGLE_START_DEG)
+    t = 1.0 - abs(abs_des_ff - mid) / half_width
+    return 1.0 + (VF6_MID_ANGLE_PI_BOOST - 1.0) * max(0.0, t)
 
   def update(self, active, CS, VM, params, steer_limited_by_safety, desired_curvature, calibrated_pose, curvature_limited, lat_delay):
     _ = lat_delay
@@ -90,9 +125,15 @@ class LatControlAngle(LatControl):
 
       if self.pid is not None:
         angle_error = angle_steers_des_ff - CS.steeringAngleDeg
+        is_vf6 = is_vf6_safety_platform(self.vinfast_car_fingerprint)
         is_vf9 = self.vinfast_car_fingerprint == "VINFAST_VF9"
 
-        if is_vf9 and abs(angle_steers_des_ff) < VF9_SMALL_ANGLE_DES_DEG:
+        if is_vf6 and abs(angle_steers_des_ff) < VF6_SMALL_ANGLE_DES_DEG:
+          if abs(angle_error) < VF6_SMALL_ANGLE_ERR_DEADBAND_DEG:
+            angle_error = 0.0
+          if hasattr(self.pid, 'i') and abs(angle_error) < (VF6_SMALL_ANGLE_ERR_DEADBAND_DEG * 1.5):
+            self.pid.i *= VF6_SMALL_ANGLE_I_BLEED
+        elif is_vf9 and abs(angle_steers_des_ff) < VF9_SMALL_ANGLE_DES_DEG:
           if abs(angle_error) < VF9_SMALL_ANGLE_ERR_DEADBAND_DEG:
             angle_error = 0.0
           if hasattr(self.pid, 'i') and abs(angle_error) < (VF9_SMALL_ANGLE_ERR_DEADBAND_DEG * 1.5):
@@ -115,29 +156,48 @@ class LatControlAngle(LatControl):
         )
 
         abs_des_ff = abs(angle_steers_des_ff)
+        if is_vf6:
+          high_end = HIGH_ANGLE_END_DEG_VF6
+          kp_scale_min = HIGH_ANGLE_KP_SCALE_MIN_VF6
+        else:
+          high_end = HIGH_ANGLE_END_DEG
+          kp_scale_min = HIGH_ANGLE_KP_SCALE_MIN
+
         if abs_des_ff <= HIGH_ANGLE_START_DEG:
           kp_scale = 1.0
-        elif abs_des_ff >= HIGH_ANGLE_END_DEG:
-          kp_scale = HIGH_ANGLE_KP_SCALE_MIN
+        elif abs_des_ff >= high_end:
+          kp_scale = kp_scale_min
         else:
-          t = (abs_des_ff - HIGH_ANGLE_START_DEG) / (HIGH_ANGLE_END_DEG - HIGH_ANGLE_START_DEG)
-          kp_scale = 1.0 - t * (1.0 - HIGH_ANGLE_KP_SCALE_MIN)
+          t = (abs_des_ff - HIGH_ANGLE_START_DEG) / (high_end - HIGH_ANGLE_START_DEG)
+          kp_scale = 1.0 - t * (1.0 - kp_scale_min)
+
+        if is_vf6:
+          kp_scale *= self._vf6_mid_angle_boost(abs_des_ff)
 
         scaled_correction = raw_angle_correction * kp_scale
-        if is_vf9 and abs_des_ff < VF9_SMALL_ANGLE_DES_DEG:
+        if is_vf6 and abs_des_ff < VF6_SMALL_ANGLE_DES_DEG:
+          if abs(scaled_correction) < VF6_SMALL_CORR_ZERO_DEG and abs(angle_error) < (VF6_SMALL_ANGLE_ERR_DEADBAND_DEG * 1.2):
+            scaled_correction = 0.0
+        elif is_vf9 and abs_des_ff < VF9_SMALL_ANGLE_DES_DEG:
           if abs(scaled_correction) < VF9_SMALL_CORR_ZERO_DEG and abs(angle_error) < (VF9_SMALL_ANGLE_ERR_DEADBAND_DEG * 1.2):
             scaled_correction = 0.0
 
-        corr_rate_limit = MAX_PI_CORR_RATE_DEG_PER_CYCLE
-        if is_vf9 and abs_des_ff < VF9_SMALL_ANGLE_DES_DEG:
+        corr_rate_limit = MAX_PI_CORR_RATE_VF6_DEG_PER_CYCLE if is_vf6 else MAX_PI_CORR_RATE_DEG_PER_CYCLE
+        if is_vf6 and abs_des_ff < VF6_SMALL_ANGLE_DES_DEG:
+          corr_rate_limit = min(corr_rate_limit, VF6_SMALL_ANGLE_MAX_CORR_RATE_DEG_PER_CYCLE)
+        elif is_vf9 and abs_des_ff < VF9_SMALL_ANGLE_DES_DEG:
           corr_rate_limit = min(corr_rate_limit, VF9_SMALL_ANGLE_MAX_CORR_RATE_DEG_PER_CYCLE)
+
         delta_corr = scaled_correction - self.prev_angle_correction
         delta_corr = max(-corr_rate_limit, min(corr_rate_limit, delta_corr))
         angle_correction = self.prev_angle_correction + delta_corr
-        if is_vf9 and abs_des_ff < VF9_SMALL_ANGLE_DES_DEG and abs(angle_error) < (VF9_SMALL_ANGLE_ERR_DEADBAND_DEG * 1.2):
-          angle_correction *= VF9_SMALL_CENTER_DECAY
-        self.prev_angle_correction = angle_correction
 
+        if is_vf6 and abs_des_ff < VF6_SMALL_ANGLE_DES_DEG and abs(angle_error) < (VF6_SMALL_ANGLE_ERR_DEADBAND_DEG * 1.2):
+          angle_correction *= VF6_SMALL_CENTER_DECAY
+        elif is_vf9 and abs_des_ff < VF9_SMALL_ANGLE_DES_DEG and abs(angle_error) < (VF9_SMALL_ANGLE_ERR_DEADBAND_DEG * 1.2):
+          angle_correction *= VF9_SMALL_CENTER_DECAY
+
+        self.prev_angle_correction = angle_correction
         angle_steers_des = float(angle_steers_des_ff + angle_correction)
       else:
         angle_steers_des = float(angle_steers_des_ff)

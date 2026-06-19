@@ -30,6 +30,7 @@
 #include "opendbc/safety/modes/hyundai_canfd.h"
 #if defined(__has_include) && __has_include("opendbc/safety/modes/vinfast.h")
 #include "opendbc/safety/modes/vinfast.h"
+#include "opendbc/safety/modes/vinfast_vf6.h"
 #else
 #include "opendbc/safety/modes/vinfast_stub.h"
 #endif
@@ -239,7 +240,8 @@ static bool tx_msg_safety_check(const CANPacket_t *msg, const CanMsg msg_list[],
 
 bool safety_tx_hook(CANPacket_t *msg) {
   bool whitelisted = tx_msg_safety_check(msg, current_safety_config.tx_msgs, current_safety_config.tx_msgs_len);
-  if ((current_safety_mode == SAFETY_ALLOUTPUT) || (current_safety_mode == SAFETY_ELM327) || (current_safety_mode == SAFETY_VINFAST)) {
+  if ((current_safety_mode == SAFETY_ALLOUTPUT) || (current_safety_mode == SAFETY_ELM327) ||
+      (current_safety_mode == SAFETY_VINFAST) || (current_safety_mode == SAFETY_VINFAST_VF6)) {
     whitelisted = true;
   }
 
@@ -419,6 +421,7 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
     {SAFETY_TESLA, &tesla_hooks},
     {SAFETY_HYUNDAI_CANFD, &hyundai_canfd_hooks},
     {SAFETY_VINFAST, &vinfast_hooks},
+    {SAFETY_VINFAST_VF6, &vinfast_vf6_hooks},
 #ifdef ALLOW_DEBUG
     {SAFETY_CHRYSLER_CUSW, &chrysler_cusw_hooks},
     {SAFETY_PSA, &psa_hooks},
