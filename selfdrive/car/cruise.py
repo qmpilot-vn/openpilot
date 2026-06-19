@@ -3,6 +3,7 @@ import numpy as np
 
 from cereal import car
 from openpilot.common.constants import CV
+from opendbc.car.vinfast.values import is_vf6_safety_platform
 from openpilot.sunnypilot.selfdrive.car.cruise_ext import VCruiseHelperSP
 
 
@@ -51,6 +52,7 @@ class VCruiseHelper(VCruiseHelperSP):
     # Adjust v_initial_experimental_mode via accel/decel before cruise is initialized (session-only)
     self.adjusting_vmax_init = False
     self.vmax_init_adjust_timer = 0
+    self.vf6_platform = is_vf6_safety_platform(CP.carFingerprint)
 
   @property
   def v_cruise_initialized(self):
@@ -58,6 +60,33 @@ class VCruiseHelper(VCruiseHelperSP):
 
   def update_v_cruise(self, CS, enabled, is_metric):
     self.v_cruise_kph_last = self.v_cruise_kph
+
+    self.get_minimum_set_speed(is_metric)
+    _enabled = self.update_enabled_state(CS, enabled)
+
+    # VF6/VF7 (origin/vf6): ADAS_ACC_TagSpeed on InfoCAN → pcmCruiseSpeed sync
+    if self.vf6_platform:
+      if CS.cruiseState.available:
+        if self.CP_SP.pcmCruiseSpeed or self.CP.pcmCruise:
+          self.v_cruise_kph = CS.cruiseState.speed * CV.MS_TO_KPH
+          self.v_cruise_cluster_kph = CS.cruiseState.speedCluster * CV.MS_TO_KPH
+          if CS.cruiseState.speed == 0:
+            self.v_cruise_kph = V_CRUISE_UNSET
+            self.v_cruise_cluster_kph = V_CRUISE_UNSET
+          elif CS.cruiseState.speed == -1:
+            self.v_cruise_kph = -1
+            self.v_cruise_cluster_kph = -1
+        elif not self.CP.pcmCruise or (not self.CP_SP.pcmCruiseSpeed and _enabled):
+          self._update_v_cruise_non_pcm(CS, _enabled, is_metric)
+          self.update_speed_limit_assist_v_cruise_non_pcm()
+          self.v_cruise_cluster_kph = self.v_cruise_kph
+      else:
+        self.v_cruise_kph = V_CRUISE_UNSET
+        self.v_cruise_cluster_kph = V_CRUISE_UNSET
+
+      if not self.CP.pcmCruise or not self.CP_SP.pcmCruiseSpeed:
+        self.update_button_timers(CS, enabled)
+      return
 
     # VinFast: tag speed cluster → experimental initial speed (only when tag changes meaningfully)
     if self.CP.brand == "vinfast" and CS.cruiseState.speedCluster > 0:
@@ -72,10 +101,7 @@ class VCruiseHelper(VCruiseHelperSP):
     if self.CP.brand == "vinfast":
       self.update_vmax_init_experimental(CS, enabled, is_metric)
 
-    self.get_minimum_set_speed(is_metric)
-
     if CS.cruiseState.available:
-      _enabled = self.update_enabled_state(CS, enabled)
       if not self.CP.pcmCruise or (not self.CP_SP.pcmCruiseSpeed and _enabled):
         # if stock cruise is completely disabled, then we can use our own set speed logic
         self._update_v_cruise_non_pcm(CS, _enabled, is_metric)
@@ -259,6 +285,10 @@ class VCruiseHelper(VCruiseHelperSP):
     return False
 
   def initialize_v_cruise(self, CS, experimental_mode: bool, dynamic_experimental_control: bool) -> None:
+    # VF6/VF7: set speed comes from ADAS_ACC_TagSpeed on InfoCAN (origin/vf6)
+    if self.vf6_platform and (self.CP.pcmCruise or self.CP_SP.pcmCruiseSpeed):
+      return
+
     if self.CP.pcmCruise:
       return
 
