@@ -1,5 +1,9 @@
 .cache/
 /build/
+# Private VinFast safety — keep only on flash/build machines (see vinfast_stub.h).
+opendbc/safety/modes/vinfast.h
+opendbc/safety/modes/vinfast_common.h
+opendbc/safety/modes/vinfast_vf6.h
 *.pyc
 !opendbc/car/vinfast/__pycache__/*_impl.*.pyc
 *.o

@@ -1,7 +1,7 @@
 #pragma once
 
-// Host / openpilot tree builds without private opendbc/safety/modes/vinfast.h.
-// VinFast enforcement lives in flashed Panda firmware (build panda with the real header present).
+// Host / openpilot tree builds without private opendbc/safety/modes/vinfast*.h headers.
+// VinFast enforcement lives in flashed Panda firmware (build panda with the real headers present).
 #include "opendbc/safety/declarations.h"
 #include "opendbc/safety/modes/defaults.h"
 
@@ -17,6 +17,12 @@ static bool vinfast_stub_tx_hook(const CANPacket_t *msg) {
 }
 
 const safety_hooks vinfast_hooks = {
+  .init = vinfast_stub_init,
+  .rx = default_rx_hook,
+  .tx = vinfast_stub_tx_hook,
+};
+
+const safety_hooks vinfast_vf6_hooks = {
   .init = vinfast_stub_init,
   .rx = default_rx_hook,
   .tx = vinfast_stub_tx_hook,

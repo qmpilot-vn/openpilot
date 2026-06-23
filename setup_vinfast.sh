@@ -3,6 +3,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PRIVATE="$SCRIPT_DIR/vinfast_private"
 VINFAST_CAR="$SCRIPT_DIR/opendbc_repo/opendbc/car/vinfast"
+SAFETY_MODES="$SCRIPT_DIR/opendbc_repo/opendbc/safety/modes"
 DBC_DIR="$SCRIPT_DIR/opendbc_repo/opendbc/dbc"
 
 if [ -d "$PRIVATE" ]; then
@@ -11,6 +12,15 @@ if [ -d "$PRIVATE" ]; then
 
   cp "$PRIVATE/car/"*.py "$VINFAST_CAR/"
   echo "Deployed VinFast Python source files from vinfast_private."
+
+  if [ -d "$PRIVATE/safety" ]; then
+    for hdr in vinfast.h vinfast_common.h vinfast_vf6.h; do
+      if [ -f "$PRIVATE/safety/$hdr" ]; then
+        cp "$PRIVATE/safety/$hdr" "$SAFETY_MODES/"
+      fi
+    done
+    echo "Deployed VinFast safety headers from vinfast_private."
+  fi
 else
   echo "vinfast_private not found — packaging sources already in tree."
 fi
