@@ -52,6 +52,8 @@ for arg in "$@"; do
 done
 
 VINFAST_DBCS=(
+  vinfast_vf6_chassis_can
+  vinfast_vf6_info_can
   vinfast_vf8_body_can
   vinfast_vf8_chassis_can
   vinfast_vf8_info_can
@@ -83,6 +85,9 @@ for name in names:
   plain = dbc_dir / f"{name}.dbc"
   cache = dbc_dir / f"{name}.dbc.cache"
   if not plain.is_file():
+    if cache.is_file():
+      print(f"skip {name} — no plaintext .dbc (cache already present)")
+      continue
     sys.exit(f"Missing plaintext DBC: {plain}")
 
   parsed = DBC(str(plain))
@@ -94,8 +99,10 @@ PY
 
 if [[ "${STRIP_DBC}" -eq 1 ]]; then
   for name in "${VINFAST_DBCS[@]}"; do
-    rm -f "${DBC_DIR}/${name}.dbc"
-    echo "removed ${name}.dbc"
+    if [[ -f "${DBC_DIR}/${name}.dbc" ]]; then
+      rm -f "${DBC_DIR}/${name}.dbc"
+      echo "removed ${name}.dbc"
+    fi
   done
   echo "plaintext VinFast DBC files removed — ship only *.dbc.cache"
 fi
