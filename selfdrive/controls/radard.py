@@ -115,6 +115,19 @@ LOW_SPEED_LEAD_MIN_VREL = -2.5           # [m/s] softer cap to avoid hard brake 
 LOW_SPEED_LEAD_MIN_ALEADK = -0.8         # [m/s²] softer decel estimate floor at low speed
 LOW_SPEED_LEAD_MAX_ALEADK = 1.5          # [m/s²]
 
+# VF6/VF7 InfoCAN position-only guards (measured=False on liveTracks)
+POSITION_ONLY_MATURE_CNT = 8
+POSITION_ONLY_HIGHWAY_VEGO = 25.0        # [m/s] ~90 km/h — immature vRel cap
+POSITION_ONLY_MIN_VREL = -2.0            # [m/s] max closing estimate while immature
+POSITION_ONLY_MIN_ALEADK = -0.5          # [m/s²] min decel estimate while immature
+# Reject radar↔vision fusion when InfoCAN kinematics disagree (Jun23 handoff capture)
+POSITION_ONLY_FUSION_MAX_DREL = 5.0      # [m] max |dRadar − dVision|
+POSITION_ONLY_FUSION_MAX_VABS = 3.0      # [m/s] max |vRadar − vVision|
+# Distance-scaled aLeadK spike floor for mature tracks (Jun22 110 m capture)
+POSITION_ONLY_ALEADK_DREL_BP = (40.0, 80.0)
+POSITION_ONLY_ALEADK_V = (-3.5, -2.0)  # paired with BP; below 40 → -3.5, above 80 → -1.0
+POSITION_ONLY_MAX_VLEAD_STEP = 2.0     # [m/s] max Kalman vLead meas step (InfoCAN spikes)
+
 # Side-pass / fly-by rejection using predicted miss distance.
 SIDE_PASS_MIN_DREL = 2.0
 SIDE_PASS_MAX_DREL = 20.0
@@ -346,19 +359,79 @@ def stabilize_low_speed_radar_lead(lead_dict: dict[str, Any],
   return lead_dict
 
 
+def _position_only_aleadk_floor(d_rel: float) -> float:
+  """Most-negative allowed aLeadK for mature InfoCAN leads (varies with range)."""
+  return float(np.interp(d_rel, POSITION_ONLY_ALEADK_DREL_BP, POSITION_ONLY_ALEADK_V,
+                          left=-3.5, right=-1.0))
+
+
+def blend_position_only_fusion_with_vision(lead_dict: dict[str, Any],
+                                           track: "Track",
+                                           v_ego: float,
+                                           lead_msg: capnp._DynamicStructReader,
+                                           model_v_ego: float) -> dict[str, Any]:
+  """When InfoCAN radar fuses with vision, prefer vision kinematics if radar diverges."""
+  if (not lead_dict.get('status', False)) or track.measured:
+    return lead_dict
+  if lead_msg.prob <= VISION_MATCH_THRESHOLD:
+    return lead_dict
+
+  vision_d = float(lead_msg.x[0] - RADAR_TO_CAMERA)
+  vision_vrel = float(lead_msg.v[0] - model_v_ego)
+  vision_alead = float(lead_msg.a[0])
+  radar_d = float(track.dRel)
+  radar_vrel = float(lead_dict.get('vRel', track.vRel))
+
+  d_delta = radar_d - vision_d
+  v_delta = radar_vrel - vision_vrel
+  blend = 0.0
+  if d_delta > POSITION_ONLY_FUSION_MAX_DREL:
+    blend = max(blend, min(1.0, d_delta / 10.0))
+  if abs(v_delta) > POSITION_ONLY_FUSION_MAX_VABS:
+    blend = max(blend, min(1.0, abs(v_delta) / 8.0))
+  if blend <= 0.0:
+    return lead_dict
+
+  vrel_out = (1.0 - blend) * radar_vrel + blend * vision_vrel
+  alead_out = (1.0 - blend) * float(lead_dict.get('aLeadK', 0.0)) + blend * vision_alead
+  drel_out = (1.0 - blend) * radar_d + blend * vision_d
+
+  lead_dict['dRel'] = drel_out
+  lead_dict['vRel'] = vrel_out
+  lead_dict['vLead'] = v_ego + vrel_out
+  lead_dict['vLeadK'] = v_ego + vrel_out
+  lead_dict['aLeadK'] = alead_out
+  return lead_dict
+
+
 def stabilize_position_only_radar_lead(lead_dict: dict[str, Any],
                                        track: "Track",
                                        v_ego: float) -> dict[str, Any]:
-  """Use Kalman absolute speed when radar only reports distance (VF6 InfoCAN)."""
+  """Temper VF6/VF7 InfoCAN leads (position-only, measured=False) above city speed."""
   if (not lead_dict.get('status', False)) or (not lead_dict.get('radar', False)):
     return lead_dict
-  if track.measured or track.cnt < 3:
+  if track.measured:
+    return lead_dict
+  if v_ego < LOW_SPEED_LEAD_SMOOTH_VEGO:
     return lead_dict
 
   vrel_k = float(track.vLeadK - v_ego)
   vrel_raw = float(lead_dict.get('vRel', vrel_k))
-  alpha = 0.8
+  alpha = 0.8 if track.cnt >= 3 else 1.0
   vrel_out = alpha * vrel_k + (1.0 - alpha) * vrel_raw
+
+  if track.cnt < POSITION_ONLY_MATURE_CNT:
+    vrel_out = max(POSITION_ONLY_MIN_VREL, vrel_out)
+
+  a_lead_k = float(lead_dict.get('aLeadK', 0.0))
+  if track.cnt < POSITION_ONLY_MATURE_CNT:
+    a_lead_k = max(POSITION_ONLY_MIN_ALEADK, a_lead_k)
+  else:
+    floor = _position_only_aleadk_floor(float(track.dRel))
+    if a_lead_k < floor:
+      a_lead_k = floor
+
+  lead_dict['aLeadK'] = a_lead_k
   lead_dict['vRel'] = vrel_out
   lead_dict['vLead'] = v_ego + vrel_out
   lead_dict['vLeadK'] = float(track.vLeadK)
@@ -453,8 +526,14 @@ class Track:
     self._prev_yRel = y_rel
 
     # Kalman update on absolute lead speed
+    v_lead_meas = v_lead
+    if self.cnt > 0 and not measured:
+      prev_v = float(self.kf.x[SPEED][0])
+      dv = max(-POSITION_ONLY_MAX_VLEAD_STEP,
+               min(POSITION_ONLY_MAX_VLEAD_STEP, v_lead - prev_v))
+      v_lead_meas = prev_v + dv
     if self.cnt > 0:
-      self.kf.update(self.vLead)
+      self.kf.update(v_lead_meas)
 
     self.vLeadK = float(self.kf.x[SPEED][0])
     self.aLeadK = float(self.kf.x[ACCEL][0])
@@ -1074,6 +1153,12 @@ def match_vision_to_track(v_ego: float, lead: capnp._DynamicStructReader,
   lat_sane  = abs(track.yRel - (-lead.y[0])) < max(lead.yStd[0] * LAT_MATCH_FACTOR, LAT_MATCH_MIN)
 
   if dist_sane and vel_sane and lat_sane:
+    # InfoCAN has no Rel_Vx — require tighter agreement before replacing vision.
+    if not track.measured:
+      if abs(track.dRel - offset_vision_dist) > POSITION_ONLY_FUSION_MAX_DREL:
+        return None
+      if abs(track.vRel + v_ego - lead.v[0]) > POSITION_ONLY_FUSION_MAX_VABS:
+        return None
     return track
   return None
 
@@ -1147,6 +1232,9 @@ def get_lead(v_ego: float, ready: bool, tracks: dict[int, Track],
       lead_dict['vLeadK'] = v_ego + vision_vRel
       cloudlog.debug("radard: static override track %d  v_radar=%.1f → v_vision=%.1f",
                      track.identifier, track.vRel + v_ego, lead_msg.v[0])
+
+    lead_dict = blend_position_only_fusion_with_vision(
+      lead_dict, track, v_ego, lead_msg, model_v_ego)
 
   # ── Priority 2: vision-only ────────────────────────────────────────────────
   elif track is None and ready and lead_msg.prob > VISION_ONLY_THRESHOLD:
