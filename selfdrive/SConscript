@@ -1,0 +1,2 @@
+# Pandad-only build (rest of selfdrive native targets skipped when tree is incomplete).
+SConscript(['pandad/SConscript'])

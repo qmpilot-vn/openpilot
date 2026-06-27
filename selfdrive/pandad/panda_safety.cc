@@ -53,27 +53,26 @@ void PandaSafety::applySafetyToPandas(const cereal::CarParams::Reader &car_param
 }
 
 void PandaSafety::configureSafetyMode(bool is_onroad) {
-  // Same latch / Params gating as pandad_backup_working_mici_spi_only_20260422 (string "1" in fetchCarParams).
-  if (is_onroad && !safety_configured_) {
-    updateMultiplexingMode();
-
-    auto car_params = fetchCarParams();
-    if (!car_params.empty()) {
-      LOGW("got %lu bytes CarParams", car_params[0].size());
-      LOGW("got %lu bytes CarParamsSP", car_params[1].size());
-      setSafetyMode(car_params);
-      safety_configured_ = true;
-    }
-  } else if (is_onroad && safety_configured_) {
-    static int skip_logged = 0;
-    if (++skip_logged % 200 == 1) {
-      LOGW("configureSafetyMode: skipping apply (safety_configured_=true). Go offroad once to reset latch.");
-    }
-  } else if (!is_onroad) {
+  if (!is_onroad) {
     initialized_ = false;
     safety_configured_ = false;
     log_once_ = false;
     invalidateSafetyCache();
+    return;
+  }
+
+  // Always attempt apply onroad; CachedSafety skips redundant SPI when HW already matches.
+  // Do not latch-skip after offroad NO_OUTPUT — cache may still show vinfast while panda is 19.
+  updateMultiplexingMode();
+
+  auto car_params = fetchCarParams();
+  if (!car_params.empty()) {
+    if (!safety_configured_) {
+      LOGW("got %lu bytes CarParams", car_params[0].size());
+      LOGW("got %lu bytes CarParamsSP", car_params[1].size());
+    }
+    setSafetyMode(car_params);
+    safety_configured_ = true;
   }
 }
 
