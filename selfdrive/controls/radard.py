@@ -39,6 +39,7 @@ RADAR_TO_CAMERA = 1.52         # radar → camera mesh frame offset [m]
 # Radar-priority: fuse eagerly, trust radar-only at long range
 VISION_MATCH_THRESHOLD = 0.20   # min vision prob for radar+vision fusion (lower = fuse more)
 VISION_ONLY_THRESHOLD  = 0.55  # min vision prob for vision-only lead (higher = radar-only fires more)
+VISION_ONLY_MAX_LAT    = 2.0   # [m] max |yRel| for vision-only lead — reject adjacent lane
 DIST_MATCH_FACTOR      = 0.45  # vision-radar distance tolerance factor (wider at range)
 DIST_MATCH_MIN         = 7.0   # [m]  minimum distance tolerance
 VEL_MATCH_REL          = 2.0   # [m/s] relative velocity tolerance (tight)
@@ -78,6 +79,10 @@ CREEP_LEAD_MAX_DREL = 18.0           # [m] focus on nearby lead while creeping
 CREEP_LEAD_MIN_TRACK_CNT = 3         # frames
 CREEP_LEAD_MAX_YVREL = 1.0           # [m/s] reject strong lateral movers
 CREEP_LEAD_MIN_VLEADK = -0.3         # [m/s] reject opposite-direction objects
+# InfoCAN FCAM (VF6/VF7): host-lane bikes in urban queues report larger |yRel|
+INFO_HOST_CREEP_MAX_DREL = 15.0      # [m]
+INFO_HOST_CREEP_MAX_LAT = 2.0        # [m] allow offset motorbikes at red lights
+INFO_HOST_MIN_TRACK_CNT = 2          # frames — InfoCAN already requires 2 at parser
 
 # FCW guardrails to avoid early warnings in dense low-speed traffic
 FCW_MIN_VEGO = 4.0         # [m/s] ~14.4 km/h
@@ -120,21 +125,32 @@ POSITION_ONLY_MATURE_CNT = 8
 POSITION_ONLY_HIGHWAY_VEGO = 25.0        # [m/s] ~90 km/h — immature vRel cap
 POSITION_ONLY_MIN_VREL = -2.0            # [m/s] max closing estimate while immature
 POSITION_ONLY_MIN_ALEADK = -0.5          # [m/s²] min decel estimate while immature
-# Reject radar↔vision fusion when InfoCAN kinematics disagree (Jun23 handoff capture)
-POSITION_ONLY_FUSION_MAX_DREL = 5.0      # [m] max |dRadar − dVision|
-POSITION_ONLY_FUSION_MAX_VABS = 3.0      # [m/s] max |vRadar − vVision|
-# Distance-scaled aLeadK spike floor for mature tracks (Jun22 110 m capture)
+POSITION_ONLY_FUSION_MAX_DREL = 5.0      # [m] max |dRadar − dVision| for fusion
+POSITION_ONLY_FUSION_MAX_VABS = 3.0      # [m/s] max |vRadar − vVision| for fusion
 POSITION_ONLY_ALEADK_DREL_BP = (40.0, 80.0)
-POSITION_ONLY_ALEADK_V = (-3.5, -2.0)  # paired with BP; below 40 → -3.5, above 80 → -1.0
-POSITION_ONLY_MAX_VLEAD_STEP = 2.0     # [m/s] max Kalman vLead meas step (InfoCAN spikes)
+POSITION_ONLY_ALEADK_V = (-3.5, -2.0)    # below 40 m → -3.5, above 80 m → -2.0
+POSITION_ONLY_MAX_VLEAD_STEP = 2.0       # [m/s] max Kalman vLead meas step (InfoCAN spikes)
 
 # Side-pass / fly-by rejection using predicted miss distance.
 SIDE_PASS_MIN_DREL = 2.0
-SIDE_PASS_MAX_DREL = 20.0
+SIDE_PASS_MAX_DREL = 40.0
 SIDE_PASS_MIN_LAT = 0.6
 SIDE_PASS_MIN_YVREL = 0.5
 SIDE_PASS_MAX_TTC = 2.5
 SIDE_PASS_MISS_LAT = 0.9
+
+# Urban crossing / parked-roadside geometry.
+URBAN_CROSSING_MIN_YVREL = 0.45
+URBAN_CROSSING_TTC_HORIZON = 4.0
+URBAN_CROSSING_KEEP_LAT = 0.75
+URBAN_CROSSING_MISS_LAT = 1.05
+URBAN_CROSSING_URGENT_TTC = 0.7
+
+PARKED_ROADSIDE_MIN_VEGO = 1.5
+PARKED_ROADSIDE_MAX_VLEAD = 1.0
+PARKED_ROADSIDE_LAT_BP = [4.0, 12.0, 30.0, 60.0]
+PARKED_ROADSIDE_LAT_V = [0.70, 0.80, 0.95, 1.15]
+PARKED_ROADSIDE_HOST_MARGIN = 0.35
 
 # User-requested hard reject: at >10 km/h, do not follow slow pedestrian-like
 # preceding side leads that can momentarily collapse into near-path radar ghosts.
@@ -151,7 +167,7 @@ SLOW_VRU_REJECT_MIN_YVREL = 0.15     # [m/s] must show lateral motion
 # small yRel is likely a radar measurement artifact (beam reflects off
 # nearest edge at close range), not a genuine lane entry.
 OVERTAKE_PASS_MIN_VREL = -2.5      # [m/s] minimum closing speed to consider
-OVERTAKE_PASS_MAX_DREL = 25.0      # [m] within passing range
+OVERTAKE_PASS_MAX_DREL = 40.0      # [m] within passing range (highway pass-by can be 25-35 m)
 OVERTAKE_PASS_HIST_LAT = 1.0       # [m] track must have been outside this recently
 OVERTAKE_PASS_CUR_LAT = 0.4        # [m] current path-relative offset still nonzero
 OVERTAKE_PASS_YREL_DECAY = 0.97    # per-frame decay for max |yRel| tracker
@@ -161,10 +177,10 @@ OVERTAKE_PASS_YREL_DECAY = 0.97    # per-frame decay for max |yRel| tracker
 # center while ego is closing. This targets "yRel suddenly drops low" ghosts.
 LATERAL_FLYBY_MIN_DREL = 6.0
 LATERAL_FLYBY_MAX_DREL = 70.0
-LATERAL_FLYBY_MIN_CLOSING = 3.5         # [m/s]
-LATERAL_FLYBY_MIN_TRACK_CNT = 6         # need more history to detect collapse robustly
+LATERAL_FLYBY_MIN_CLOSING = 3.0         # [m/s] highway pass-by closing is often ~3 m/s
+LATERAL_FLYBY_MIN_TRACK_CNT = 5
 LATERAL_FLYBY_HIST_MIN_LAT = 1.2        # [m] track was recently side-offset
-LATERAL_FLYBY_STRONG_HIST_LAT = 1.8     # [m] strong side-evidence even if DBC noisy
+LATERAL_FLYBY_STRONG_HIST_LAT = 1.4     # [m] kinematic fallback when DBC lane/orient invalid
 LATERAL_FLYBY_CUR_MAX_LAT = 0.35        # [m] currently appears near path center
 LATERAL_FLYBY_COLLAPSE_RATIO_MAX = 0.35 # current lat / recent max lat
 LATERAL_FLYBY_MIN_CENTERING_YV = 0.35   # [m/s] keep likely true cut-ins
@@ -287,6 +303,74 @@ def should_trigger_fcw(track: "Track", v_ego: float, model_prob: float) -> bool:
   return ttc < FCW_MAX_TTC
 
 
+def path_relative_yrel(track: "Track", path_y_offset: float = 0.0) -> float:
+  """Track lateral offset from the planned driving path."""
+  return float(track.yRel - path_y_offset)
+
+
+def parked_roadside_lat_threshold(d_rel: float) -> float:
+  """Distance-adaptive lateral threshold for parked roadside objects."""
+  return float(np.interp(float(d_rel), PARKED_ROADSIDE_LAT_BP, PARKED_ROADSIDE_LAT_V))
+
+
+def is_ground_stationary_roadside(track: "Track", v_ego: float,
+                                  path_y_offset: float = 0.0) -> bool:
+  """True for parked/roadside objects that should not become longitudinal leads."""
+  if v_ego < PARKED_ROADSIDE_MIN_VEGO:
+    return False
+
+  lat_from_path = abs(path_relative_yrel(track, path_y_offset))
+  threshold = parked_roadside_lat_threshold(track.dRel)
+  stationary_status = track.motionStatus in (MSTATUS_STATIONARY, MSTATUS_STOPPED)
+  ground_stationary = track.vLeadK < PARKED_ROADSIDE_MAX_VLEAD or stationary_status
+  if not ground_stationary:
+    return False
+
+  host_preceding = (track.motionOrientation == ORIENT_PRECEEDING and
+                    track.laneAssignment == LANE_HOST)
+  if host_preceding and lat_from_path < threshold + PARKED_ROADSIDE_HOST_MARGIN:
+    return False
+
+  if track.laneAssignment in ADJACENT_LANES and lat_from_path > 0.45:
+    return True
+
+  return lat_from_path > threshold
+
+
+def predicted_lateral_offset_at_ttc(track: "Track", v_ego: float,
+                                    y_rel_path: float) -> tuple[float, float]:
+  """Project lateral offset at longitudinal closest approach."""
+  closing_speed = max(-float(track.vRel), v_ego - max(float(track.vLeadK), 0.0), 0.0)
+  if closing_speed < 0.1:
+    return y_rel_path, float("inf")
+
+  ttc = float(track.dRel) / closing_speed
+  horizon = min(ttc, URBAN_CROSSING_TTC_HORIZON)
+  return y_rel_path + float(track.yvRel) * horizon, ttc
+
+
+def is_urban_crossing_miss(track: "Track", v_ego: float,
+                           y_rel_path: float) -> bool:
+  """Reject crossing tracks projected to clear the driving path before ego arrives."""
+  if abs(track.yvRel) < URBAN_CROSSING_MIN_YVREL:
+    return False
+
+  lat_at_ttc, ttc = predicted_lateral_offset_at_ttc(track, v_ego, y_rel_path)
+  if ttc <= URBAN_CROSSING_URGENT_TTC:
+    return False
+  if abs(lat_at_ttc) <= URBAN_CROSSING_KEEP_LAT:
+    return False
+
+  moving_toward_path = y_rel_path * track.yvRel < 0.0
+  if abs(lat_at_ttc) > URBAN_CROSSING_MISS_LAT:
+    if not moving_toward_path:
+      return True
+    # Moving toward the lane, but still projected to miss after enough time.
+    return ttc > 1.2 and abs(y_rel_path) > URBAN_CROSSING_KEEP_LAT
+
+  return False
+
+
 def apply_lead_stability_hold(lead_dict: dict[str, Any],
                               track: "Track",
                               v_ego: float) -> dict[str, Any]:
@@ -362,7 +446,7 @@ def stabilize_low_speed_radar_lead(lead_dict: dict[str, Any],
 def _position_only_aleadk_floor(d_rel: float) -> float:
   """Most-negative allowed aLeadK for mature InfoCAN leads (varies with range)."""
   return float(np.interp(d_rel, POSITION_ONLY_ALEADK_DREL_BP, POSITION_ONLY_ALEADK_V,
-                          left=-3.5, right=-1.0))
+                          left=-3.5, right=-2.0))
 
 
 def blend_position_only_fusion_with_vision(lead_dict: dict[str, Any],
@@ -484,6 +568,8 @@ class Track:
     # Recent maximum |yRel| with slow decay — detects radar yRel collapse
     # artifacts when ego overtakes a side object at close range.
     self.max_recent_abs_yRel: float = 0.0
+    # Peak |yRel| for this track lifetime — never decays (fly-by collapse detection).
+    self.peak_abs_yRel: float = 0.0
 
     # DBC motion classification from radar hardware (0 = invalid/unavailable)
     self.motionStatus: int = MSTATUS_INVALID
@@ -503,6 +589,7 @@ class Track:
     else:
       self.max_recent_abs_yRel = max(abs(y_rel),
                                      self.max_recent_abs_yRel * OVERTAKE_PASS_YREL_DECAY)
+    self.peak_abs_yRel = max(self.peak_abs_yRel, abs(y_rel))
     self.vLead = v_lead
     self.measured = measured
 
@@ -613,7 +700,7 @@ def calculate_collision_risk(track: Track, v_ego: float,
   ``path_y_offset`` is the driving-path lateral position in openpilot frame
   at this track's dRel (positive = right).  On a straight road this is ~0.
   """
-  lat_from_path = abs(track.yRel - path_y_offset)
+  lat_from_path = abs(path_relative_yrel(track, path_y_offset))
 
   # ── Lateral position ──────────────────────────────────────────────────────
   # Tight lane: only objects within ~1.5m of path centre score well
@@ -666,7 +753,7 @@ def calculate_collision_risk(track: Track, v_ego: float,
   # Ground-stationary penalty: parked cars (vLeadK near 0 while ego moves)
   # that are offset from path are roadside objects, not in-lane obstacles.
   # Steeper falloff (1.2m instead of 1.5m) to strongly penalise side-road parking.
-  if track.vLeadK < 1.0 and v_ego > 2.0 and lat_from_path > 0.5:
+  if is_ground_stationary_roadside(track, v_ego, path_y_offset):
     park_penalty = max(0.02, 1.0 - (lat_from_path / 1.2) ** 2)
     risk_score *= park_penalty
 
@@ -736,7 +823,7 @@ def is_crossing_traffic(track: Track, v_ego: float,
   is_low_speed = v_ego < 5.6  # ~20 km/h — urban passing zone
 
   # Path-relative lateral offset (0 = dead on driving path)
-  yRel_path = track.yRel - path_y_offset
+  yRel_path = path_relative_yrel(track, path_y_offset)
 
   # ── DBC hardware classification — high-confidence early decisions ──────
   # The radar hardware's own tracker has Doppler + multi-frame context to
@@ -753,15 +840,20 @@ def is_crossing_traffic(track: Track, v_ego: float,
     abs(track.yvRel) > SLOW_VRU_REJECT_MIN_YVREL
   )
 
+  if is_ground_stationary_roadside(track, v_ego, path_y_offset):
+    return True
+
   # DBC says CROSSING — only reject when clearly going to miss our path.
   # A car/truck crossing at an intersection near our lane is a real collision
   # hazard that MUST be kept as a lead.  Only reject when far enough lateral
   # (> 2.0m — outside lane width) AND TTC is long (not imminent).
   if has_valid_orient and mo in CROSSING_ORIENTATIONS:
     moving_toward_path = (yRel_path * track.yvRel) < 0.0 and abs(track.yvRel) > 0.2
+    if is_urban_crossing_miss(track, v_ego, yRel_path):
+      return True
     # Slow VRU-like crossing near our path is commonly a side pass artifact.
     if (slow_vru_like and 0.35 < abs(yRel_path) < SLOW_VRU_REJECT_MAX_LAT and
-            track.dRel < SLOW_VRU_REJECT_MAX_DREL):
+            track.dRel < SLOW_VRU_REJECT_MAX_DREL and not moving_toward_path):
       return True
     closing_speed = max(-track.vRel, v_ego * 0.5)
     ttc = track.dRel / max(closing_speed, 0.1)
@@ -807,7 +899,15 @@ def is_crossing_traffic(track: Track, v_ego: float,
   # yRel_path × yvRel < 0 means the object is moving toward the driving path.
   # A bike cutting in from the right: yRel_path > 0, yvRel < 0 → product < 0.
   # Require some minimum lateral motion to be sure (not just noise).
-  is_cutting_in = (yRel_path * track.yvRel < 0) and abs(track.yvRel) > 0.3
+  # Pass-by yRel-collapse artifacts also show centering yvRel — do not treat as cut-in.
+  likely_flyby_collapse = (
+    max(track.peak_abs_yRel, track.max_recent_abs_yRel) >= LATERAL_FLYBY_HIST_MIN_LAT and
+    abs(yRel_path) <= LATERAL_FLYBY_CUR_MAX_LAT and
+    abs(yRel_path) / max(max(track.peak_abs_yRel, track.max_recent_abs_yRel), 1e-3)
+    <= LATERAL_FLYBY_COLLAPSE_RATIO_MAX
+  )
+  is_cutting_in = ((yRel_path * track.yvRel < 0) and abs(track.yvRel) > 0.3
+                   and not likely_flyby_collapse)
 
   # Same-direction overtaking reject (general):
   # A laterally offset object that is faster than ego is typically passing by
@@ -924,9 +1024,8 @@ def is_crossing_traffic(track: Track, v_ego: float,
   # should not lock onto them as leads to avoid phantom braking.
   # Uses vLeadK (Kalman-filtered absolute speed) which is far more
   # reliable than vRel for detecting ground-stationary objects.
-  if not is_cutting_in and v_ego > 2.0:
-    if track.vLeadK < 1.0 and abs(yRel_path) > 1.0:
-      return True
+  if not is_cutting_in and is_ground_stationary_roadside(track, v_ego, path_y_offset):
+    return True
 
   # ── Criterion 11: ego overtaking slower same-direction side object ────
   # When ego closes fast on a same-direction object that was recently well
@@ -956,7 +1055,7 @@ def is_lateral_flyby(track: Track, path_y_offset: float = 0.0) -> bool:
     return False
 
   abs_lat = abs(y_rel_path)
-  hist_lat = max(abs(track.yRel), float(track.max_recent_abs_yRel))
+  hist_lat = max(abs_lat, float(track.peak_abs_yRel), float(track.max_recent_abs_yRel))
   if hist_lat < LATERAL_FLYBY_HIST_MIN_LAT:
     return False
   if abs_lat > LATERAL_FLYBY_CUR_MAX_LAT:
@@ -964,11 +1063,16 @@ def is_lateral_flyby(track: Track, path_y_offset: float = 0.0) -> bool:
   if abs_lat / max(hist_lat, 1e-3) > LATERAL_FLYBY_COLLAPSE_RATIO_MAX:
     return False
 
+  is_lateral_collapse = (
+    abs_lat / max(hist_lat, 1e-3) <= LATERAL_FLYBY_COLLAPSE_RATIO_MAX
+  )
   moving_toward_center = (
     abs(track.yvRel) >= LATERAL_FLYBY_MIN_CENTERING_YV and
     (y_rel_path * track.yvRel) < 0.0
   )
-  if moving_toward_center and track.dRel < LATERAL_FLYBY_CUTIN_PROTECT_DREL:
+  # Genuine cut-ins: protect. yRel-collapse pass-bys also center — don't exempt.
+  if (moving_toward_center and track.dRel < LATERAL_FLYBY_CUTIN_PROTECT_DREL
+      and not is_lateral_collapse):
     return False
   if abs(track.yvRel) > LATERAL_FLYBY_MAX_YVREL_FOR_REJECT:
     return False
@@ -982,6 +1086,10 @@ def is_lateral_flyby(track: Track, path_y_offset: float = 0.0) -> bool:
   )
   if side_evidence:
     return True
+
+  # SCAM often clears lane/orient when yRel collapses — kinematic history alone.
+  if la == LANE_UNKNOWN or mo in (ORIENT_INVALID, ORIENT_UNKNOWN_VAL):
+    return hist_lat >= LATERAL_FLYBY_STRONG_HIST_LAT
 
   return False
 
@@ -1024,6 +1132,7 @@ def select_best_radar_track(tracks: dict[int, Track], v_ego: float,
       pyo, _ptol = get_path_lateral_offset(track.dRel, path_x, path_y, path_y_std)
     else:
       pyo = 0.0
+    lat_from_path = abs(path_relative_yrel(track, pyo))
 
     if is_crossing_traffic(track, v_ego, path_y_offset=pyo):
       continue
@@ -1036,7 +1145,7 @@ def select_best_radar_track(tracks: dict[int, Track], v_ego: float,
         track.laneAssignment != LANE_UNKNOWN and
         track.motionOrientation in SAME_DIR_ORIENTATIONS and
         track.vRel > -1.0 and
-        abs(track.yRel) > 1.0):
+        lat_from_path > 1.0):
       continue
 
     # At very low speed (< 5 km/h), radar is noisy — only trust tracks
@@ -1171,9 +1280,15 @@ def get_RadarState_from_vision(lead_msg: capnp._DynamicStructReader, v_ego: floa
   if dRel < min_lead_distance(v_ego):
     return {'status': False}
 
+  yRel = float(-lead_msg.y[0])
+  # Without radar confirmation, reject vision leads clearly in the adjacent lane.
+  if abs(yRel) > VISION_ONLY_MAX_LAT:
+    cloudlog.debug("radard: vision-only lead rejected — yRel=%.2f > %.1f", yRel, VISION_ONLY_MAX_LAT)
+    return {'status': False}
+
   return {
     "dRel": dRel,
-    "yRel": float(-lead_msg.y[0]),
+    "yRel": yRel,
     "vRel": float(lead_v_rel_pred),
     "vLead": float(v_ego + lead_v_rel_pred),
     "vLeadK": float(v_ego + lead_v_rel_pred),
@@ -1263,14 +1378,22 @@ def get_lead(v_ego: float, ready: bool, tracks: dict[int, Track],
       if not (path_valid and path_x is not None and path_y is not None):
         return True
       pyo, _ = get_path_lateral_offset(c.dRel, path_x, path_y, path_y_std)
-      return abs(c.yRel - pyo) <= LOW_SPEED_PATH_MAX_LAT
+      max_lat = LOW_SPEED_PATH_MAX_LAT
+      if (not c.measured and c.laneAssignment == LANE_HOST and
+              c.dRel < INFO_HOST_CREEP_MAX_DREL):
+        max_lat = INFO_HOST_CREEP_MAX_LAT
+      return abs(c.yRel - pyo) <= max_lat
 
     def _creep_closest_candidate(c: Track) -> bool:
       # Creep mode should lock onto the closest same-direction object (e.g. a
       # motorbike stopping/rolling forward), not lateral crossers.
       if c.dRel < min_d or c.dRel > CREEP_LEAD_MAX_DREL:
         return False
-      if c.cnt < CREEP_LEAD_MIN_TRACK_CNT:
+      min_cnt = CREEP_LEAD_MIN_TRACK_CNT
+      if (not c.measured and c.laneAssignment == LANE_HOST and
+              c.dRel < INFO_HOST_CREEP_MAX_DREL):
+        min_cnt = INFO_HOST_MIN_TRACK_CNT
+      if c.cnt < min_cnt:
         return False
       if c.vLeadK < CREEP_LEAD_MIN_VLEADK:
         return False
@@ -1334,15 +1457,21 @@ def get_lead(v_ego: float, ready: bool, tracks: dict[int, Track],
   if lead_dict.get('status', False) and v_ego < CREEP_CLOSEST_LEAD_VEGO:
     d_rel = float(lead_dict.get('dRel', 0.0))
     y_rel = float(lead_dict.get('yRel', 0.0))
+    max_lat = LOW_SPEED_PATH_MAX_LAT
+    tid = int(lead_dict.get('radarTrackId', -1))
+    tr = tracks.get(tid) if tid >= 0 else None
+    if (tr is not None and not tr.measured and tr.laneAssignment == LANE_HOST and
+            d_rel < INFO_HOST_CREEP_MAX_DREL):
+      max_lat = INFO_HOST_CREEP_MAX_LAT
     if path_valid and path_x is not None and path_y is not None:
       pyo, _ = get_path_lateral_offset(d_rel, path_x, path_y, path_y_std)
       lat_from_path = abs(y_rel - pyo)
-      if lat_from_path > LOW_SPEED_PATH_MAX_LAT:
+      if lat_from_path > max_lat:
         lead_dict = {'status': False}
     else:
       # If model path is temporarily unavailable, keep the same strict behavior
       # using straight-line lateral as a fallback to avoid side-object braking.
-      if abs(y_rel) > LOW_SPEED_PATH_MAX_LAT:
+      if abs(y_rel) > max_lat:
         lead_dict = {'status': False}
 
   track_obj = None
@@ -1359,6 +1488,9 @@ def get_lead(v_ego: float, ready: bool, tracks: dict[int, Track],
     min_cnt_required = (RADAR_LEAD_MIN_TRACK_CNT_LOW_SPEED
                         if v_ego < CREEP_CLOSEST_LEAD_VEGO
                         else RADAR_LEAD_MIN_TRACK_CNT)
+    if (track_obj is not None and not track_obj.measured and
+            track_obj.laneAssignment == LANE_HOST and d_rel < INFO_HOST_CREEP_MAX_DREL):
+      min_cnt_required = INFO_HOST_MIN_TRACK_CNT
     if (track_obj.cnt < min_cnt_required and
             not (d_rel < RADAR_LEAD_BYPASS_DREL and ttc <= RADAR_LEAD_BYPASS_TTC)):
       lead_dict = {'status': False}
