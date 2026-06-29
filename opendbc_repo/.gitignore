@@ -41,3 +41,8 @@ opendbc/dbc/vinfast_vf6_*.dbc
 !opendbc/dbc/vinfast_vf6_*.dbc.cache
 opendbc/dbc/vinfast_vf8_*.dbc
 !opendbc/dbc/vinfast_vf8_*.dbc.cache
+
+# VinFast dev tests (not shipped on vf-release-c4)
+opendbc/car/vinfast/tests/
+opendbc/can/tests/test_vinfast_dbc_cache.py
+opendbc/safety/tests/test_vinfast_vf6.py
