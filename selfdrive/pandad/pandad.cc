@@ -7,6 +7,7 @@
 #include <cerrno>
 #include <cmath>
 #include <memory>
+#include <string>
 #include <thread>
 #include <utility>
 
@@ -218,7 +219,7 @@ void fill_panda_can_state(cereal::PandaState::PandaCanState::Builder &cs, const 
   cs.setCanCoreResetCnt(can_health.can_core_reset_cnt);
 }
 
-std::optional<bool> send_panda_states(PubMaster *pm, const std::vector<Panda *> &pandas, bool is_onroad, bool spoofing_started, bool always_offroad) {
+std::optional<bool> send_panda_states(PubMaster *pm, const std::vector<Panda *> &pandas, bool close_relay, bool spoofing_started, bool always_offroad, bool mask_vinfast_harness_ignition) {
   bool ignition_local = false;
   const uint32_t pandas_cnt = pandas.size();
 
@@ -266,6 +267,11 @@ std::optional<bool> send_panda_states(PubMaster *pm, const std::vector<Panda *> 
       health.ignition_line_pkt = 0;
     }
 
+    // VinFast harness taps FCAM/KL30 power, not KL15 — use CAN ignition only
+    if (mask_vinfast_harness_ignition) {
+      health.ignition_line_pkt = 0;
+    }
+
     ignition_local |= ((health.ignition_line_pkt != 0) || (health.ignition_can_pkt != 0)) && !always_offroad;
 
     pandaStates.push_back(health);
@@ -275,24 +281,19 @@ std::optional<bool> send_panda_states(PubMaster *pm, const std::vector<Panda *> 
     auto panda = pandas[i];
     const auto &health = pandaStates[i];
 
-    // Stock sunnypilot (single panda): wake SILENT -> NO_OUTPUT for fingerprinting.
-    // Multipanda: only while offroad so we don't fight configureSafetyMode (vinfast) onroad.
-    // Always Offroad (OffroadMode): always apply stock default-panda path.
-    const bool force_default_panda = always_offroad || !is_onroad;
-    if (force_default_panda && health.safety_mode_pkt == (uint8_t)(cereal::CarParams::SafetyModel::SILENT)) {
+    // SILENT -> NO_OUTPUT was meant to wake buses for fingerprinting; doing it while onroad fights
+    // PandaSafety::configureSafetyMode (same tick we may apply vinfast). Only do this offroad.
+    if (close_relay && health.safety_mode_pkt == (uint8_t)(cereal::CarParams::SafetyModel::SILENT)) {
       panda->set_safety_model(cereal::CarParams::SafetyModel::NO_OUTPUT);
     }
 
-    // Stock: power_save_desired = !ignition_local (ignition_local cleared when always_offroad).
-    // Multipanda onroad: never power-save while driving (flaky ignition on mici/SPI).
-    bool power_save_desired = always_offroad ? true : ((!is_onroad) && (!ignition_local));
+    bool power_save_desired = close_relay && (!ignition_local);
     if (health.power_save_enabled_pkt != power_save_desired) {
       panda->set_power_saving(power_save_desired);
     }
 
-    // Stock: should_close_relay = !ignition_local || !is_onroad.
-    // Multipanda passes effective_onroad as is_onroad (false when Always Offroad or Params offroad).
-    bool should_close_relay = always_offroad || !is_onroad;
+    // NO_OUTPUT when offroad and not driving (!IsOnroad && !deviceState.started).
+    bool should_close_relay = always_offroad || close_relay;
     if (should_close_relay && (health.safety_mode_pkt != (uint8_t)(cereal::CarParams::SafetyModel::NO_OUTPUT))) {
       panda->set_safety_model(cereal::CarParams::SafetyModel::NO_OUTPUT);
     }
@@ -360,14 +361,14 @@ void send_peripheral_state(Panda *panda, PubMaster *pm) {
   pm->send("peripheralState", msg);
 }
 
-void process_panda_state(std::vector<Panda *> &pandas, PubMaster *pm, bool engaged, bool engaged_mads, bool is_onroad, bool spoofing_started, bool always_offroad) {
+void process_panda_state(std::vector<Panda *> &pandas, PubMaster *pm, bool engaged, bool engaged_mads, bool close_relay, bool spoofing_started, bool always_offroad, bool mask_vinfast_harness_ignition) {
   std::vector<std::string> connected_serials;
   for (Panda *p : pandas) {
     connected_serials.push_back(p->hw_serial());
   }
 
   {
-    auto ignition_opt = send_panda_states(pm, pandas, is_onroad, spoofing_started, always_offroad);
+    auto ignition_opt = send_panda_states(pm, pandas, close_relay, spoofing_started, always_offroad, mask_vinfast_harness_ignition);
     if (!ignition_opt) {
       LOGE("Failed to get ignition_opt");
       return;
@@ -468,16 +469,14 @@ void pandad_run(std::vector<Panda *> &pandas) {
   const int panda_state_div = std::max(1, (int)std::lround(main_hz / 10.0));
   const int peripheral_state_div = std::max(1, (int)std::lround(main_hz / 2.0));
   RateKeeper rk("pandad", main_hz);
-  SubMaster sm({"selfdriveState", "selfdriveStateSP", "carParams", "carParamsSP"});
+  SubMaster sm({"selfdriveState", "selfdriveStateSP", "carParams", "carParamsSP", "deviceState"});
   PubMaster pm({"can", "pandaStates", "peripheralState"});
   PandaSafety panda_safety(pandas);
   Panda *peripheral_panda = pandas[0];
   bool engaged = false;
   bool engaged_mads = false;
-  bool is_onroad = false;
+  bool apply_car_safety = false;
   bool always_offroad = false;
-  bool ignition_onroad = false;
-  uint64_t last_ignition_check_ns = 0;
 
   // Main loop: receive CAN data and process states
   while (!do_exit && check_all_connected(pandas)) {
@@ -493,42 +492,25 @@ void pandad_run(std::vector<Panda *> &pandas) {
       sm.update(0);
       engaged = sm.allAliveAndValid({"selfdriveState"}) && sm["selfdriveState"].getSelfdriveState().getEnabled();
       engaged_mads = process_mads_heartbeat(&sm);
-      // IsOnroad: when false, PandaSafety clears safety_configured_ and send_panda_states forces NO_OUTPUT.
-      is_onroad = params.getBool("IsOnroad");
+      const bool params_is_onroad = params.getBool("IsOnroad");
+      const bool stack_started = sm.allAliveAndValid({"deviceState"}) && sm["deviceState"].getDeviceState().getStarted();
       always_offroad = panda_safety.getOffroadMode();
 
-      // Some setups can have stale/flapping IsOnroad while ignition is actually present.
-      // Use a single "effective_onroad" for both safety application and relay decisions to avoid relay flapping.
-      // Rate-limit health reads to keep USB/SPI stable.
-      const uint64_t now_ns = nanos_since_boot();
-      if (is_onroad) {
-        // When Params indicates onroad, don't override with ignition heuristics.
-        ignition_onroad = false;
-      } else if (!pandas.empty() && sm.rcv_frame("carParams") > 0 && sm.rcv_frame("carParamsSP") > 0) {
-        // Update ignition_onroad at 1Hz and reuse between checks to prevent relay flapping.
-        if ((now_ns - last_ignition_check_ns) > (uint64_t)1e9) {
-          last_ignition_check_ns = now_ns;
-          if (auto health_opt = pandas[0]->get_state()) {
-            const auto &h = *health_opt;
-            ignition_onroad = (h.ignition_line_pkt != 0) || (h.ignition_can_pkt != 0);
-          } else {
-            ignition_onroad = false;
-          }
-        } else if ((now_ns - last_ignition_check_ns) > (uint64_t)3e9) {
-          // If we haven't managed to read health in a while, fail safe to offroad.
-          ignition_onroad = false;
-        }
-      } else {
-        ignition_onroad = false;
+      // Offroad parked: NO_OUTPUT. Onroad driving: apply CarParams safety (vinfast).
+      const bool close_relay = always_offroad || (!params_is_onroad && !stack_started);
+      apply_car_safety = params_is_onroad || stack_started;
+
+      // Apply CarParams safety before relay/NO_OUTPUT (vinfast must land before offroad close_relay).
+      panda_safety.configureSafetyMode(apply_car_safety);
+
+      bool mask_vinfast_harness_ignition = false;
+      if (sm.allAliveAndValid({"carParams"})) {
+        const auto cp = sm["carParams"].getCarParams();
+        const std::string fingerprint = cp.getCarFingerprint().cStr();
+        mask_vinfast_harness_ignition = fingerprint.rfind("VINFAST_", 0) == 0;
       }
 
-      // Always Offroad (OffroadMode / hardwared not_always_offroad): stock treats as offroad for
-      // panda relay + safety even if ignition heuristics would keep multipanda "onroad".
-      const bool effective_onroad = !always_offroad && (is_onroad || ignition_onroad);
-
-      // Stock sunnypilot order: heartbeat + relay/NO_OUTPUT first, then apply CarParams safety.
-      process_panda_state(pandas, &pm, engaged, engaged_mads, effective_onroad, spoofing_started, always_offroad);
-      panda_safety.configureSafetyMode(effective_onroad);
+      process_panda_state(pandas, &pm, engaged, engaged_mads, close_relay, spoofing_started, always_offroad, mask_vinfast_harness_ignition);
     }
 
     // Send out peripheralState at ~2 Hz
@@ -552,8 +534,8 @@ void pandad_run(std::vector<Panda *> &pandas) {
     rk.keepTime();
   }
 
-  // Close relay on exit to prevent a fault (stock: is_onroad && !engaged; include always_offroad)
-  if ((is_onroad || always_offroad) && !engaged) {
+  // Close relay on exit to prevent a fault
+  if (apply_car_safety && !engaged) {
     for (auto &p : pandas) {
       if (p->connected()) {
         p->set_safety_model(cereal::CarParams::SafetyModel::NO_OUTPUT);

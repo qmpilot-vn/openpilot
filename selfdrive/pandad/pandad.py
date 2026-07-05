@@ -6,16 +6,48 @@ import time
 import signal
 import subprocess
 
-from panda import Panda, PandaDFU, PandaProtocolMismatch, FW_PATH
+from panda import Panda, PandaDFU, PandaProtocolMismatch, FW_PATH, McuType
 from openpilot.common.basedir import BASEDIR
-from openpilot.common.params import Params
+from openpilot.common.params import Params, UnknownKeyName
 from openpilot.system.hardware import HARDWARE
 from openpilot.common.swaglog import cloudlog
+
+from openpilot.sunnypilot.selfdrive.pandad.rivian_long_flasher import flash_rivian_long
+
+
+def _params_remove(params: Params, key: str) -> None:
+  try:
+    params.remove(key)
+  except UnknownKeyName:
+    pass
+
+
+def _params_put_bytes(params: Params, key: str, val: bytes) -> None:
+  try:
+    params.put(key, val)
+  except UnknownKeyName:
+    pass
+
+
+def _params_put_bool(params: Params, key: str, val: bool) -> None:
+  try:
+    params.put_bool(key, val)
+  except UnknownKeyName:
+    pass
+
+
+def _params_get_bool(params: Params, key: str, default: bool = False) -> bool:
+  try:
+    return params.get_bool(key)
+  except UnknownKeyName:
+    return default
 
 
 def get_expected_signature(panda: Panda) -> bytes:
   try:
-    fn = os.path.join(FW_PATH, panda.get_mcu_type().config.app_fn)
+    # Older pandacan wheels may not define Panda.get_mcu_type; H7 matches Panda.flash().
+    mcu = panda.get_mcu_type() if hasattr(panda, "get_mcu_type") else McuType.H7
+    fn = os.path.join(FW_PATH, mcu.config.app_fn)
     return Panda.get_signature_from_firmware(fn)
   except Exception:
     cloudlog.exception("Error computing expected signature")
@@ -97,7 +129,7 @@ def main() -> None:
     try:
       count += 1
       cloudlog.event("pandad.flash_and_connect", count=count)
-      params.remove("PandaSignatures")
+      _params_remove(params, "PandaSignatures")
 
       # Handle missing internal panda
       if no_internal_panda_count > 0:
@@ -124,6 +156,9 @@ def main() -> None:
 
       cloudlog.info(f"{len(panda_serials)} panda(s) found, connecting - {panda_serials}")
 
+      # custom flasher for xnor's Rivian Longitudinal Upgrade Kit
+      flash_rivian_long(panda_serials)
+
       # Flash pandas
       pandas: list[Panda] = []
       for serial in panda_serials:
@@ -144,8 +179,16 @@ def main() -> None:
       pandas.sort(key=lambda x: (not x.is_internal(), x.get_type(), x.get_usb_serial()))
       panda_serials = [p.get_usb_serial() for p in pandas]
 
+      # Dual-Panda A/B: try internal (SPI) Panda only first — isolates bus 0–3 / VinFast path without
+      # USB second Panda (logical bus 4+). Either unplug USB Red, or set SINGLE_PANDA=1 (e.g. in
+      # launch_env.sh) so manager-spawned pandad sees it; restart manager after changing env.
+      if os.environ.get("SINGLE_PANDA"):
+        pandas = pandas[:1]
+        panda_serials = [p.get_usb_serial() for p in pandas]
+        cloudlog.warning("SINGLE_PANDA: using first Panda only (internal first after sort): %s", panda_serials)
+
       # log panda fw versions
-      params.put("PandaSignatures", b','.join(p.get_signature() for p in pandas))
+      _params_put_bytes(params, "PandaSignatures", b','.join(p.get_signature() for p in pandas))
 
       for panda in pandas:
         # skip health check if the detected panda is not supported
@@ -160,7 +203,7 @@ def main() -> None:
           params.put_bool("PandaHeartbeatLost", True)
           cloudlog.event("heartbeat lost", deviceState=health, serial=panda.get_usb_serial())
         if health["som_reset_triggered"]:
-          params.put_bool("PandaSomResetTriggered", True)
+          _params_put_bool(params, "PandaSomResetTriggered", True)
           cloudlog.event("panda.som_reset_triggered", health=health, serial=panda.get_usb_serial())
 
         if first_run:
@@ -186,6 +229,16 @@ def main() -> None:
 
     # run pandad with all connected serials as arguments
     os.environ['MANAGER_DAEMON'] = 'pandad'
+    # C++ swaglog defaults to suppressing LOGW on stdout for pandad; enable with Params or env (see launch_env.sh).
+    logprint = os.environ.get("PANDAD_LOGPRINT") == "1"
+    if not logprint:
+      try:
+        logprint = _params_get_bool(params, "PandadLogprintWarning")
+      except Exception:
+        logprint = False
+    if logprint:
+      os.environ["LOGPRINT"] = "warning"
+
     process = subprocess.Popen(["./pandad", *panda_serials], cwd=os.path.join(BASEDIR, "selfdrive/pandad"))
     process.wait()
 
