@@ -4,6 +4,8 @@ import threading
 import time
 from numbers import Number
 
+import numpy as np
+
 from cereal import car, log
 import cereal.messaging as messaging
 from openpilot.common.constants import CV
@@ -19,15 +21,42 @@ from openpilot.selfdrive.controls.lib.latcontrol_pid import LatControlPID
 from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle, STEER_ANGLE_SATURATION_THRESHOLD
 from openpilot.selfdrive.controls.lib.latcontrol_torque import LatControlTorque
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl
+from openpilot.selfdrive.controls.lib.radar_path_nudge import RadarPathNudge
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
-from openpilot.selfdrive.modeld.modeld import LAT_SMOOTH_SECONDS
 
 from openpilot.sunnypilot.modeld_v2.modeld_base import ModelStateBase
+from openpilot.sunnypilot.models.helpers import get_active_bundle, get_lat_smooth_seconds
 from openpilot.sunnypilot.selfdrive.controls.controlsd_ext import ControlsExt
 
 State = log.SelfdriveState.OpenpilotState
 LaneChangeState = log.LaneChangeState
 LaneChangeDirection = log.LaneChangeDirection
+
+# Custom-model curvature: +5% winding, -5% sharp turn (steer > 150 deg)
+# Applied to PMV2 and TCPMV3 (The Cool Peoples Model v3).
+CURVATURE_TUNE_MODELS = {"PMV2", "TCPMV3"}
+PMV2_WINDING_CURVATURE_BOOST = 1.05
+PMV2_SHARP_STEER_DEG = 150.0
+PMV2_SHARP_CURVATURE_SCALE = 0.95
+PMV2_WINDING_KAPPA_MIN = 0.004
+PMV2_WINDING_KAPPA_MAX = 0.05
+PMV2_WINDING_MIN_SPEED_KPH = 15.0
+PMV2_WINDING_MAX_STEER_DEG = 80.0
+
+
+def _pmv2_is_winding_road(steer_deg: float, abs_kappa: float, v_ego_kph: float) -> bool:
+  return (abs(steer_deg) < PMV2_WINDING_MAX_STEER_DEG and
+          PMV2_WINDING_KAPPA_MIN <= abs_kappa <= PMV2_WINDING_KAPPA_MAX and
+          v_ego_kph >= PMV2_WINDING_MIN_SPEED_KPH)
+
+
+def _pmv2_adjust_curvature(curvature: float, steer_deg: float, v_ego_kph: float) -> float:
+  if abs(steer_deg) > PMV2_SHARP_STEER_DEG:
+    return curvature * PMV2_SHARP_CURVATURE_SCALE
+  if _pmv2_is_winding_road(steer_deg, abs(curvature), v_ego_kph):
+    return curvature * PMV2_WINDING_CURVATURE_BOOST
+  return curvature
+
 
 ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
 
@@ -45,15 +74,25 @@ class Controls(ControlsExt, ModelStateBase):
 
     self.CI = interfaces[self.CP.carFingerprint](self.CP, self.CP_SP)
 
-    self.sm = messaging.SubMaster(['liveParameters', 'liveTorqueParameters', 'modelV2', 'selfdriveState',
-                                   'liveCalibration', 'livePose', 'longitudinalPlan', 'carState', 'carOutput',
-                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance', 'liveDelay'] + self.sm_services_ext,
-                                  poll='selfdriveState')
+    sm_services = ['liveParameters', 'liveTorqueParameters', 'modelV2', 'selfdriveState',
+                   'liveCalibration', 'livePose', 'longitudinalPlan', 'carState', 'carOutput',
+                   'driverMonitoringState', 'onroadEvents', 'driverAssistance', 'liveDelay'] + self.sm_services_ext
+    # VF8/VF9: adjacent-lane radar path nudge needs raw tracks.
+    self.radar_nudge = RadarPathNudge(self.CP.carFingerprint)
+    if self.radar_nudge.enabled:
+      sm_services = sm_services + ['liveTracks']
+    self.sm = messaging.SubMaster(sm_services, poll='selfdriveState')
     self.pm = messaging.PubMaster(['carControl', 'controlsState'] + self.pm_services_ext)
 
     self.steer_limited_by_safety = False
     self.curvature = 0.0
     self.desired_curvature = 0.0
+
+    active_bundle = get_active_bundle(self.params)
+    self.use_curvature_tune_model = (
+      active_bundle is not None and active_bundle.internalName in CURVATURE_TUNE_MODELS
+    )
+    self.lat_smooth_seconds = get_lat_smooth_seconds(active_bundle)
 
     self.pose_calibrator = PoseCalibrator()
     self.calibrated_pose: Pose | None = None
@@ -116,7 +155,8 @@ class Controls(ControlsExt, ModelStateBase):
     _lat_active = self.get_lat_active(self.sm)
 
     CC.latActive = _lat_active and not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
-                   (not standstill or self.CP.steerAtStandstill)
+                   (not standstill or self.CP.steerAtStandstill) and \
+                   not any(e.overrideLateral for e in self.sm['onroadEvents'])
     CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and \
                     (self.CP.openpilotLongitudinalControl or not self.CP_SP.pcmCruiseSpeed)
 
@@ -147,10 +187,16 @@ class Controls(ControlsExt, ModelStateBase):
     # Steering PID loop and lateral MPC
     # Reset desired curvature to current to avoid violating the limits on engage
     new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
+    v_ego_kph = CS.vEgo * CV.MS_TO_KPH
+
+    if self.use_curvature_tune_model and CC.latActive:
+      new_desired_curvature = _pmv2_adjust_curvature(
+        new_desired_curvature, CS.steeringAngleDeg, v_ego_kph,
+      )
 
     # Apply lateral offset adjustment for VinFast to shift path left
     # Negative curvature = turn left (shift path left), Positive = turn right (shift path right)
-    if self.CP.brand == "vinfast" and CC.latActive:
+    if self.CP.brand == "vinfast" and CC.latActive and not self.use_curvature_tune_model:
       v_ego = max(float(CS.vEgo), 0.0)
       v_ego_kph = v_ego * CV.MS_TO_KPH  # Convert to km/h for threshold checks
       
@@ -158,7 +204,7 @@ class Controls(ControlsExt, ModelStateBase):
       if v_ego_kph < 60.0:
         # Different max offsets for different speed ranges
         if v_ego_kph < 20.0:
-          offset_max = 0.0005  # Stronger offset below 20 km/h
+          offset_max = 0.00015  # Stronger offset below 20 km/h
         elif v_ego_kph < 40.0:
           offset_max = -0.0005  # Moderate offset between 20-40 km/h
         else:
@@ -177,13 +223,33 @@ class Controls(ControlsExt, ModelStateBase):
         curv_scale = 0.002
         fade = math.exp(-abs(float(new_desired_curvature)) / curv_scale)
         lateral_offset_curvature = base_offset * fade
-        
+
         new_desired_curvature = new_desired_curvature + lateral_offset_curvature
+
+    # VF8/VF9: width-aware radar path nudge (separate from static VF bias).
+    if self.radar_nudge.enabled:
+      if not CC.latActive:
+        self.radar_nudge.reset()
+        radar_nudge_kappa = 0.0
+      else:
+        path_x = path_y = None
+        pos = model_v2.position
+        if len(pos.x) >= 2 and len(pos.y) >= 2:
+          path_x = np.asarray(pos.x, dtype=float)
+          path_y = np.asarray(pos.y, dtype=float)
+        points = self.sm['liveTracks'].points if self.sm.valid['liveTracks'] else []
+        lane_changing = model_v2.meta.laneChangeState != LaneChangeState.off
+        radar_nudge_kappa = self.radar_nudge.update(
+          points, CS.vEgo, float(new_desired_curvature),
+          path_x=path_x, path_y=path_y,
+          lat_active=CC.latActive, lane_changing=lane_changing,
+        )
+      new_desired_curvature = new_desired_curvature + radar_nudge_kappa
 
     self.desired_curvature, curvature_limited = clip_curvature(CS.vEgo, self.desired_curvature, new_desired_curvature, lp.roll)
 
     actuators.curvature = self.desired_curvature
-    lat_delay = float(self.sm["liveDelay"].lateralDelay) + LAT_SMOOTH_SECONDS
+    lat_delay = float(self.sm["liveDelay"].lateralDelay) + self.lat_smooth_seconds
     steer, steeringAngleDeg, lac_log = self.LaC.update(CC.latActive, CS, self.VM, lp,
                                                        self.steer_limited_by_safety, self.desired_curvature,
                                                        self.calibrated_pose, curvature_limited, lat_delay)

@@ -32,7 +32,7 @@ from openpilot.sunnypilot.modeld_v2.camera_offset_helper import CameraOffsetHelp
 
 from openpilot.sunnypilot.livedelay.helpers import get_lat_delay
 from openpilot.sunnypilot.modeld_v2.modeld_base import ModelStateBase
-from openpilot.sunnypilot.models.helpers import get_active_bundle
+from openpilot.sunnypilot.models.helpers import get_active_bundle, get_lat_smooth_seconds
 from openpilot.sunnypilot.models.runners.helpers import get_model_runner
 
 PROCESS_NAME = "selfdrive.modeld.modeld_tinygrad"
@@ -65,9 +65,9 @@ class ModelState(ModelStateBase):
 
     model_bundle = get_active_bundle()
     self.generation = model_bundle.generation if model_bundle is not None else None
-    overrides = {override.key: override.value for override in model_bundle.overrides}
+    overrides = {override.key: override.value for override in model_bundle.overrides} if model_bundle else {}
 
-    self.LAT_SMOOTH_SECONDS = float(overrides.get('lat', ".0"))
+    self.LAT_SMOOTH_SECONDS = get_lat_smooth_seconds(model_bundle)
     self.LONG_SMOOTH_SECONDS = float(overrides.get('long', ".0"))
     self.MIN_LAT_CONTROL_SPEED = 0.3
     self.PLANPLUS_CONTROL: float = 1.0

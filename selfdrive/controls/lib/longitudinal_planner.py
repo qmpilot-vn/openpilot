@@ -28,9 +28,82 @@ MIN_ALLOW_THROTTLE_SPEED = 2.5
 _A_TOTAL_MAX_V = [1.7, 3.2]
 _A_TOTAL_MAX_BP = [20., 40.]
 
+# VF8/VF9: when model looks like a red-light stop, request ~10% more deceleration
+# during the approach, then fade the boost near stop so the final lead/stop gap
+# stays at the normal VinFast standstill distance (not inflated by hard braking).
+VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF9"}
+VF_REDLIGHT_ACCEL_SCALE = 1.10
+VF_REDLIGHT_BRAKE_PROB = 0.45
+VF_REDLIGHT_PATH_X_MAX = 40.0      # [m] short remaining model path
+VF_REDLIGHT_LEAD_DREL_MIN = 20.0   # [m] treat as no close lead
+VF_REDLIGHT_MIN_VEGO = 0.8         # [m/s]
+# Full +10% above this speed; taper to no boost by the low end (gap control).
+VF_REDLIGHT_BOOST_FULL_KPH = 30.0
+VF_REDLIGHT_BOOST_FADE_KPH = 10.0
+
 
 def get_max_accel(v_ego):
   return np.interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_MAX_VALS)
+
+
+def is_vf_red_light_slowdown(sm, CP) -> bool:
+  """Heuristic red-light stop intent for VF8/VF9 (no dedicated cereal flag)."""
+  if CP.carFingerprint not in VF_REDLIGHT_FINGERPRINTS:
+    return False
+
+  CS = sm['carState']
+  if CS.standstill or CS.vEgo < VF_REDLIGHT_MIN_VEGO:
+    return False
+
+  model = sm['modelV2']
+  action = model.action
+  lead = sm['radarState'].leadOne
+  no_close_lead = (not lead.status) or float(lead.dRel) > VF_REDLIGHT_LEAD_DREL_MIN
+
+  brake_probs = model.meta.disengagePredictions.brakePressProbs
+  brake_prob = float(brake_probs[1]) if len(brake_probs) > 1 else 0.0
+  desired_a = float(action.desiredAcceleration)
+  should_stop = bool(action.shouldStop)
+
+  model_x = model.position.x
+  path_short = len(model_x) > 0 and float(model_x[-1]) < VF_REDLIGHT_PATH_X_MAX
+
+  # Red-light-like: stop intent / strong brake prediction with short path and
+  # no close ACC lead (otherwise it's ordinary lead following).
+  if not no_close_lead:
+    return False
+  if should_stop and desired_a < 0.0:
+    return True
+  if brake_prob > VF_REDLIGHT_BRAKE_PROB and desired_a < -0.3:
+    return True
+  if path_short and desired_a < -0.4 and brake_prob > 0.30:
+    return True
+  return False
+
+
+def vf_red_light_accel_scale(v_ego: float) -> float:
+  """Speed-dependent red-light decel scale.
+
+  Full +10% above ``VF_REDLIGHT_BOOST_FULL_KPH``, linearly fades to 1.0 by
+  ``VF_REDLIGHT_BOOST_FADE_KPH`` so the final standstill gap matches normal ACC.
+  """
+  v_kph = max(float(v_ego), 0.0) * 3.6
+  if v_kph >= VF_REDLIGHT_BOOST_FULL_KPH:
+    return VF_REDLIGHT_ACCEL_SCALE
+  if v_kph <= VF_REDLIGHT_BOOST_FADE_KPH:
+    return 1.0
+  # Linear fade from full scale → 1.0 between full and fade speeds.
+  x = (v_kph - VF_REDLIGHT_BOOST_FADE_KPH) / (VF_REDLIGHT_BOOST_FULL_KPH - VF_REDLIGHT_BOOST_FADE_KPH)
+  return 1.0 + (VF_REDLIGHT_ACCEL_SCALE - 1.0) * x
+
+
+def apply_vf_red_light_accel(sm, CP, a_target: float) -> float:
+  """Scale deceleration for VF8/VF9 red-light slowdowns (faded near stop)."""
+  if a_target >= 0.0 or not is_vf_red_light_slowdown(sm, CP):
+    return a_target
+  scale = vf_red_light_accel_scale(sm['carState'].vEgo)
+  return float(a_target * scale)
+
 
 def get_coast_accel(pitch):
   return np.sin(pitch) * -5.65 - 0.3  # fitted from data using xx/projects/allow_throttle/compute_coast_accel.py
@@ -56,8 +129,8 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.mpc = LongitudinalMpc(dt=dt)
     # VinFast: reduce standstill gap behind a stopped lead (closer at red lights/traffic jams).
     # Implemented in LongitudinalMpc by shifting the lead obstacle closer when lead is stopped and ego is low speed.
-    # 4.8m is the baked-in MPC STOP_DISTANCE; targeting ~2.0m standstill gap => shift by ~2.8m.
-    self.mpc.stop_lead_obstacle_adjust_m = 2.8 if CP.brand == "vinfast" else 0.0
+    # MPC STOP_DISTANCE is 6.0 m; targeting ~2.0 m standstill gap => shift by ~4.0 m.
+    self.mpc.stop_lead_obstacle_adjust_m = 4.0 if CP.brand == "vinfast" else 0.0
     # TODO remove mpc modes when TR released
     self.mpc.mode = 'acc'
     LongitudinalPlannerSP.__init__(self, self.CP, CP_SP, self.mpc)
@@ -186,6 +259,9 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     else:
       output_a_target = min(output_a_target_mpc, output_a_target_e2e)
       self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
+
+    # VF8/VF9: ~10% stronger decel when model looks like a red-light stop.
+    output_a_target = apply_vf_red_light_accel(sm, self.CP, output_a_target)
 
     for idx in range(2):
       accel_clip[idx] = np.clip(accel_clip[idx], self.prev_accel_clip[idx] - 0.05, self.prev_accel_clip[idx] + 0.05)
