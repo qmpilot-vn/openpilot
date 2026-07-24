@@ -95,3 +95,14 @@ SKILL.md
 !.idea/customTargets.xml
 !.idea/tools/*
 !.run/*
+
+# VinFast dev-only (vf-release ships bytecode shims + .dbc.cache only)
+panda/examples/vinfast_*
+selfdrive/controls/tests/*vinfast*
+selfdrive/debug/*vinfast*
+selfdrive/debug/car/*vinfast*
+tools/debug/simulate_vf7*
+scripts/check_vinfast_footprint.sh
+VF9_MIGRATION_REPORT.md
+data/vinfast_routes/
+opendbc_repo/scripts/dump_vinfast_dbc_cache.py
