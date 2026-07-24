@@ -1,3 +1,4 @@
+import pickle
 import re
 import os
 from collections.abc import Callable
@@ -77,19 +78,50 @@ VAL_SPLIT_RE = re.compile(r'["]+')
 @cache
 class DBC:
   def __init__(self, name: str):
-    if os.path.exists(name):
+    if os.path.isfile(name) and name.endswith(".dbc.cache"):
+      self._load_from_cache(name)
+      return
+
+    if os.path.isfile(name):
       self._parse_file(name)
+      return
+
+    plain_path = os.path.join(DBC_PATH, name + ".dbc")
+    cache_path = os.path.join(DBC_PATH, name + ".dbc.cache")
+    if os.path.isfile(plain_path):
+      self._parse_file(plain_path)
+    elif os.path.isfile(cache_path):
+      self._load_from_cache(cache_path)
     else:
-      dbc_path = os.path.join(DBC_PATH, name + ".dbc")
-      if content := get_generated_dbcs().get(name):
+      content = get_generated_dbcs().get(name)
+      if content is not None:
         self._parse_content(name, content)
-      elif os.path.exists(dbc_path):
-        self._parse_file(dbc_path)
       else:
         raise FileNotFoundError(f"DBC not found: {name}")
 
+  def _load_from_cache(self, path: str) -> None:
+    with open(path, "rb") as f:
+      cached = pickle.load(f)
+    if isinstance(cached, dict):
+      self.__dict__.update(cached)
+      return
+    if isinstance(cached, DBC):
+      self.__dict__.update(cached.__dict__)
+      return
+    raise ValueError(f"invalid DBC cache (expected dict or DBC, got {type(cached).__name__}): {path}")
+
+  @staticmethod
+  def cache_blob(dbc: "DBC") -> bytes:
+    return pickle.dumps({
+      "name": dbc.name,
+      "msgs": dbc.msgs,
+      "addr_to_msg": dbc.addr_to_msg,
+      "name_to_msg": dbc.name_to_msg,
+      "vals": dbc.vals,
+    }, protocol=4)
+
   def _parse_file(self, path: str):
-    self.name = os.path.basename(path).replace(".dbc", "")
+    self.name = os.path.basename(path).replace(".dbc", "").replace(".dbc.cache", "")
     with open(path) as f:
       lines = f.readlines()
     self._parse_lines(lines)
