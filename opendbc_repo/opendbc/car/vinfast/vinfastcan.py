@@ -21,6 +21,14 @@ try:
   _spec.loader.exec_module(_mod)
 finally:
   sys.modules.pop(_IMPL_STEM, None)
+# Cython tags classes with __module__=_IMPL_STEM; car_helpers needs opendbc.car.<brand>.*
+for _attr in dir(_mod):
+  _obj = getattr(_mod, _attr)
+  if getattr(_obj, "__module__", None) == _IMPL_STEM:
+    try:
+      _obj.__module__ = __name__
+    except (AttributeError, TypeError):
+      pass
 _mod.__name__ = __name__
 _mod.__package__ = __package__
 _mod.__file__ = str(_so)
