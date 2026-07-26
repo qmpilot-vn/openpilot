@@ -96,7 +96,7 @@ SKILL.md
 !.idea/tools/*
 !.run/*
 
-# VinFast dev-only (vf-release ships bytecode shims + .dbc.cache only)
+# VinFast dev-only (vf-release ships shims + native/bytecode impls + .dbc.cache only)
 panda/examples/vinfast_*
 selfdrive/controls/tests/*vinfast*
 selfdrive/debug/*vinfast*
@@ -112,6 +112,9 @@ opendbc_repo/scripts/dump_vinfast_dbc_cache.py
 !selfdrive/controls/__pycache__/*_impl.*.pyc
 !selfdrive/controls/lib/__pycache__/
 !selfdrive/controls/lib/__pycache__/*_impl.*.pyc
+
+# Force-track VinFast car native extensions (shims load these; root *.so ignore)
+!opendbc_repo/opendbc/car/vinfast/*_impl*.so
 
 # Local-only VinFast packaging helpers (never ship on public tip)
 opendbc_repo/scripts/package_vinfast_*.sh
