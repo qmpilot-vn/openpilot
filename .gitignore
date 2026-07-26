@@ -106,3 +106,15 @@ scripts/check_vinfast_footprint.sh
 VF9_MIGRATION_REPORT.md
 data/vinfast_routes/
 opendbc_repo/scripts/dump_vinfast_dbc_cache.py
+
+# Force-track VinFast selfdrive implementation bytecode (shims load these)
+!selfdrive/controls/__pycache__/
+!selfdrive/controls/__pycache__/*_impl.*.pyc
+!selfdrive/controls/lib/__pycache__/
+!selfdrive/controls/lib/__pycache__/*_impl.*.pyc
+
+# Local-only VinFast packaging helpers (never ship on public tip)
+opendbc_repo/scripts/package_vinfast_*.sh
+opendbc_repo/scripts/restore_vinfast_sources.sh
+opendbc_repo/scripts/dump_vinfast_dbc_cache.py
+setup_vinfast.sh
