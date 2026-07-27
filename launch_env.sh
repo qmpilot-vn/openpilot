@@ -21,6 +21,10 @@ fi
 
 export STAGING_ROOT="/data/safe_staging"
 
+# qmpilot-server upload target (force — do not keep stale mr-one API_HOST)
+# API key: set QMPILOT_API_KEY or put it in /data/qmpilot/QmpilotApiKey (do not commit secrets)
+export API_HOST="https://qmpilot-connect.com"
+
 # Normal C3X: use real panda (pandad enabled). Manager skips pandad if NOBOARD is set
 # to any value — it must be unset, not 0. Bench mode overrides via bench_env.sh below.
 unset NOBOARD

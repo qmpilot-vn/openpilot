@@ -11,6 +11,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"AlwaysOnDM", {PERSISTENT | BACKUP, BOOL}},
     {"ApiCache_Device", {PERSISTENT, STRING}},
     {"ApiCache_FirehoseStats", {PERSISTENT, JSON}},
+    {"ApiHost", {PERSISTENT | BACKUP, STRING}},  // qmpilot-server / custom upload API host (no trailing slash)
+    {"QmpilotApiKey", {PERSISTENT | DONT_LOG, STRING}},  // device API key for qmpilot-server
     {"AssistNowToken", {PERSISTENT, STRING}},
     {"AthenadPid", {PERSISTENT, INT}},
     {"AthenadUploadQueue", {PERSISTENT, JSON}},

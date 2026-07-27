@@ -176,12 +176,12 @@ class Controls(ControlsExt, ModelStateBase):
     # accel PID loop
     pid_accel_limits = self.CI.get_pid_accel_limits(self.CP, self.CP_SP, CS.vEgo, CS.vCruise * CV.KPH_TO_MS)
     accel_cmd = float(self.LoC.update(CC.longActive, CS, long_plan.aTarget, long_plan.shouldStop, pid_accel_limits))
-    # Match sunnypilot_c3x behavior: slightly boost accel/decel command for VF9 only
+    # VF9: light accel bias only. Avoid large brake gain — it made stops start too early.
     if self.CP.brand == "vinfast" and getattr(self.CP, "carFingerprint", "") == "VINFAST_VF9":
       if accel_cmd < 0:
-        accel_cmd *= 1.25
+        accel_cmd *= 1.05
       elif accel_cmd > 0:
-        accel_cmd *= 1.1
+        accel_cmd *= 1.08
     actuators.accel = accel_cmd
 
     # Steering PID loop and lateral MPC
