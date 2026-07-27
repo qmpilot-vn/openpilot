@@ -5,7 +5,7 @@ opendbc/safety/modes/vinfast.h
 opendbc/safety/modes/vinfast_common.h
 opendbc/safety/modes/vinfast_vf6.h
 *.pyc
-!opendbc/car/vinfast/__pycache__/*_impl.*.pyc
+*.os
 *.o
 *.so
 *.a
@@ -23,9 +23,8 @@ opendbc/safety/modes/vinfast_vf6.h
 /dist/
 .vscode/
 __pycache__/
-# VinFast implementation bytecode (shipped alongside shims for pull-and-run on C4)
-!opendbc/car/vinfast/__pycache__/
-!opendbc/car/vinfast/__pycache__/*_impl.*.pyc
+# VinFast car native extensions (shipped alongside shims for pull-and-run)
+!opendbc/car/vinfast/*_impl*.so
 *.profraw
 opendbc/can/build/
 opendbc/can/obj/
@@ -42,7 +41,7 @@ opendbc/dbc/vinfast_vf6_*.dbc
 opendbc/dbc/vinfast_vf8_*.dbc
 !opendbc/dbc/vinfast_vf8_*.dbc.cache
 
-# VinFast dev tests (not shipped on vf-release-c4)
+# VinFast dev tests (not shipped on vf-release)
 opendbc/car/vinfast/tests/
 opendbc/can/tests/test_vinfast_dbc_cache.py
 opendbc/safety/tests/test_vinfast_vf6.py

@@ -1,9 +1,9 @@
-"""_BYTECODE_SHIM — logic is loaded from __pycache__/radard_impl.*.pyc (same Python minor as build)."""
+"""_BYTECODE_SHIM — logic is loaded from __pycache__/radar_path_nudge_impl.*.pyc (same Python minor as build)."""
 import importlib.util
 import sys
 from pathlib import Path
 
-_IMPL_STEM = "radard_impl"
+_IMPL_STEM = "radar_path_nudge_impl"
 _pyc = Path(__file__).resolve().parent / "__pycache__" / f"{_IMPL_STEM}.{sys.implementation.cache_tag}.pyc"
 if not _pyc.is_file():
   raise ImportError(

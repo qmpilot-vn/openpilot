@@ -44,7 +44,7 @@ bin/
 config.json
 compile_commands.json
 compare_runtime*.html
-selfdrive/modeld/models/tg_input_devices.json
+selfdrive/modeld/models/tg_compiled_flags.json
 
 # build artifacts
 docs_site/
@@ -96,7 +96,7 @@ SKILL.md
 !.idea/tools/*
 !.run/*
 
-# VinFast dev-only (vf-release-c4 ships bytecode shims + .dbc.cache only)
+# VinFast dev-only (vf-release ships shims + native/bytecode impls + .dbc.cache only)
 panda/examples/vinfast_*
 selfdrive/controls/tests/*vinfast*
 selfdrive/debug/*vinfast*
@@ -105,3 +105,19 @@ tools/debug/simulate_vf7*
 scripts/check_vinfast_footprint.sh
 VF9_MIGRATION_REPORT.md
 data/vinfast_routes/
+opendbc_repo/scripts/dump_vinfast_dbc_cache.py
+
+# Force-track VinFast selfdrive implementation bytecode (shims load these)
+!selfdrive/controls/__pycache__/
+!selfdrive/controls/__pycache__/*_impl.*.pyc
+!selfdrive/controls/lib/__pycache__/
+!selfdrive/controls/lib/__pycache__/*_impl.*.pyc
+
+# Force-track VinFast car native extensions (shims load these; root *.so ignore)
+!opendbc_repo/opendbc/car/vinfast/*_impl*.so
+
+# Local-only VinFast packaging helpers (never ship on public tip)
+opendbc_repo/scripts/package_vinfast_*.sh
+opendbc_repo/scripts/restore_vinfast_sources.sh
+opendbc_repo/scripts/dump_vinfast_dbc_cache.py
+setup_vinfast.sh
