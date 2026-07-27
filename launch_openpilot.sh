@@ -3,8 +3,8 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 cd "$DIR"
 
-# MR-One cloud (optional; override in launch_env.sh if needed)
-export ATHENA_HOST="${ATHENA_HOST:-ws://athena.mr-one.cn}"
-export API_HOST="${API_HOST:-http://res.mr-one.cn}"
+# qmpilot-server (upload URL + callback). Athena still optional via ATHENA_HOST.
+# API key: set QMPILOT_API_KEY or put it in /data/qmpilot/QmpilotApiKey (do not commit secrets)
+export API_HOST="${API_HOST:-https://qmpilot-connect.com}"
 
 exec ./launch_chffrplus.sh
