@@ -17,6 +17,7 @@ struct LoggerdState {
   LoggerState logger;
   std::atomic<double> last_camera_seen_tms{0.0};
   std::atomic<int> ready_to_rotate{0};  // count of encoders ready to rotate
+  std::atomic<int> encoders_seen{0};    // count of encoders that have sent at least one packet
   int max_waiting = 0;
   double last_rotate_tms = 0.;      // last rotate time in ms
 };
@@ -30,8 +31,14 @@ void logger_rotate(LoggerdState *s) {
 }
 
 void rotate_if_needed(LoggerdState *s) {
-  // all encoders ready, trigger rotation
-  bool all_ready = s->ready_to_rotate == s->max_waiting;
+  // Only wait on encoders that actually exist. A camera that fails to come up
+  // (e.g. driver camera sensor bringup failure) never publishes, so waiting for
+  // it means we only ever rotate on the timeout below, while encoderd keeps
+  // rotating on schedule. loggerd then falls permanently behind and the encode
+  // queues overflow. Encoders only signal ready after a full segment, so by then
+  // every live encoder has been seen.
+  int expected = s->encoders_seen > 0 ? s->encoders_seen.load() : s->max_waiting;
+  bool all_ready = s->ready_to_rotate >= expected;
 
   // fallback logic to prevent extremely long segments in the case of camera, encoder, etc. malfunctions
   bool timed_out = false;
@@ -125,7 +132,9 @@ int handle_encoder_msg(LoggerdState *s, Message *msg, std::string &name, struct 
   if (!re.seen_first_packet) {
     re.seen_first_packet = true;
     re.encoderd_segment_offset = idx.getSegmentNum();
-    LOGD("%s: has encoderd offset %d", name.c_str(), re.encoderd_segment_offset);
+    ++s->encoders_seen;
+    LOGD("%s: has encoderd offset %d (%d/%d encoders seen)", name.c_str(),
+         re.encoderd_segment_offset, s->encoders_seen.load(), s->max_waiting);
   }
   int offset_segment_num = idx.getSegmentNum() - re.encoderd_segment_offset;
 
