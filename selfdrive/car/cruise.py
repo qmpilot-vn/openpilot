@@ -3,6 +3,7 @@ import numpy as np
 
 from cereal import car
 from openpilot.common.constants import CV
+from opendbc.car.vinfast.values import is_vf6_safety_platform
 from openpilot.sunnypilot.selfdrive.car.cruise_ext import VCruiseHelperSP
 
 
@@ -14,6 +15,7 @@ V_CRUISE_MAX = 145
 V_CRUISE_UNSET = 255
 V_CRUISE_INITIAL = 40
 V_CRUISE_INITIAL_EXPERIMENTAL_MODE = 105
+VINFAST_V_CRUISE_INITIAL_EXPERIMENTAL_MODE = 60
 IMPERIAL_INCREMENT = round(CV.MPH_TO_KPH, 1)  # round here to avoid rounding errors incrementing set speed
 
 ButtonEvent = car.CarState.ButtonEvent
@@ -38,6 +40,9 @@ class VCruiseHelper(VCruiseHelperSP):
     self.v_cruise_kph_last = 0
     self.button_timers = {ButtonType.decelCruise: 0, ButtonType.accelCruise: 0}
     self.button_change_states = {btn: {"standstill": False, "enabled": False} for btn in self.button_timers}
+    # VF8/VF9: openpilot owns the set speed via the steering wheel +/- buttons.
+    # VF6/VF7 keep following ADAS_ACC_TagSpeed on info CAN.
+    self.op_set_speed = CP.brand == "vinfast" and not is_vf6_safety_platform(CP.carFingerprint)
 
   @property
   def v_cruise_initialized(self):
@@ -51,7 +56,12 @@ class VCruiseHelper(VCruiseHelperSP):
     _enabled = self.update_enabled_state(CS, enabled)
 
     if CS.cruiseState.available:
-      if self.CP_SP.pcmCruiseSpeed or self.CP.pcmCruise:
+      if self.op_set_speed and not self.CP.pcmCruise:
+        # VF8/VF9 with openpilot longitudinal: set speed comes from the +/- buttons
+        self._update_v_cruise_non_pcm(CS, _enabled, is_metric)
+        self.update_speed_limit_assist_v_cruise_non_pcm()
+        self.v_cruise_cluster_kph = self.v_cruise_kph
+      elif self.CP_SP.pcmCruiseSpeed or self.CP.pcmCruise:
         # pcmCruiseSpeed: follow car set speed (VF6 ADAS_ACC_TagSpeed on info CAN)
         self.v_cruise_kph = CS.cruiseState.speed * CV.MS_TO_KPH
         self.v_cruise_cluster_kph = CS.cruiseState.speedCluster * CV.MS_TO_KPH
@@ -141,14 +151,22 @@ class VCruiseHelper(VCruiseHelperSP):
 
   def initialize_v_cruise(self, CS, experimental_mode: bool, dynamic_experimental_control: bool) -> None:
     # initializing is handled by the PCM / car tag speed
-    if self.CP.pcmCruise or self.CP_SP.pcmCruiseSpeed:
+    if self.CP.pcmCruise:
+      return
+    if self.CP_SP.pcmCruiseSpeed and not self.op_set_speed:
       return
 
     initial_experimental_mode = experimental_mode and not dynamic_experimental_control
-    initial = V_CRUISE_INITIAL_EXPERIMENTAL_MODE if initial_experimental_mode else V_CRUISE_INITIAL
+    if initial_experimental_mode:
+      initial = VINFAST_V_CRUISE_INITIAL_EXPERIMENTAL_MODE if self.CP.brand == "vinfast" else V_CRUISE_INITIAL_EXPERIMENTAL_MODE
+    else:
+      initial = V_CRUISE_INITIAL
 
-    if any(b.type in (ButtonType.accelCruise, ButtonType.resumeCruise) for b in CS.buttonEvents) and self.v_cruise_initialized:
+    if any(b.type.raw in (ButtonType.accelCruise, ButtonType.resumeCruise) for b in CS.buttonEvents) and self.v_cruise_initialized:
       self.v_cruise_kph = self.v_cruise_kph_last
+    elif self.v_cruise_kph_last > 0 and V_CRUISE_MIN <= self.v_cruise_kph_last <= V_CRUISE_MAX:
+      # engagement comes from the stock ACC edge, not a button, so keep the last set speed
+      self.v_cruise_kph = int(round(self.v_cruise_kph_last))
     else:
       self.v_cruise_kph = int(round(np.clip(CS.vEgo * CV.MS_TO_KPH, initial, V_CRUISE_MAX)))
 
