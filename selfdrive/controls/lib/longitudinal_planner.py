@@ -9,7 +9,7 @@ from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import DT_MDL
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.controls.lib.longcontrol import LongCtrlState
-from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc, LongitudinalPlanSource
+from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import T_IDXS as T_IDXS_MPC
 from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_from_plan
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
@@ -17,6 +17,7 @@ from openpilot.common.swaglog import cloudlog
 
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlannerSP
 
+LON_MPC_STEP = 0.2  # first step is 0.2s
 A_CRUISE_MAX_VALS = [1.6, 1.2, 0.8, 0.6]
 A_CRUISE_MAX_BP = [0., 10.0, 25., 40.]
 CONTROL_N_T_IDX = ModelConstants.T_IDXS[:CONTROL_N]
@@ -27,11 +28,110 @@ MIN_ALLOW_THROTTLE_SPEED = 2.5
 _A_TOTAL_MAX_V = [1.7, 3.2]
 _A_TOTAL_MAX_BP = [20., 40.]
 
+# VF8/VF9: when model looks like a red-light stop, request ~3% more deceleration
+# during the approach, then fade the boost near stop so the final lead/stop gap
+# stays at the normal VinFast standstill distance (not inflated by hard braking).
+# Heuristic is intentionally late (short path / high brake prob) so braking
+# does not start too early on green/coast approaches.
+VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF9"}
+VF_REDLIGHT_ACCEL_SCALE = 1.03
+VF_REDLIGHT_BRAKE_PROB = 0.60
+VF_REDLIGHT_PATH_X_MAX = 28.0      # [m] only when remaining path is short
+VF_REDLIGHT_LEAD_DREL_MIN = 18.0   # [m] treat as no close lead
+VF_REDLIGHT_MIN_VEGO = 0.8         # [m/s]
+# Full +3% above this speed; taper to no boost by the low end (gap control).
+VF_REDLIGHT_BOOST_FULL_KPH = 25.0
+VF_REDLIGHT_BOOST_FADE_KPH = 8.0
+
+# VF8/VF9: soften mild approach braking so ACC/lead stops start later.
+# Hard brakes (< floor) are left alone for safety.
+VF_MILD_DECEL_SCALE = 0.82
+VF_MILD_DECEL_FLOOR = -1.6  # [m/s²]
+
+
 def get_max_accel(v_ego):
   return np.interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_MAX_VALS)
 
+
+def is_vf_red_light_slowdown(sm, CP) -> bool:
+  """Heuristic red-light stop intent for VF8/VF9 (no dedicated cereal flag)."""
+  if CP.carFingerprint not in VF_REDLIGHT_FINGERPRINTS:
+    return False
+
+  CS = sm['carState']
+  if CS.standstill or CS.vEgo < VF_REDLIGHT_MIN_VEGO:
+    return False
+
+  model = sm['modelV2']
+  action = model.action
+  lead = sm['radarState'].leadOne
+  no_close_lead = (not lead.status) or float(lead.dRel) > VF_REDLIGHT_LEAD_DREL_MIN
+
+  brake_probs = model.meta.disengagePredictions.brakePressProbs
+  brake_prob = float(brake_probs[1]) if len(brake_probs) > 1 else 0.0
+  desired_a = float(action.desiredAcceleration)
+  should_stop = bool(action.shouldStop)
+
+  model_x = model.position.x
+  path_short = len(model_x) > 0 and float(model_x[-1]) < VF_REDLIGHT_PATH_X_MAX
+
+  # Red-light-like: committed stop intent with short path and no close ACC lead.
+  # Keep thresholds high so green/coast approaches do not brake early.
+  if not no_close_lead:
+    return False
+  if should_stop and desired_a < -0.5 and path_short:
+    return True
+  if brake_prob > VF_REDLIGHT_BRAKE_PROB and desired_a < -0.5 and path_short:
+    return True
+  if path_short and desired_a < -0.7 and brake_prob > 0.45:
+    return True
+  return False
+
+
+def vf_red_light_accel_scale(v_ego: float) -> float:
+  """Speed-dependent red-light decel scale.
+
+  Full +3% above ``VF_REDLIGHT_BOOST_FULL_KPH``, linearly fades to 1.0 by
+  ``VF_REDLIGHT_BOOST_FADE_KPH`` so the final standstill gap matches normal ACC.
+  """
+  v_kph = max(float(v_ego), 0.0) * 3.6
+  if v_kph >= VF_REDLIGHT_BOOST_FULL_KPH:
+    return VF_REDLIGHT_ACCEL_SCALE
+  if v_kph <= VF_REDLIGHT_BOOST_FADE_KPH:
+    return 1.0
+  # Linear fade from full scale → 1.0 between full and fade speeds.
+  x = (v_kph - VF_REDLIGHT_BOOST_FADE_KPH) / (VF_REDLIGHT_BOOST_FULL_KPH - VF_REDLIGHT_BOOST_FADE_KPH)
+  return 1.0 + (VF_REDLIGHT_ACCEL_SCALE - 1.0) * x
+
+
+def apply_vf_red_light_accel(sm, CP, a_target: float) -> float:
+  """Scale deceleration for VF8/VF9 red-light slowdowns (faded near stop)."""
+  if a_target >= 0.0 or not is_vf_red_light_slowdown(sm, CP):
+    return a_target
+  scale = vf_red_light_accel_scale(sm['carState'].vEgo)
+  return float(a_target * scale)
+
+
+def apply_vf_late_brake(sm, CP, a_target: float) -> float:
+  """VF8/VF9: delay mild approach braking; keep hard/red-light stops authoritative."""
+  if CP.carFingerprint not in VF_REDLIGHT_FINGERPRINTS:
+    return a_target
+  if a_target >= 0.0:
+    return a_target
+
+  # Once red-light stop is committed, allow the (small) boost path.
+  if is_vf_red_light_slowdown(sm, CP):
+    return apply_vf_red_light_accel(sm, CP, a_target)
+
+  # Soften mild decel so lead/stop approaches start later.
+  if a_target > VF_MILD_DECEL_FLOOR:
+    return float(a_target * VF_MILD_DECEL_SCALE)
+  return a_target
+
+
 def get_coast_accel(pitch):
   return np.sin(pitch) * -5.65 - 0.3  # fitted from data using xx/projects/allow_throttle/compute_coast_accel.py
+
 
 def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   """
@@ -51,7 +151,12 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
   def __init__(self, CP, CP_SP, init_v=0.0, init_a=0.0, dt=DT_MDL):
     self.CP = CP
     self.mpc = LongitudinalMpc(dt=dt)
-    self.mpc.stop_lead_obstacle_adjust_m = 2.8 if CP.brand == "vinfast" else 0.0
+    # VinFast: reduce standstill gap behind a stopped lead (closer at red lights/traffic jams).
+    # Implemented in LongitudinalMpc by shifting the lead obstacle closer when lead is stopped and ego is low speed.
+    # MPC STOP_DISTANCE is 6.0 m; targeting ~2.0 m standstill gap => shift by ~4.0 m.
+    self.mpc.stop_lead_obstacle_adjust_m = 4.0 if CP.brand == "vinfast" else 0.0
+    # TODO remove mpc modes when TR released
+    self.mpc.mode = 'acc'
     LongitudinalPlannerSP.__init__(self, self.CP, CP_SP, self.mpc)
     self.fcw = False
     self.dt = dt
@@ -66,6 +171,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.v_desired_trajectory = np.zeros(CONTROL_N)
     self.a_desired_trajectory = np.zeros(CONTROL_N)
     self.j_desired_trajectory = np.zeros(CONTROL_N)
+    self.solverExecutionTime = 0.0
 
   @staticmethod
   def parse_model(model_msg):
@@ -88,7 +194,14 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     return x, v, a, j, throttle_prob
 
   def update(self, sm):
+    mode = 'blended' if sm['selfdriveState'].experimentalMode else 'acc'
+    if not self.mlsim:
+      self.mpc.mode = mode
     LongitudinalPlannerSP.update(self, sm)
+    if dec_mpc_mode := self.get_mpc_mode():
+      mode = dec_mpc_mode
+      if not self.mlsim:
+        self.mpc.mode = dec_mpc_mode
 
     if len(sm['carControl'].orientationNED) == 3:
       accel_coast = get_coast_accel(sm['carControl'].orientationNED[1])
@@ -111,9 +224,12 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     # No change cost when user is controlling the speed, or when standstill
     prev_accel_constraint = not (reset_state or sm['carState'].standstill)
 
-    accel_clip = [ACCEL_MIN, get_max_accel(v_ego)]
-    steer_angle_without_offset = sm['carState'].steeringAngleDeg - sm['liveParameters'].angleOffsetDeg
-    accel_clip = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_clip, self.CP)
+    if mode == 'acc':
+      accel_clip = [ACCEL_MIN, get_max_accel(v_ego)]
+      steer_angle_without_offset = sm['carState'].steeringAngleDeg - sm['liveParameters'].angleOffsetDeg
+      accel_clip = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_clip, self.CP)
+    else:
+      accel_clip = [ACCEL_MIN, ACCEL_MAX]
 
     if reset_state:
       self.v_desired_filter.x = v_ego
@@ -122,7 +238,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
 
     # Prevent divergence, smooth in current v_ego
     self.v_desired_filter.x = max(0.0, self.v_desired_filter.update(v_ego))
-    _, _, _, _, throttle_prob = self.parse_model(sm['modelV2'])
+    x, v, a, j, throttle_prob = self.parse_model(sm['modelV2'])
     # Don't clip at low speeds since throttle_prob doesn't account for creep
     self.allow_throttle = throttle_prob > ALLOW_THROTTLE_THRESHOLD or v_ego <= MIN_ALLOW_THROTTLE_SPEED
 
@@ -161,14 +277,15 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     output_a_target_e2e = sm['modelV2'].action.desiredAcceleration
     output_should_stop_e2e = sm['modelV2'].action.shouldStop
 
-    if self.is_e2e(sm):
-      output_a_target = min(output_a_target_e2e, output_a_target_mpc)
-      self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
-      if output_a_target < output_a_target_mpc:
-        self.mpc.source = LongitudinalPlanSource.e2e
-    else:
+    if mode == 'acc' or not self.mlsim:
       output_a_target = output_a_target_mpc
       self.output_should_stop = output_should_stop_mpc
+    else:
+      output_a_target = min(output_a_target_mpc, output_a_target_e2e)
+      self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
+
+    # VF8/VF9: delay mild early braking; small boost only on committed red-light stops.
+    output_a_target = apply_vf_late_brake(sm, self.CP, output_a_target)
 
     for idx in range(2):
       accel_clip[idx] = np.clip(accel_clip[idx], self.prev_accel_clip[idx] - 0.05, self.prev_accel_clip[idx] + 0.05)

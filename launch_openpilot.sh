@@ -1,20 +1,10 @@
 #!/usr/bin/env bash
-set -euo pipefail
-IFS=$'\n\t'
+# Default entrypoint — exec launch_chffrplus (no 1.sh bootstrap).
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
+cd "$DIR"
 
-# On any failure, run the fallback launcher
-trap 'exec ./launch_chffrplus.sh' ERR
-C3_LAUNCH_SH="./sunnypilot/system/hardware/c3/launch_chffrplus.sh"
-
-MODEL="$(tr -d '\0' < "/sys/firmware/devicetree/base/model")"
-export MODEL
-
-if [ "$MODEL" = "comma tici" ]; then
-  # Force a failure if the launcher doesn't exist
-  [ -x "$C3_LAUNCH_SH" ] || false
-
-  # If it exists, run it
-  exec "$C3_LAUNCH_SH"
-fi
+# qmpilot-server (upload URL + callback). Athena still optional via ATHENA_HOST.
+# API key: set QMPILOT_API_KEY or put it in /data/qmpilot/QmpilotApiKey (do not commit secrets)
+export API_HOST="${API_HOST:-https://qmpilot-connect.com}"
 
 exec ./launch_chffrplus.sh
