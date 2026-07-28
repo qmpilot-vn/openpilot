@@ -36,6 +36,17 @@ class LongitudinalPlannerSP:
     self.output_v_target = 0.
     self.output_a_target = 0.
 
+  @property
+  def mlsim(self) -> bool:
+    # If we don't have a generation set, we assume it's default model. Which as of today are mlsim.
+    return bool(self.generation is None or self.generation >= 11)
+
+  def get_mpc_mode(self) -> str | None:
+    if not self.dec.active():
+      return None
+
+    return self.dec.mode()
+
   def is_e2e(self, sm: messaging.SubMaster) -> bool:
     experimental_mode = sm['selfdriveState'].experimentalMode
     if not self.dec.active():

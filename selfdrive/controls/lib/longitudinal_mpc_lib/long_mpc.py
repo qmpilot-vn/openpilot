@@ -216,8 +216,8 @@ def gen_long_ocp():
 class LongitudinalMpc:
   def __init__(self, dt=DT_MDL):
     self.dt = dt
-    self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
     self.stop_lead_obstacle_adjust_m = 0.0
+    self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
     self.reset()
     self.source = LongitudinalPlanSource.cruise
 
@@ -328,9 +328,11 @@ class LongitudinalMpc:
     lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
     lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
 
-    # VinFast: reduce standstill gap behind a stopped lead (set by LongitudinalPlanner)
+    # VinFast: reduce standstill gap behind a stopped lead (set from longitudinal_planner).
+    # Engage a bit earlier than crawl speed so red-light approaches settle to the
+    # tighter gap instead of stopping short from the approach decel boost.
     stop_adjust = float(getattr(self, "stop_lead_obstacle_adjust_m", 0.0))
-    if stop_adjust > 0.0 and v_ego < 3.0:
+    if stop_adjust > 0.0 and v_ego < 5.0:
       min_safe = CRASH_DISTANCE + 1.0
       if lead_xv_0[0, 1] < 0.5:
         lead_0_obstacle = np.maximum(lead_0_obstacle - stop_adjust, min_safe)
