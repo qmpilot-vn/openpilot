@@ -9,6 +9,7 @@ import hashlib
 import os
 import pickle
 from pathlib import Path
+from typing import Optional
 import numpy as np
 
 from cereal import custom
@@ -24,6 +25,23 @@ CUSTOM_MODEL_PATH = Paths.model_root()
 METADATA_PATH = Path(__file__).parent / '../models/supercombo_metadata.pkl'
 ModelManager = custom.ModelManagerSP
 _LAST_VALIDATED_RAW = None
+
+PMV2_MIN_LAT_SMOOTH = 0.15
+
+
+def get_lat_smooth_seconds(bundle: Optional[custom.ModelManagerSP.ModelBundle]) -> float:
+  overrides = {override.key: override.value for override in bundle.overrides} if bundle else {}
+  lat = float(overrides.get("lat", "0"))
+  if bundle is not None and bundle.internalName == "PMV2" and lat < PMV2_MIN_LAT_SMOOTH:
+    lat = PMV2_MIN_LAT_SMOOTH
+  return lat
+
+
+def ensure_pmv2_lat_override(overrides_data: dict[str, str], short_name: str) -> dict[str, str]:
+  if short_name == "PMV2" and float(overrides_data.get("lat", "0")) < PMV2_MIN_LAT_SMOOTH:
+    overrides_data = dict(overrides_data)
+    overrides_data["lat"] = ".15"
+  return overrides_data
 
 
 def _compute_hash(file_path: str) -> str | None:
