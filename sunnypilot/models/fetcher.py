@@ -11,7 +11,7 @@ import requests
 from requests.exceptions import (SSLError, RequestException, HTTPError)
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-from openpilot.sunnypilot.models.helpers import is_bundle_version_compatible
+from openpilot.sunnypilot.models.helpers import ensure_pmv2_lat_override, is_bundle_version_compatible
 
 from cereal import custom
 
@@ -66,7 +66,8 @@ class ModelParser:
     model_bundle.runner = bundle.get("runner", custom.ModelManagerSP.Runner.snpe)
     model_bundle.is20hz = bundle.get("is_20hz", False)
     model_bundle.minimumSelectorVersion = int(bundle["minimum_selector_version"])
-    model_bundle.overrides = ModelParser._parse_overrides(bundle.get("overrides", {}))
+    overrides_data = ensure_pmv2_lat_override(dict(bundle.get("overrides", {})), bundle.get("short_name", ""))
+    model_bundle.overrides = ModelParser._parse_overrides(overrides_data)
     model_bundle.ref = bundle.get("ref")
 
     return model_bundle
