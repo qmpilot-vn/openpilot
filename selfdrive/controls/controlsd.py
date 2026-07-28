@@ -75,7 +75,7 @@ class Controls(ControlsExt, ModelStateBase):
     self.CI = interfaces[self.CP.carFingerprint](self.CP, self.CP_SP)
 
     sm_services = ['liveParameters', 'liveTorqueParameters', 'modelV2', 'selfdriveState',
-                   'liveCalibration', 'livePose', 'longitudinalPlan', 'carState', 'carOutput',
+                   'liveCalibration', 'livePose', 'longitudinalPlan', 'lateralManeuverPlan', 'carState', 'carOutput',
                    'driverMonitoringState', 'onroadEvents', 'driverAssistance', 'liveDelay'] + self.sm_services_ext
     # VF8/VF9: adjacent-lane radar path nudge needs raw tracks.
     self.radar_nudge = RadarPathNudge(self.CP.carFingerprint)
@@ -186,7 +186,10 @@ class Controls(ControlsExt, ModelStateBase):
 
     # Steering PID loop and lateral MPC
     # Reset desired curvature to current to avoid violating the limits on engage
-    new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
+    if self.sm.valid['lateralManeuverPlan']:
+      new_desired_curvature = self.sm['lateralManeuverPlan'].desiredCurvature if CC.latActive else self.curvature
+    else:
+      new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
     v_ego_kph = CS.vEgo * CV.MS_TO_KPH
 
     if self.use_curvature_tune_model and CC.latActive:
@@ -295,7 +298,7 @@ class Controls(ControlsExt, ModelStateBase):
       hudControl.leftLaneDepart = self.sm['driverAssistance'].leftLaneDeparture
       hudControl.rightLaneDepart = self.sm['driverAssistance'].rightLaneDeparture
 
-    if self.sm['selfdriveState'].active:
+    if self.get_lat_active(self.sm):
       CO = self.sm['carOutput']
       if self.CP.steerControlType == car.CarParams.SteerControlType.angle:
         # Use brand-specific saturation threshold (20.0 for VinFast, 2.5 for others)
@@ -321,7 +324,7 @@ class Controls(ControlsExt, ModelStateBase):
     cs.upAccelCmd = float(self.LoC.pid.p)
     cs.uiAccelCmd = float(self.LoC.pid.i)
     cs.ufAccelCmd = float(self.LoC.pid.f)
-    cs.forceDecel = bool((self.sm['driverMonitoringState'].awarenessStatus < 0.) or
+    cs.forceDecel = bool((self.sm['driverMonitoringState'].alertLevel == log.DriverMonitoringState.AlertLevel.three) or
                          (self.sm['selfdriveState'].state == State.softDisabling))
 
     lat_tuning = self.CP.lateralTuning.which()
