@@ -107,7 +107,9 @@ class VCruiseHelper(VCruiseHelperSP):
         self._update_v_cruise_non_pcm(CS, _enabled, is_metric)
         self.update_speed_limit_assist_v_cruise_non_pcm()
         self.v_cruise_cluster_kph = self.v_cruise_kph
-        self.update_button_timers(CS, enabled)
+        # timers are advanced once at the end of this method; a second call here would
+        # step them twice per cycle, so `timer % CRUISE_LONG_PRESS` never hits and
+        # holding +/- would do nothing
       else:
         # pcmCruise + pcmCruiseSpeed: follow car set speed, allow button deltas (sunnypilot)
         car_speed_kph = CS.cruiseState.speed * CV.MS_TO_KPH if CS.cruiseState.speed > 0 else V_CRUISE_UNSET
