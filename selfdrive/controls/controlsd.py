@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import math
+import threading
+import time
 from numbers import Number
+
+import numpy as np
 
 from cereal import car, log
 import cereal.messaging as messaging
@@ -17,19 +21,47 @@ from openpilot.selfdrive.controls.lib.latcontrol_pid import LatControlPID
 from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle, STEER_ANGLE_SATURATION_THRESHOLD
 from openpilot.selfdrive.controls.lib.latcontrol_torque import LatControlTorque
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl
-from openpilot.selfdrive.modeld.modeld import LAT_SMOOTH_SECONDS
+from openpilot.selfdrive.controls.lib.radar_path_nudge import RadarPathNudge
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
 
+from openpilot.sunnypilot.modeld_v2.modeld_base import ModelStateBase
+from openpilot.sunnypilot.models.helpers import get_active_bundle, get_lat_smooth_seconds
 from openpilot.sunnypilot.selfdrive.controls.controlsd_ext import ControlsExt
 
 State = log.SelfdriveState.OpenpilotState
 LaneChangeState = log.LaneChangeState
 LaneChangeDirection = log.LaneChangeDirection
 
+# Custom-model curvature: +5% winding, -5% sharp turn (steer > 150 deg)
+# Applied to PMV2 and TCPMV3 (The Cool Peoples Model v3).
+CURVATURE_TUNE_MODELS = {"PMV2", "TCPMV3"}
+PMV2_WINDING_CURVATURE_BOOST = 1.05
+PMV2_SHARP_STEER_DEG = 150.0
+PMV2_SHARP_CURVATURE_SCALE = 0.95
+PMV2_WINDING_KAPPA_MIN = 0.004
+PMV2_WINDING_KAPPA_MAX = 0.05
+PMV2_WINDING_MIN_SPEED_KPH = 15.0
+PMV2_WINDING_MAX_STEER_DEG = 80.0
+
+
+def _pmv2_is_winding_road(steer_deg: float, abs_kappa: float, v_ego_kph: float) -> bool:
+  return (abs(steer_deg) < PMV2_WINDING_MAX_STEER_DEG and
+          PMV2_WINDING_KAPPA_MIN <= abs_kappa <= PMV2_WINDING_KAPPA_MAX and
+          v_ego_kph >= PMV2_WINDING_MIN_SPEED_KPH)
+
+
+def _pmv2_adjust_curvature(curvature: float, steer_deg: float, v_ego_kph: float) -> float:
+  if abs(steer_deg) > PMV2_SHARP_STEER_DEG:
+    return curvature * PMV2_SHARP_CURVATURE_SCALE
+  if _pmv2_is_winding_road(steer_deg, abs(curvature), v_ego_kph):
+    return curvature * PMV2_WINDING_CURVATURE_BOOST
+  return curvature
+
+
 ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
 
 
-class Controls(ControlsExt):
+class Controls(ControlsExt, ModelStateBase):
   def __init__(self) -> None:
     self.params = Params()
     cloudlog.info("controlsd is waiting for CarParams")
@@ -38,18 +70,29 @@ class Controls(ControlsExt):
 
     # Initialize sunnypilot controlsd extension and base model state
     ControlsExt.__init__(self, self.CP, self.params)
+    ModelStateBase.__init__(self)
 
     self.CI = interfaces[self.CP.carFingerprint](self.CP, self.CP_SP)
 
-    self.sm = messaging.SubMaster(['liveDelay', 'liveParameters', 'liveTorqueParameters', 'modelV2', 'selfdriveState',
-                                   'liveCalibration', 'livePose', 'longitudinalPlan', 'lateralManeuverPlan', 'carState', 'carOutput',
-                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance', 'liveDelay'] + self.sm_services_ext,
-                                  poll='selfdriveState')
+    sm_services = ['liveParameters', 'liveTorqueParameters', 'modelV2', 'selfdriveState',
+                   'liveCalibration', 'livePose', 'longitudinalPlan', 'carState', 'carOutput',
+                   'driverMonitoringState', 'onroadEvents', 'driverAssistance', 'liveDelay'] + self.sm_services_ext
+    # VF8/VF9: adjacent-lane radar path nudge needs raw tracks.
+    self.radar_nudge = RadarPathNudge(self.CP.carFingerprint)
+    if self.radar_nudge.enabled:
+      sm_services = sm_services + ['liveTracks']
+    self.sm = messaging.SubMaster(sm_services, poll='selfdriveState')
     self.pm = messaging.PubMaster(['carControl', 'controlsState'] + self.pm_services_ext)
 
     self.steer_limited_by_safety = False
     self.curvature = 0.0
     self.desired_curvature = 0.0
+
+    active_bundle = get_active_bundle(self.params)
+    self.use_curvature_tune_model = (
+      active_bundle is not None and active_bundle.internalName in CURVATURE_TUNE_MODELS
+    )
+    self.lat_smooth_seconds = get_lat_smooth_seconds(active_bundle)
 
     self.pose_calibrator = PoseCalibrator()
     self.calibrated_pose: Pose | None = None
@@ -112,7 +155,8 @@ class Controls(ControlsExt):
     _lat_active = self.get_lat_active(self.sm)
 
     CC.latActive = _lat_active and not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
-                   (not standstill or self.CP.steerAtStandstill)
+                   (not standstill or self.CP.steerAtStandstill) and \
+                   not any(e.overrideLateral for e in self.sm['onroadEvents'])
     CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and \
                     (self.CP.openpilotLongitudinalControl or not self.CP_SP.pcmCruiseSpeed)
 
@@ -131,43 +175,81 @@ class Controls(ControlsExt):
 
     # accel PID loop
     pid_accel_limits = self.CI.get_pid_accel_limits(self.CP, self.CP_SP, CS.vEgo, CS.vCruise * CV.KPH_TO_MS)
-    actuators.accel = float(self.LoC.update(CC.longActive, CS, long_plan.aTarget, long_plan.shouldStop, pid_accel_limits))
+    accel_cmd = float(self.LoC.update(CC.longActive, CS, long_plan.aTarget, long_plan.shouldStop, pid_accel_limits))
+    # VF9: light accel bias only. Avoid large brake gain — it made stops start too early.
+    if self.CP.brand == "vinfast" and getattr(self.CP, "carFingerprint", "") == "VINFAST_VF9":
+      if accel_cmd < 0:
+        accel_cmd *= 1.05
+      elif accel_cmd > 0:
+        accel_cmd *= 1.08
+    actuators.accel = accel_cmd
 
     # Steering PID loop and lateral MPC
     # Reset desired curvature to current to avoid violating the limits on engage
-    if self.sm.valid['lateralManeuverPlan']:
-      new_desired_curvature = self.sm['lateralManeuverPlan'].desiredCurvature if CC.latActive else self.curvature
-    else:
-      new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
-    lateral_offset_curvature = 0.0
-    if self.CP.brand == "vinfast" and CC.latActive:
-      const_bias = -0.000
-      straight_curv_scale = 0.0003
-      straight_fade = math.exp(-abs(float(new_desired_curvature)) / straight_curv_scale)
-      new_desired_curvature += const_bias * straight_fade
+    new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
+    v_ego_kph = CS.vEgo * CV.MS_TO_KPH
 
+    if self.use_curvature_tune_model and CC.latActive:
+      new_desired_curvature = _pmv2_adjust_curvature(
+        new_desired_curvature, CS.steeringAngleDeg, v_ego_kph,
+      )
+
+    # Apply lateral offset adjustment for VinFast to shift path left
+    # Negative curvature = turn left (shift path left), Positive = turn right (shift path right)
+    if self.CP.brand == "vinfast" and CC.latActive and not self.use_curvature_tune_model:
       v_ego = max(float(CS.vEgo), 0.0)
-      v_ego_kph = v_ego * CV.MS_TO_KPH
-      is_vf9 = self.CP.carFingerprint == "VINFAST_VF9"
+      v_ego_kph = v_ego * CV.MS_TO_KPH  # Convert to km/h for threshold checks
+      
+      # Only apply offset when v_ego < 60 km/h
       if v_ego_kph < 60.0:
+        # Different max offsets for different speed ranges
         if v_ego_kph < 20.0:
-          offset_max = -0.0007 if is_vf9 else -0.0001
+          offset_max = 0.00015  # Stronger offset below 20 km/h
         elif v_ego_kph < 40.0:
-          offset_max = -0.0006 if is_vf9 else -0.0001
+          offset_max = -0.0005  # Moderate offset between 20-40 km/h
         else:
-          v_scale_kph = 10.0
-          v_normalized = (v_ego_kph - 40.0) / (60.0 - 40.0)
-          base_offset_max = -0.0006 if is_vf9 else -0.0001
-          offset_max = base_offset_max * math.exp(-v_normalized * (40.0 / v_scale_kph))
-        base_offset = offset_max
+          # Exponential decay from -0.0004 to zero between 40-60 km/h
+          v_scale_kph = 10.0  # km/h, controls decay rate (smaller = faster decay)
+          v_normalized = (v_ego_kph - 40.0) / (60.0 - 40.0)  # 0 at 40 km/h, 1 at 60 km/h
+          offset_max = -0.0005 * math.exp(-v_normalized * (40.0 / v_scale_kph))
+        
+        # Apply constant offset below 40 km/h, exponential fade above 40 km/h
+        if v_ego_kph < 40.0:
+          base_offset = offset_max  # Constant offset below 40 km/h
+        else:
+          base_offset = offset_max  # Already calculated exponential decay above
+        
+        # Fade out the offset when already turning (avoid adding bias in tighter curves)
         curv_scale = 0.002
         fade = math.exp(-abs(float(new_desired_curvature)) / curv_scale)
         lateral_offset_curvature = base_offset * fade
-    new_desired_curvature = new_desired_curvature + lateral_offset_curvature
+
+        new_desired_curvature = new_desired_curvature + lateral_offset_curvature
+
+    # VF8/VF9: width-aware radar path nudge (separate from static VF bias).
+    if self.radar_nudge.enabled:
+      if not CC.latActive:
+        self.radar_nudge.reset()
+        radar_nudge_kappa = 0.0
+      else:
+        path_x = path_y = None
+        pos = model_v2.position
+        if len(pos.x) >= 2 and len(pos.y) >= 2:
+          path_x = np.asarray(pos.x, dtype=float)
+          path_y = np.asarray(pos.y, dtype=float)
+        points = self.sm['liveTracks'].points if self.sm.valid['liveTracks'] else []
+        lane_changing = model_v2.meta.laneChangeState != LaneChangeState.off
+        radar_nudge_kappa = self.radar_nudge.update(
+          points, CS.vEgo, float(new_desired_curvature),
+          path_x=path_x, path_y=path_y,
+          lat_active=CC.latActive, lane_changing=lane_changing,
+        )
+      new_desired_curvature = new_desired_curvature + radar_nudge_kappa
+
     self.desired_curvature, curvature_limited = clip_curvature(CS.vEgo, self.desired_curvature, new_desired_curvature, lp.roll)
-    lat_delay = self.sm["liveDelay"].lateralDelay + LAT_SMOOTH_SECONDS
 
     actuators.curvature = self.desired_curvature
+    lat_delay = float(self.sm["liveDelay"].lateralDelay) + self.lat_smooth_seconds
     steer, steeringAngleDeg, lac_log = self.LaC.update(CC.latActive, CS, self.VM, lp,
                                                        self.steer_limited_by_safety, self.desired_curvature,
                                                        self.calibrated_pose, curvature_limited, lat_delay)
@@ -213,9 +295,10 @@ class Controls(ControlsExt):
       hudControl.leftLaneDepart = self.sm['driverAssistance'].leftLaneDeparture
       hudControl.rightLaneDepart = self.sm['driverAssistance'].rightLaneDeparture
 
-    if self.get_lat_active(self.sm):
+    if self.sm['selfdriveState'].active:
       CO = self.sm['carOutput']
       if self.CP.steerControlType == car.CarParams.SteerControlType.angle:
+        # Use brand-specific saturation threshold (20.0 for VinFast, 2.5 for others)
         saturation_threshold = 20.0 if self.CP.brand == "vinfast" else STEER_ANGLE_SATURATION_THRESHOLD
         self.steer_limited_by_safety = abs(CC.actuators.steeringAngleDeg - CO.actuatorsOutput.steeringAngleDeg) > \
                                               saturation_threshold
@@ -238,7 +321,7 @@ class Controls(ControlsExt):
     cs.upAccelCmd = float(self.LoC.pid.p)
     cs.uiAccelCmd = float(self.LoC.pid.i)
     cs.ufAccelCmd = float(self.LoC.pid.f)
-    cs.forceDecel = bool((self.sm['driverMonitoringState'].alertLevel == log.DriverMonitoringState.AlertLevel.three) or
+    cs.forceDecel = bool((self.sm['driverMonitoringState'].awarenessStatus < 0.) or
                          (self.sm['selfdriveState'].state == State.softDisabling))
 
     lat_tuning = self.CP.lateralTuning.which()
@@ -257,15 +340,26 @@ class Controls(ControlsExt):
     cc_send.carControl = CC
     self.pm.send('carControl', cc_send)
 
+  def params_thread(self, evt):
+    while not evt.is_set():
+      self.get_params_sp(self.sm)
+      time.sleep(0.1)
+
   def run(self):
     rk = Ratekeeper(100, print_delay_threshold=None)
-    while True:
-      self.update()
-      CC, lac_log = self.state_control()
-      self.publish(CC, lac_log)
-      self.get_params_sp(self.sm)
-      self.run_ext(self.sm, self.pm)
-      rk.monitor_time()
+    e = threading.Event()
+    t = threading.Thread(target=self.params_thread, args=(e,))
+    try:
+      t.start()
+      while True:
+        self.update()
+        CC, lac_log = self.state_control()
+        self.publish(CC, lac_log)
+        self.run_ext(self.sm, self.pm)
+        rk.monitor_time()
+    finally:
+      e.set()
+      t.join()
 
 
 def main():
