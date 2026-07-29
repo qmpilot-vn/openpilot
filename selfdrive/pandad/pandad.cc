@@ -7,6 +7,7 @@
 #include <cerrno>
 #include <cmath>
 #include <memory>
+#include <string>
 #include <thread>
 #include <utility>
 
@@ -218,7 +219,7 @@ void fill_panda_can_state(cereal::PandaState::PandaCanState::Builder &cs, const 
   cs.setCanCoreResetCnt(can_health.can_core_reset_cnt);
 }
 
-std::optional<bool> send_panda_states(PubMaster *pm, const std::vector<Panda *> &pandas, bool close_relay, bool spoofing_started, bool always_offroad) {
+std::optional<bool> send_panda_states(PubMaster *pm, const std::vector<Panda *> &pandas, bool close_relay, bool spoofing_started, bool always_offroad, bool mask_vinfast_harness_ignition) {
   bool ignition_local = false;
   const uint32_t pandas_cnt = pandas.size();
 
@@ -263,6 +264,11 @@ std::optional<bool> send_panda_states(PubMaster *pm, const std::vector<Panda *> 
     // get false positive ignitions due to the harness box
     // without a harness connector, so ignore it
     if (red_panda_comma_three && (panda->hw_type == cereal::PandaState::PandaType::DOS)) {
+      health.ignition_line_pkt = 0;
+    }
+
+    // VinFast harness taps FCAM/KL30 power, not KL15 — use CAN ignition only
+    if (mask_vinfast_harness_ignition) {
       health.ignition_line_pkt = 0;
     }
 
@@ -355,14 +361,14 @@ void send_peripheral_state(Panda *panda, PubMaster *pm) {
   pm->send("peripheralState", msg);
 }
 
-void process_panda_state(std::vector<Panda *> &pandas, PubMaster *pm, bool engaged, bool engaged_mads, bool close_relay, bool spoofing_started, bool always_offroad) {
+void process_panda_state(std::vector<Panda *> &pandas, PubMaster *pm, bool engaged, bool engaged_mads, bool close_relay, bool spoofing_started, bool always_offroad, bool mask_vinfast_harness_ignition) {
   std::vector<std::string> connected_serials;
   for (Panda *p : pandas) {
     connected_serials.push_back(p->hw_serial());
   }
 
   {
-    auto ignition_opt = send_panda_states(pm, pandas, close_relay, spoofing_started, always_offroad);
+    auto ignition_opt = send_panda_states(pm, pandas, close_relay, spoofing_started, always_offroad, mask_vinfast_harness_ignition);
     if (!ignition_opt) {
       LOGE("Failed to get ignition_opt");
       return;
@@ -496,7 +502,15 @@ void pandad_run(std::vector<Panda *> &pandas) {
 
       // Apply CarParams safety before relay/NO_OUTPUT (vinfast must land before offroad close_relay).
       panda_safety.configureSafetyMode(apply_car_safety);
-      process_panda_state(pandas, &pm, engaged, engaged_mads, close_relay, spoofing_started, always_offroad);
+
+      bool mask_vinfast_harness_ignition = false;
+      if (sm.allAliveAndValid({"carParams"})) {
+        const auto cp = sm["carParams"].getCarParams();
+        const std::string fingerprint = cp.getCarFingerprint().cStr();
+        mask_vinfast_harness_ignition = fingerprint.rfind("VINFAST_", 0) == 0;
+      }
+
+      process_panda_state(pandas, &pm, engaged, engaged_mads, close_relay, spoofing_started, always_offroad, mask_vinfast_harness_ignition);
     }
 
     // Send out peripheralState at ~2 Hz
