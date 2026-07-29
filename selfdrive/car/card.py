@@ -36,6 +36,10 @@ EventName = log.OnroadEvent.EventName
 # works because the controller re-reads ANGLE_LIMITS on every cycle.
 VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 90.0, "VINFAST_VF9": 90.0}
 
+# VF9 is packaged with a 7/5/3 deg-per-step slew (~700 deg/s at standstill), which chases
+# the plan more abruptly than the car needs. deg/step at 100 Hz, keyed by speed in m/s.
+VINFAST_STEER_ANGLE_RATE = {"VINFAST_VF9": ([0., 20., 40.], [1.5, 1.0, 0.6])}
+
 # forward
 carlog.addHandler(ForwardingHandler(cloudlog))
 
@@ -69,18 +73,24 @@ def can_comm_callbacks(logcan: messaging.SubSocket, sendcan: messaging.PubSocket
   return can_recv, can_send
 
 
-def apply_vinfast_steer_angle_max(CP: car.CarParams, CI: CarInterfaceBase) -> None:
+def apply_vinfast_steer_limits(CP: car.CarParams, CI: CarInterfaceBase) -> None:
   angle_max = VINFAST_STEER_ANGLE_MAX.get(CP.carFingerprint)
-  if angle_max is None:
+  angle_rate = VINFAST_STEER_ANGLE_RATE.get(CP.carFingerprint)
+  if angle_max is None and angle_rate is None:
     return
 
   limits = getattr(getattr(CI.CC, "params", None), "ANGLE_LIMITS", None)
   if limits is None:
     return
 
-  if limits.STEER_ANGLE_MAX > angle_max:
+  if angle_max is not None and limits.STEER_ANGLE_MAX > angle_max:
     cloudlog.warning(f"{CP.carFingerprint}: limiting steering angle to {angle_max} deg (port allows {limits.STEER_ANGLE_MAX})")
     limits.STEER_ANGLE_MAX = angle_max
+
+  if angle_rate is not None:
+    cloudlog.warning(f"{CP.carFingerprint}: limiting steer rate to {angle_rate[1]} deg/step (port allows {limits.ANGLE_RATE_LIMIT_UP[1]})")
+    limits.ANGLE_RATE_LIMIT_UP = angle_rate
+    limits.ANGLE_RATE_LIMIT_DOWN = angle_rate
 
 
 class Car:
@@ -156,7 +166,7 @@ class Car:
     # mads
     set_alternative_experience(self.CP, self.CP_SP, self.params)
     set_car_specific_params(self.CP, self.CP_SP, self.params)
-    apply_vinfast_steer_angle_max(self.CP, self.CI)
+    apply_vinfast_steer_limits(self.CP, self.CI)
 
     # VinFast: MADS is not used; force off so CarParams/Panda match (no ENABLE_MADS=1024 in selfdrived).
     if self.CP.brand == "vinfast":
