@@ -28,6 +28,11 @@ REPLAY = "REPLAY" in os.environ
 
 EventName = log.OnroadEvent.EventName
 
+# The VF8 car port allows the EPS's full ±470°, which is far more angle than the
+# planner should ever ask for on the road. Tightening the packaged limits here
+# works because the controller re-reads ANGLE_LIMITS on every cycle.
+VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 90.0}
+
 # forward
 carlog.addHandler(ForwardingHandler(cloudlog))
 
@@ -59,6 +64,20 @@ def can_comm_callbacks(logcan: messaging.SubSocket, sendcan: messaging.PubSocket
     sendcan.send(can_list_to_can_capnp(msgs, msgtype='sendcan'))
 
   return can_recv, can_send
+
+
+def apply_vinfast_steer_angle_max(CP: car.CarParams, CI: CarInterfaceBase) -> None:
+  angle_max = VINFAST_STEER_ANGLE_MAX.get(CP.carFingerprint)
+  if angle_max is None:
+    return
+
+  limits = getattr(getattr(CI.CC, "params", None), "ANGLE_LIMITS", None)
+  if limits is None:
+    return
+
+  if limits.STEER_ANGLE_MAX > angle_max:
+    cloudlog.warning(f"{CP.carFingerprint}: limiting steering angle to {angle_max} deg (port allows {limits.STEER_ANGLE_MAX})")
+    limits.STEER_ANGLE_MAX = angle_max
 
 
 class Car:
@@ -125,6 +144,7 @@ class Car:
     # mads
     set_alternative_experience(self.CP, self.CP_SP, self.params)
     set_car_specific_params(self.CP, self.CP_SP, self.params)
+    apply_vinfast_steer_angle_max(self.CP, self.CI)
 
     # Dynamic Experimental Control
     self.dynamic_experimental_control = self.params.get_bool("DynamicExperimentalControl")
