@@ -31,22 +31,33 @@ _A_TOTAL_MAX_BP = [20., 40.]
 # VF8/VF9: when model looks like a red-light stop, request ~3% more deceleration
 # during the approach, then fade the boost near stop so the final lead/stop gap
 # stays at the normal VinFast standstill distance (not inflated by hard braking).
-# Heuristic is intentionally late (short path / high brake prob) so braking
-# does not start too early on green/coast approaches.
+# Thresholds still need committed stop intent so green/coast approaches do not
+# brake early, but they must trigger during the approach: while this reads False
+# the softening below is what is applied instead.
 VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF9"}
 VF_REDLIGHT_ACCEL_SCALE = 1.03
 VF_REDLIGHT_BRAKE_PROB = 0.60
-VF_REDLIGHT_PATH_X_MAX = 28.0      # [m] only when remaining path is short
-VF_REDLIGHT_LEAD_DREL_MIN = 18.0   # [m] treat as no close lead
+# The model path is "short" relative to where a free-driving prediction would end,
+# so the stop is recognized during the approach instead of in the last few meters.
+VF_REDLIGHT_PATH_SHORT_FRAC = 0.55
+VF_REDLIGHT_PATH_X_MAX = 60.0      # [m] cap on the short-path threshold
+VF_REDLIGHT_PATH_X_MIN = 20.0      # [m] floor on the short-path threshold
+VF_REDLIGHT_LEAD_DREL_MIN = 18.0   # [m] a lead past this is not ordinary following
+VF_REDLIGHT_LEAD_MOVING_V = 2.0    # [m/s] a lead slower than this is part of the stop
 VF_REDLIGHT_MIN_VEGO = 0.8         # [m/s]
 # Full +3% above this speed; taper to no boost by the low end (gap control).
 VF_REDLIGHT_BOOST_FULL_KPH = 25.0
 VF_REDLIGHT_BOOST_FADE_KPH = 8.0
+# Debounce the heuristic so the applied scale cannot chatter on noisy model probs.
+VF_REDLIGHT_ENGAGE_FRAMES = 3   # ~0.15 s of agreement before committing
+VF_REDLIGHT_HOLD_FRAMES = 20    # ~1.0 s of hold once committed
 
-# VF8/VF9: soften mild approach braking so ACC/lead stops start later.
-# Hard brakes (< floor) are left alone for safety.
-VF_MILD_DECEL_SCALE = 0.82
-VF_MILD_DECEL_FLOOR = -1.6  # [m/s²]
+# VF8/VF9: soften the onset of braking so approaches don't start too early, then
+# fade the softening back to full authority as the request grows. The fade is what
+# keeps a real stop from arriving 22% deeper than the planner intended.
+VF_MILD_DECEL_SCALE = 0.93
+VF_MILD_SOFTEN_START = 0.4  # [m/s²] full softening below this decel
+VF_MILD_DECEL_FLOOR = -1.6  # [m/s²] no softening at or beyond this decel
 
 
 def get_max_accel(v_ego):
@@ -65,7 +76,10 @@ def is_vf_red_light_slowdown(sm, CP) -> bool:
   model = sm['modelV2']
   action = model.action
   lead = sm['radarState'].leadOne
-  no_close_lead = (not lead.status) or float(lead.dRel) > VF_REDLIGHT_LEAD_DREL_MIN
+  # A stopped or crawling lead is part of the stop (a queue at a light), not an
+  # ordinary follow target, so it must not disqualify the committed-stop path.
+  ordinary_following = (lead.status and float(lead.dRel) <= VF_REDLIGHT_LEAD_DREL_MIN
+                        and float(lead.vLead) > VF_REDLIGHT_LEAD_MOVING_V)
 
   brake_probs = model.meta.disengagePredictions.brakePressProbs
   brake_prob = float(brake_probs[1]) if len(brake_probs) > 1 else 0.0
@@ -73,11 +87,13 @@ def is_vf_red_light_slowdown(sm, CP) -> bool:
   should_stop = bool(action.shouldStop)
 
   model_x = model.position.x
-  path_short = len(model_x) > 0 and float(model_x[-1]) < VF_REDLIGHT_PATH_X_MAX
+  free_path = CS.vEgo * ModelConstants.T_IDXS[-1] * VF_REDLIGHT_PATH_SHORT_FRAC
+  path_limit = np.clip(free_path, VF_REDLIGHT_PATH_X_MIN, VF_REDLIGHT_PATH_X_MAX)
+  path_short = len(model_x) > 0 and float(model_x[-1]) < path_limit
 
-  # Red-light-like: committed stop intent with short path and no close ACC lead.
+  # Red-light-like: committed stop intent with a path much shorter than free driving.
   # Keep thresholds high so green/coast approaches do not brake early.
-  if not no_close_lead:
+  if ordinary_following:
     return False
   if should_stop and desired_a < -0.5 and path_short:
     return True
@@ -104,29 +120,25 @@ def vf_red_light_accel_scale(v_ego: float) -> float:
   return 1.0 + (VF_REDLIGHT_ACCEL_SCALE - 1.0) * x
 
 
-def apply_vf_red_light_accel(sm, CP, a_target: float) -> float:
-  """Scale deceleration for VF8/VF9 red-light slowdowns (faded near stop)."""
-  if a_target >= 0.0 or not is_vf_red_light_slowdown(sm, CP):
+def vf_mild_decel_scale(a_target: float) -> float:
+  """Soften the first bit of braking, fading to full authority by the floor.
+
+  There is no step at the floor: a request just under it is scaled almost as
+  little as one just past it.
+  """
+  return float(np.interp(-a_target, [VF_MILD_SOFTEN_START, -VF_MILD_DECEL_FLOOR],
+                         [VF_MILD_DECEL_SCALE, 1.0]))
+
+
+def apply_vf_late_brake(sm, CP, a_target: float, red_light: bool) -> float:
+  """VF8/VF9: delay the onset of braking; keep committed stops authoritative."""
+  if CP.carFingerprint not in VF_REDLIGHT_FINGERPRINTS or a_target >= 0.0:
     return a_target
-  scale = vf_red_light_accel_scale(sm['carState'].vEgo)
-  return float(a_target * scale)
 
+  if red_light:
+    return float(a_target * vf_red_light_accel_scale(sm['carState'].vEgo))
 
-def apply_vf_late_brake(sm, CP, a_target: float) -> float:
-  """VF8/VF9: delay mild approach braking; keep hard/red-light stops authoritative."""
-  if CP.carFingerprint not in VF_REDLIGHT_FINGERPRINTS:
-    return a_target
-  if a_target >= 0.0:
-    return a_target
-
-  # Once red-light stop is committed, allow the (small) boost path.
-  if is_vf_red_light_slowdown(sm, CP):
-    return apply_vf_red_light_accel(sm, CP, a_target)
-
-  # Soften mild decel so lead/stop approaches start later.
-  if a_target > VF_MILD_DECEL_FLOOR:
-    return float(a_target * VF_MILD_DECEL_SCALE)
-  return a_target
+  return float(a_target * vf_mild_decel_scale(a_target))
 
 
 def get_coast_accel(pitch):
@@ -153,8 +165,8 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.mpc = LongitudinalMpc(dt=dt)
     # VinFast: reduce standstill gap behind a stopped lead (closer at red lights/traffic jams).
     # Implemented in LongitudinalMpc by shifting the lead obstacle closer when lead is stopped and ego is low speed.
-    # MPC STOP_DISTANCE is 6.0 m; targeting ~2.0 m standstill gap => shift by ~4.0 m.
-    self.mpc.stop_lead_obstacle_adjust_m = 4.0 if CP.brand == "vinfast" else 0.0
+    # MPC STOP_DISTANCE is 6.0 m; targeting ~3.5 m standstill gap => shift by ~2.5 m.
+    self.mpc.stop_lead_obstacle_adjust_m = 2.5 if CP.brand == "vinfast" else 0.0
     # TODO remove mpc modes when TR released
     self.mpc.mode = 'acc'
     LongitudinalPlannerSP.__init__(self, self.CP, CP_SP, self.mpc)
@@ -167,11 +179,32 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.prev_accel_clip = [ACCEL_MIN, ACCEL_MAX]
     self.output_a_target = 0.0
     self.output_should_stop = False
+    self.vf_redlight_count = 0
+    self.vf_redlight_hold = 0
 
     self.v_desired_trajectory = np.zeros(CONTROL_N)
     self.a_desired_trajectory = np.zeros(CONTROL_N)
     self.j_desired_trajectory = np.zeros(CONTROL_N)
     self.solverExecutionTime = 0.0
+
+  def vf_red_light_committed(self, sm) -> bool:
+    """Debounced red-light stop intent, held briefly so the scale cannot chatter."""
+    if sm['carState'].standstill:
+      self.vf_redlight_count = 0
+      self.vf_redlight_hold = 0
+      return False
+
+    if is_vf_red_light_slowdown(sm, self.CP):
+      self.vf_redlight_count = min(self.vf_redlight_count + 1, VF_REDLIGHT_ENGAGE_FRAMES)
+    else:
+      self.vf_redlight_count = 0
+
+    if self.vf_redlight_count >= VF_REDLIGHT_ENGAGE_FRAMES:
+      self.vf_redlight_hold = VF_REDLIGHT_HOLD_FRAMES
+    else:
+      self.vf_redlight_hold = max(0, self.vf_redlight_hold - 1)
+
+    return self.vf_redlight_hold > 0
 
   @staticmethod
   def parse_model(model_msg):
@@ -284,8 +317,8 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       output_a_target = min(output_a_target_mpc, output_a_target_e2e)
       self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
 
-    # VF8/VF9: delay mild early braking; small boost only on committed red-light stops.
-    output_a_target = apply_vf_late_brake(sm, self.CP, output_a_target)
+    # VF8/VF9: delay the onset of braking; small boost only on committed red-light stops.
+    output_a_target = apply_vf_late_brake(sm, self.CP, output_a_target, self.vf_red_light_committed(sm))
 
     for idx in range(2):
       accel_clip[idx] = np.clip(accel_clip[idx], self.prev_accel_clip[idx] - 0.05, self.prev_accel_clip[idx] + 0.05)
