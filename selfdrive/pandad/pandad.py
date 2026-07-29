@@ -53,13 +53,18 @@ def get_expected_signature(panda: Panda) -> bytes:
     cloudlog.exception("Error computing expected signature")
     return b""
 
-def flash_panda(panda_serial: str) -> Panda:
+def flash_panda(panda_serial: str) -> Panda | None:
   try:
     panda = Panda(panda_serial)
   except PandaProtocolMismatch:
     cloudlog.warning("detected protocol mismatch, reflashing panda")
     HARDWARE.recover_internal_panda()
     raise
+  except ValueError as e:
+    # A broken USB panda can enumerate but report an unknown HW type, which would
+    # otherwise crash the flash loop before pandad ever starts.
+    cloudlog.warning(f"Panda {panda_serial} skipped: {e}")
+    return None
 
   # skip flashing if the detected panda is not supported
   supported_panda = check_panda_support(panda)
@@ -162,7 +167,9 @@ def main() -> None:
       # Flash pandas
       pandas: list[Panda] = []
       for serial in panda_serials:
-        pandas.append(flash_panda(serial))
+        panda = flash_panda(serial)
+        if panda is not None:
+          pandas.append(panda)
 
       # Ensure internal panda is present if expected
       internal_pandas = [panda for panda in pandas if panda.is_internal()]

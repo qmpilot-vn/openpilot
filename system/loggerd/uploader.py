@@ -40,6 +40,11 @@ QMPILOT_UPLOAD_PRIORITY = {
   "dcamera.hevc": 5,
 }
 
+# Small assets that make a route viewable on the server. Uploaded for every segment
+# before any multi-MB asset, since on a slow link the deleter reclaims the oldest
+# segment before its cameras finish, losing the whole segment.
+QMPILOT_FIRST_PASS = ("qlog", "qlog.zst", "qlog.bz2", "qcamera.ts")
+
 allow_sleep = bool(int(os.getenv("UPLOADER_SLEEP", "1")))
 force_wifi = os.getenv("FORCEWIFI") is not None
 fake_upload = os.getenv("FAKEUPLOAD") is not None
@@ -176,6 +181,11 @@ class Uploader:
     for name, key, fn in upload_files:
       if any(f in fn for f in self.immediate_folders):
         return name, key, fn
+
+    if self.qmpilot_mode:
+      for name, key, fn in upload_files:
+        if name in QMPILOT_FIRST_PASS:
+          return name, key, fn
 
     for name, key, fn in upload_files:
       if name in self.immediate_priority:
