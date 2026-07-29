@@ -31,7 +31,7 @@ EventName = log.OnroadEvent.EventName
 # The car port allows the EPS's full authority (VF8 ±470°, VF9 ±180°), far more angle
 # than the planner should ever ask for on the road. Tightening the packaged limits here
 # works because the controller re-reads ANGLE_LIMITS on every cycle.
-VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 90.0, "VINFAST_VF9": 90.0}
+VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 100.0, "VINFAST_VF9": 100.0}
 
 # VF9 is packaged with a 7/5/3 deg-per-step slew (~700 deg/s at standstill), which chases
 # the plan more abruptly than the car needs. deg/step at 100 Hz, keyed by speed in m/s.
