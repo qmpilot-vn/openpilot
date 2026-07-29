@@ -28,10 +28,10 @@ REPLAY = "REPLAY" in os.environ
 
 EventName = log.OnroadEvent.EventName
 
-# The VF8 car port allows the EPS's full ±470°, which is far more angle than the
-# planner should ever ask for on the road. Tightening the packaged limits here
+# The car port allows the EPS's full authority (VF8 ±470°, VF9 ±180°), far more angle
+# than the planner should ever ask for on the road. Tightening the packaged limits here
 # works because the controller re-reads ANGLE_LIMITS on every cycle.
-VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 90.0}
+VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 90.0, "VINFAST_VF9": 90.0}
 
 # forward
 carlog.addHandler(ForwardingHandler(cloudlog))
