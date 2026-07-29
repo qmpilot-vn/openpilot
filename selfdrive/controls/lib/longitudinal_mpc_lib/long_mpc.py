@@ -55,6 +55,8 @@ FCW_IDXS = T_IDXS < 5.0
 T_DIFFS = np.diff(T_IDXS, prepend=[0.])
 COMFORT_BRAKE = 2.5
 STOP_DISTANCE = 6.0
+# Floor for the tightened standstill gap (see stop_lead_obstacle_adjust_m).
+STOP_LEAD_MIN_GAP = 2.5
 CRUISE_MIN_ACCEL = -1.2
 CRUISE_MAX_ACCEL = 1.6
 MIN_X_LEAD_FACTOR = 0.5
@@ -333,7 +335,7 @@ class LongitudinalMpc:
     # tighter gap instead of stopping short from the approach decel boost.
     stop_adjust = float(getattr(self, "stop_lead_obstacle_adjust_m", 0.0))
     if stop_adjust > 0.0 and v_ego < 5.0:
-      min_safe = CRASH_DISTANCE + 1.0
+      min_safe = STOP_LEAD_MIN_GAP
       if lead_xv_0[0, 1] < 0.5:
         lead_0_obstacle = np.maximum(lead_0_obstacle - stop_adjust, min_safe)
       if lead_xv_1[0, 1] < 0.5:
