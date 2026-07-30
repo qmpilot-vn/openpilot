@@ -6,7 +6,7 @@ See the LICENSE.md file in the root directory for more details.
 
 CameraOffset + per-device ecam/fcam focal-length overrides for non-Comma C3XL
 clones (JSON via camera_fl_params, defaults 650 / 2700). CameraOffset is lateral
-shear (meters). Tune in UI: Settings → Models → Wide/Road Camera Focal Length.
+shear (meters). Tune FL via /data/qmpilot/camera_focal_length.json.
 """
 import numpy as np
 

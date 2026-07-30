@@ -23,10 +23,8 @@ from openpilot.sunnypilot.models.runners.constants import CUSTOM_MODEL_PATH
 from openpilot.system.ui.sunnypilot.lib.styles import style
 from openpilot.system.ui.sunnypilot.lib.utils import NoElideButtonAction
 from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, toggle_item_sp, option_item_sp
-from openpilot.system.ui.sunnypilot.widgets.camera_fl_option_control import camera_fl_option_item
 from openpilot.system.ui.sunnypilot.widgets.progress_bar import progress_item
 from openpilot.system.ui.sunnypilot.widgets.tree_dialog import TreeOptionDialog, TreeNode, TreeFolder
-from openpilot.sunnypilot.modeld_v2.camera_fl_params import get_focal_lengths
 
 if gui_app.sunnypilot_ui():
   from openpilot.system.ui.sunnypilot.widgets.list_view import button_item_sp as button_item
@@ -46,9 +44,6 @@ class ModelsLayout(Widget):
     self.clear_cache_item.action_item.set_value(f"{self.calculate_cache_size():.2f} MB")
     for ctrl, key in [(self.lane_turn_value_control, "LaneTurnValue"), (self.delay_control, "LagdToggleDelay")]:
       ctrl.action_item.set_value(int(float(ui_state.params.get(key, return_default=True)) * 100))
-    ecam_fl, fcam_fl = get_focal_lengths()
-    self.ecam_fl_control.action_item.set_value(int(round(ecam_fl)))
-    self.fcam_fl_control.action_item.set_value(int(round(fcam_fl)))
 
     self._scroller = Scroller(self.items, line_separator=True, spacing=0)
 
@@ -97,22 +92,9 @@ class ModelsLayout(Widget):
 
     self.lagd_toggle = toggle_item_sp(tr("Live Learning Steer Delay"), "", param="LagdToggle")
 
-    self.ecam_fl_control = camera_fl_option_item(
-      tr("Wide Camera Focal Length"), "ecam", 500, 800,
-      tr("Pinhole focal length for the wide (ecam) camera. Default 650 for non-Comma C3XL "
-         "(Comma stock 567). Saved to /data/qmpilot/camera_focal_length.json."),
-      10, style.BUTTON_ACTION_WIDTH, lambda v: f"{v} px")
-
-    self.fcam_fl_control = camera_fl_option_item(
-      tr("Road Camera Focal Length"), "fcam", 2400, 3000,
-      tr("Pinhole focal length for the road (fcam) camera. Default 2700 for non-Comma C3XL "
-         "(Comma stock 2648). Saved to /data/qmpilot/camera_focal_length.json."),
-      10, style.BUTTON_ACTION_WIDTH, lambda v: f"{v} px")
-
     self.items = [self.current_model_item, self.cancel_download_item, self.supercombo_label, self.vision_label,
                   self.policy_label, self.off_policy_label, self.on_policy_label, self.refresh_item, self.clear_cache_item, self.lane_turn_desire_toggle,
-                  self.lane_turn_value_control, self.lagd_toggle, self.delay_control,
-                  self.ecam_fl_control, self.fcam_fl_control]
+                  self.lane_turn_value_control, self.lagd_toggle, self.delay_control]
 
   def _update_lagd_description(self, lagd_toggle: bool):
     desc = tr("Enable this for the car to learn and adapt its steering response time. Disable to use a fixed steering response time. " +
