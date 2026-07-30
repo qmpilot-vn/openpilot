@@ -139,13 +139,13 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     return str(sm['deviceState'].deviceType)
 
   def _refresh_focal_length_params(self):
-    """Keep UI overlay K in sync with modeld Params (0 = stock DEVICE_CAMERAS)."""
+    """Keep UI overlay K in sync with modeld (camera_fl_params JSON)."""
     try:
-      self._ecam_fl = float(ui_state.params.get("EcamFocalLength", return_default=True) or 0.0)
-      self._fcam_fl = float(ui_state.params.get("FcamFocalLength", return_default=True) or 0.0)
+      from openpilot.sunnypilot.modeld_v2.camera_fl_params import get_focal_lengths
+      self._ecam_fl, self._fcam_fl = get_focal_lengths()
     except Exception:
-      self._ecam_fl = 0.0
-      self._fcam_fl = 0.0
+      self._ecam_fl = 650.0
+      self._fcam_fl = 2700.0
 
   def _switch_stream_if_needed(self, sm):
     if sm['selfdriveState'].experimentalMode and WIDE_CAM in self.available_streams:
