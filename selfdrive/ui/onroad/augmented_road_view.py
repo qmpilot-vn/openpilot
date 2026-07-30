@@ -163,10 +163,21 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     device_from_calib = rot_from_euler(calib.rpyCalib)
     self.view_from_calib = view_frame_from_device_frame @ device_from_calib
 
-    # Update wide calibration if available
-    if hasattr(calib, 'wideFromDeviceEuler') and len(calib.wideFromDeviceEuler) == 3:
+    # Wide view: on C3/C3X (tici/tizi, OX fisheye) the model-estimated
+    # wideFromDeviceEuler is unreliable with 2026 models vs the known-wrong
+    # ecam FL=567, so keep the same rpyCalib as the road camera. C4 (mici)
+    # still composes the wide extrinsic when present.
+    device_type = str(sm['deviceState'].deviceType) if sm.seen['deviceState'] else ''
+    use_wide_euler = (
+      device_type not in ('tici', 'tizi')
+      and hasattr(calib, 'wideFromDeviceEuler')
+      and len(calib.wideFromDeviceEuler) == 3
+    )
+    if use_wide_euler:
       wide_from_device = rot_from_euler(calib.wideFromDeviceEuler)
       self.view_from_wide_calib = view_frame_from_device_frame @ wide_from_device @ device_from_calib
+    else:
+      self.view_from_wide_calib = self.view_from_calib
 
   def _calc_frame_matrix(self, rect: rl.Rectangle) -> np.ndarray:
     # Check if we can use cached matrix
