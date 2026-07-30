@@ -13,6 +13,7 @@ from openpilot.selfdrive.ui.onroad.cameraview import CameraView
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.common.transformations.camera import DEVICE_CAMERAS, DeviceCameraConfig, view_frame_from_device_frame
 from openpilot.common.transformations.orientation import rot_from_euler
+from openpilot.sunnypilot.modeld_v2.camera_offset_helper import intrinsics_with_fl
 
 if gui_app.sunnypilot_ui():
   from openpilot.selfdrive.ui.sunnypilot.onroad.alert_renderer import AlertRendererSP as AlertRenderer
@@ -38,15 +39,6 @@ WIDE_CAM_MAX_SPEED = 10.0  # m/s (22 mph)
 ROAD_CAM_MIN_SPEED = 15.0  # m/s (34 mph)
 INF_POINT = np.array([1000.0, 0.0, 0.0])
 
-# C3/C3X ecam is an OX/AR fisheye whose shipped pinhole FL=567 is marked
-# "probably wrong" upstream (magnification varies across the frame). Road-cam
-# overlays are fine; ecam overlays with 2026 models are not. For the zoom=2
-# center crop the UI uses, a slightly longer display FL matches painted lanes
-# better without touching modeld's warp. Display-only — never written to
-# DEVICE_CAMERAS / get_warp_matrix.
-OX_ECAM_DISPLAY_FL = 720.0
-OX_ECAM_SIZE = (1928, 1208)
-
 
 class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
   def __init__(self, stream_type: VisionStreamType = VisionStreamType.VISION_STREAM_ROAD):
@@ -58,7 +50,9 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     self.view_from_calib = view_frame_from_device_frame.copy()
     self.view_from_wide_calib = view_frame_from_device_frame.copy()
 
-    self._matrix_cache_key = (0, 0.0, 0.0, stream_type)
+    self._ecam_fl = 0.0
+    self._fcam_fl = 0.0
+    self._matrix_cache_key = (0, 0.0, 0.0, stream_type, 0.0, 0.0)
     self._cached_matrix: np.ndarray | None = None
     self._content_rect = rl.Rectangle()
 
@@ -144,10 +138,14 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
       return ''
     return str(sm['deviceState'].deviceType)
 
-  @classmethod
-  def _is_ox_c3x(cls, sm) -> bool:
-    # Comma 3/3X OX/AR fisheye (ecam FL=567, "probably wrong"). C4/mici is OS04C10.
-    return cls._device_type(sm) in ('tici', 'tizi')
+  def _refresh_focal_length_params(self):
+    """Keep UI overlay K in sync with modeld Params (0 = stock DEVICE_CAMERAS)."""
+    try:
+      self._ecam_fl = float(ui_state.params.get("EcamFocalLength", return_default=True) or 0.0)
+      self._fcam_fl = float(ui_state.params.get("FcamFocalLength", return_default=True) or 0.0)
+    except Exception:
+      self._ecam_fl = 0.0
+      self._fcam_fl = 0.0
 
   def _switch_stream_if_needed(self, sm):
     if sm['selfdriveState'].experimentalMode and WIDE_CAM in self.available_streams:
@@ -197,25 +195,23 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     else:
       self.view_from_wide_calib = self.view_from_calib
 
-  def _wide_intrinsics(self, device_camera: DeviceCameraConfig, sm) -> np.ndarray:
-    """Intrinsics used to project lanes/path onto the ecam image."""
-    if self._is_ox_c3x(sm):
-      fl = OX_ECAM_DISPLAY_FL
-      w, h = OX_ECAM_SIZE
-      return np.array([
-        [fl, 0.0, w / 2.0],
-        [0.0, fl, h / 2.0],
-        [0.0, 0.0, 1.0],
-      ], dtype=np.float64)
-    return device_camera.ecam.intrinsics
+  def _cam_intrinsics(self, device_camera: DeviceCameraConfig, is_wide_camera: bool) -> np.ndarray:
+    """Intrinsics used to project lanes/path; Params FL > 0 overrides stock fx/fy."""
+    self._refresh_focal_length_params()
+    if is_wide_camera:
+      return intrinsics_with_fl(device_camera.ecam.intrinsics, self._ecam_fl)
+    return intrinsics_with_fl(device_camera.fcam.intrinsics, self._fcam_fl)
 
   def _calc_frame_matrix(self, rect: rl.Rectangle) -> np.ndarray:
+    self._refresh_focal_length_params()
     # Check if we can use cached matrix
     cache_key = (
       ui_state.sm.recv_frame['liveCalibration'],
       self._content_rect.width,
       self._content_rect.height,
-      self.stream_type
+      self.stream_type,
+      self._ecam_fl,
+      self._fcam_fl,
     )
     if cache_key == self._matrix_cache_key and self._cached_matrix is not None:
       return self._cached_matrix
@@ -224,7 +220,7 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     sm = ui_state.sm
     device_camera = self.device_camera or DEFAULT_DEVICE_CAMERA
     is_wide_camera = self.stream_type == WIDE_CAM
-    intrinsic = self._wide_intrinsics(device_camera, sm) if is_wide_camera else device_camera.fcam.intrinsics
+    intrinsic = self._cam_intrinsics(device_camera, is_wide_camera)
     calibration = self.view_from_wide_calib if is_wide_camera else self.view_from_calib
     zoom = 2.0 if is_wide_camera else 1.1
 

@@ -44,6 +44,16 @@ class ModelsLayout(Widget):
     self.clear_cache_item.action_item.set_value(f"{self.calculate_cache_size():.2f} MB")
     for ctrl, key in [(self.lane_turn_value_control, "LaneTurnValue"), (self.delay_control, "LagdToggleDelay")]:
       ctrl.action_item.set_value(int(float(ui_state.params.get(key, return_default=True)) * 100))
+    for ctrl, key, default in (
+      (self.ecam_fl_control, "EcamFocalLength", 650),
+      (self.fcam_fl_control, "FcamFocalLength", 2700),
+    ):
+      raw = float(ui_state.params.get(key, return_default=True) or 0)
+      # Migrate previous "0 = Comma stock" installs to the new C3XL defaults once.
+      if raw <= 0:
+        raw = float(default)
+        ui_state.params.put(key, raw)
+      ctrl.action_item.set_value(int(raw))
 
     self._scroller = Scroller(self.items, line_separator=True, spacing=0)
 
@@ -92,9 +102,25 @@ class ModelsLayout(Widget):
 
     self.lagd_toggle = toggle_item_sp(tr("Live Learning Steer Delay"), "", param="LagdToggle")
 
+    # Non-Comma C3XL: override DEVICE_CAMERAS FL for modeld warp + overlays
+    self.ecam_fl_control = option_item_sp(
+      tr("Wide Camera Focal Length"), "EcamFocalLength", 500, 800,
+      tr("Pinhole focal length for the wide (ecam) camera used by modeld warp and path overlays. "
+         "Default 650 for non-Comma C3XL (Comma stock is 567). Reboot after large changes."),
+      10, None, True, "", style.BUTTON_ACTION_WIDTH, None, False,
+      lambda v: f"{v} px")
+
+    self.fcam_fl_control = option_item_sp(
+      tr("Road Camera Focal Length"), "FcamFocalLength", 2400, 3000,
+      tr("Pinhole focal length for the road (fcam) camera used by modeld warp and path overlays. "
+         "Default 2700 for non-Comma C3XL (Comma stock is 2648). Reboot after large changes."),
+      10, None, True, "", style.BUTTON_ACTION_WIDTH, None, False,
+      lambda v: f"{v} px")
+
     self.items = [self.current_model_item, self.cancel_download_item, self.supercombo_label, self.vision_label,
                   self.policy_label, self.off_policy_label, self.on_policy_label, self.refresh_item, self.clear_cache_item, self.lane_turn_desire_toggle,
-                  self.lane_turn_value_control, self.lagd_toggle, self.delay_control]
+                  self.lane_turn_value_control, self.lagd_toggle, self.delay_control,
+                  self.ecam_fl_control, self.fcam_fl_control]
 
   def _update_lagd_description(self, lagd_toggle: bool):
     desc = tr("Enable this for the car to learn and adapt its steering response time. Disable to use a fixed steering response time. " +
@@ -236,6 +262,8 @@ class ModelsLayout(Widget):
     self.lane_turn_value_control.set_visible(turn_desire and advanced_controls)
     self.lagd_toggle.action_item.set_state(live_delay)
     self.delay_control.set_visible(not live_delay and advanced_controls)
+    self.ecam_fl_control.set_visible(advanced_controls)
+    self.fcam_fl_control.set_visible(advanced_controls)
     new_step = int(round(100 / CV.MPH_TO_KPH)) if ui_state.is_metric else 100
     if self.lane_turn_value_control.action_item.value_change_step != new_step:
       self.lane_turn_value_control.action_item.value_change_step = new_step
