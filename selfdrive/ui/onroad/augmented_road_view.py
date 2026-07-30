@@ -38,6 +38,15 @@ WIDE_CAM_MAX_SPEED = 10.0  # m/s (22 mph)
 ROAD_CAM_MIN_SPEED = 15.0  # m/s (34 mph)
 INF_POINT = np.array([1000.0, 0.0, 0.0])
 
+# C3/C3X ecam is an OX/AR fisheye whose shipped pinhole FL=567 is marked
+# "probably wrong" upstream (magnification varies across the frame). Road-cam
+# overlays are fine; ecam overlays with 2026 models are not. For the zoom=2
+# center crop the UI uses, a slightly longer display FL matches painted lanes
+# better without touching modeld's warp. Display-only — never written to
+# DEVICE_CAMERAS / get_warp_matrix.
+OX_ECAM_DISPLAY_FL = 720.0
+OX_ECAM_SIZE = (1928, 1208)
+
 
 class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
   def __init__(self, stream_type: VisionStreamType = VisionStreamType.VISION_STREAM_ROAD):
@@ -129,6 +138,17 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
                                rect.width - 2 * UI_BORDER_SIZE, rect.height - 2 * UI_BORDER_SIZE)
     rl.draw_rectangle_rounded_lines_ex(border_rect, border_roundness, 10, UI_BORDER_SIZE, border_color)
 
+  @staticmethod
+  def _device_type(sm) -> str:
+    if not sm.seen['deviceState']:
+      return ''
+    return str(sm['deviceState'].deviceType)
+
+  @classmethod
+  def _is_ox_c3x(cls, sm) -> bool:
+    # Comma 3/3X OX/AR fisheye (ecam FL=567, "probably wrong"). C4/mici is OS04C10.
+    return cls._device_type(sm) in ('tici', 'tizi')
+
   def _switch_stream_if_needed(self, sm):
     if sm['selfdriveState'].experimentalMode and WIDE_CAM in self.available_streams:
       v_ego = sm['carState'].vEgo
@@ -163,13 +183,11 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     device_from_calib = rot_from_euler(calib.rpyCalib)
     self.view_from_calib = view_frame_from_device_frame @ device_from_calib
 
-    # Wide view: on C3/C3X (tici/tizi, OX fisheye) the model-estimated
-    # wideFromDeviceEuler is unreliable with 2026 models vs the known-wrong
-    # ecam FL=567, so keep the same rpyCalib as the road camera. C4 (mici)
-    # still composes the wide extrinsic when present.
-    device_type = str(sm['deviceState'].deviceType) if sm.seen['deviceState'] else ''
+    # Wide extrinsic: only mici/C4 composes wideFromDeviceEuler. On C3/C3X
+    # (and when device type is still unknown) keep rpyCalib-only so a bad
+    # 2026-model wide euler cannot skew the overlay.
     use_wide_euler = (
-      device_type not in ('tici', 'tizi')
+      self._device_type(sm) == 'mici'
       and hasattr(calib, 'wideFromDeviceEuler')
       and len(calib.wideFromDeviceEuler) == 3
     )
@@ -178,6 +196,18 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
       self.view_from_wide_calib = view_frame_from_device_frame @ wide_from_device @ device_from_calib
     else:
       self.view_from_wide_calib = self.view_from_calib
+
+  def _wide_intrinsics(self, device_camera: DeviceCameraConfig, sm) -> np.ndarray:
+    """Intrinsics used to project lanes/path onto the ecam image."""
+    if self._is_ox_c3x(sm):
+      fl = OX_ECAM_DISPLAY_FL
+      w, h = OX_ECAM_SIZE
+      return np.array([
+        [fl, 0.0, w / 2.0],
+        [0.0, fl, h / 2.0],
+        [0.0, 0.0, 1.0],
+      ], dtype=np.float64)
+    return device_camera.ecam.intrinsics
 
   def _calc_frame_matrix(self, rect: rl.Rectangle) -> np.ndarray:
     # Check if we can use cached matrix
@@ -191,9 +221,10 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
       return self._cached_matrix
 
     # Get camera configuration
+    sm = ui_state.sm
     device_camera = self.device_camera or DEFAULT_DEVICE_CAMERA
     is_wide_camera = self.stream_type == WIDE_CAM
-    intrinsic = device_camera.ecam.intrinsics if is_wide_camera else device_camera.fcam.intrinsics
+    intrinsic = self._wide_intrinsics(device_camera, sm) if is_wide_camera else device_camera.fcam.intrinsics
     calibration = self.view_from_wide_calib if is_wide_camera else self.view_from_calib
     zoom = 2.0 if is_wide_camera else 1.1
 
