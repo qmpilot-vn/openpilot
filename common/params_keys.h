@@ -231,6 +231,10 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
 
     // sunnypilot model params
     {"CameraOffset", {PERSISTENT | BACKUP, FLOAT, "0.0"}},
+    // >0 overrides pinhole fx/fy for modeld warp + UI; 0 = Comma DEVICE_CAMERAS (ecam 567 / fcam 2648)
+    // Defaults tuned for non-Comma C3XL clone lenses (was 0 = Comma stock).
+    {"EcamFocalLength", {PERSISTENT | BACKUP, FLOAT, "650.0"}},
+    {"FcamFocalLength", {PERSISTENT | BACKUP, FLOAT, "2700.0"}},
     {"LagdToggle", {PERSISTENT | BACKUP, BOOL, "1"}},
     {"LagdToggleDelay", {PERSISTENT | BACKUP, FLOAT, "0.2"}},
     {"LagdValueCache", {PERSISTENT, FLOAT, "0.2"}},

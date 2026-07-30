@@ -18,7 +18,6 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.common.params import Params
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import config_realtime_process, DT_MDL
-from openpilot.common.transformations.camera import DEVICE_CAMERAS
 from openpilot.common.transformations.model import get_warp_matrix
 from openpilot.system import sentry
 from openpilot.selfdrive.controls.lib.desire_helper import DesireHelper
@@ -289,12 +288,16 @@ def main(demo=False):
       model.lat_delay = get_lat_delay(params, sm["liveDelay"].lateralDelay)
       model.PLANPLUS_CONTROL = params.get("PlanplusControl", return_default=True)
       camera_offset_helper.set_offset(params.get("CameraOffset", return_default=True))
+      camera_offset_helper.set_focal_lengths(
+        params.get("EcamFocalLength", return_default=True),
+        params.get("FcamFocalLength", return_default=True),
+      )
     lat_delay = model.lat_delay + model.LAT_SMOOTH_SECONDS
     if sm.updated["liveCalibration"] and sm.seen['roadCameraState'] and sm.seen['deviceState']:
       device_from_calib_euler = np.array(sm["liveCalibration"].rpyCalib, dtype=np.float32)
-      dc = DEVICE_CAMERAS[(str(sm['deviceState'].deviceType), str(sm['roadCameraState'].sensor))]
-      model_transform_main = get_warp_matrix(device_from_calib_euler, dc.ecam.intrinsics if main_wide_camera else dc.fcam.intrinsics, False).astype(np.float32)
-      model_transform_extra = get_warp_matrix(device_from_calib_euler, dc.ecam.intrinsics, True).astype(np.float32)
+      intrinsics_main, intrinsics_extra = camera_offset_helper.get_intrinsics(sm, main_wide_camera)
+      model_transform_main = get_warp_matrix(device_from_calib_euler, intrinsics_main, False).astype(np.float32)
+      model_transform_extra = get_warp_matrix(device_from_calib_euler, intrinsics_extra, True).astype(np.float32)
       model_transform_main, model_transform_extra = camera_offset_helper.update(model_transform_main, model_transform_extra, sm, main_wide_camera)
       live_calib_seen = True
 
