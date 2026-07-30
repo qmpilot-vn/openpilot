@@ -43,7 +43,18 @@ QMPILOT_UPLOAD_PRIORITY = {
 # Small assets that make a route viewable on the server. Uploaded for every segment
 # before any multi-MB asset, since on a slow link the deleter reclaims the oldest
 # segment before its cameras finish, losing the whole segment.
-QMPILOT_FIRST_PASS = ("qlog", "qlog.zst", "qlog.bz2", "qcamera.ts")
+QMPILOT_LIGHT = {"qlog", "qlog.zst", "qlog.bz2", "qcamera.ts"}
+QMPILOT_HEAVY = {
+  "rlog", "rlog.zst", "rlog.bz2",
+  "fcamera.hevc", "dcamera.hevc", "ecamera.hevc",
+}
+QMPILOT_FIRST_PASS = tuple(QMPILOT_LIGHT)
+
+# Save-gated heavy uploads: poll policy, cache briefly, honor 503 Retry-After.
+# Reuses existing QmpilotApiKey — no key regen required.
+QMPILOT_POLICY_CACHE_TTL = 90.0
+QMPILOT_DEFER_DEFAULT_SEC = 60.0
+QMPILOT_DEFER_MAX_SEC = 900.0
 
 allow_sleep = bool(int(os.getenv("UPLOADER_SLEEP", "1")))
 force_wifi = os.getenv("FORCEWIFI") is not None
@@ -66,6 +77,29 @@ def to_qmpilot_path(key: str) -> str:
     if seg.isdigit():
       return f"{route}/{seg}/{filename}"
   return key
+
+
+def qmpilot_log_id(key: str) -> str | None:
+  """Extract route log_id from a local or remote-style key."""
+  remote = to_qmpilot_path(key)
+  parts = remote.split('/')
+  if len(parts) >= 3 and parts[1].isdigit():
+    return parts[0]
+  if '/' in key:
+    dirname = key.rsplit('/', 1)[0]
+    if '--' in dirname:
+      route, seg = dirname.rsplit('--', 1)
+      if seg.isdigit():
+        return route
+  return None
+
+
+def qmpilot_filename(name: str, key: str) -> str:
+  """Canonical filename used for light/heavy classification."""
+  base = key.rsplit('/', 1)[-1] if key else name
+  if base.endswith(('qlog', 'rlog')):
+    return base + ".zst"
+  return base
 
 
 class FakeRequest:
@@ -114,11 +148,16 @@ class Uploader:
     self.root = root
 
     self.params = Params()
+    # Existing device token — same key for upload_url + upload_policy (no regen)
     self.qmpilot_api_key = get_qmpilot_api_key()
     self.qmpilot_mode = bool(self.qmpilot_api_key)
 
     # stats for last successfully uploaded file
     self.last_filename = ""
+
+    # qmpilot Save gate: per-log_id policy cache + per-file deferrals (keep locals)
+    self._policy_cache: dict[str, tuple[float, bool]] = {}
+    self._defer_until: dict[str, float] = {}
 
     if self.qmpilot_mode:
       # qmpilot-server only accepts route/seg/{qlog,rlog,cameras} — skip boot/crash
@@ -131,6 +170,88 @@ class Uploader:
       if get_api_host() != DEFAULT_API_HOST:
         cloudlog.warning("ApiHost=%s set but QmpilotApiKey missing — upload_url will use JWT and likely 401",
                          get_api_host())
+
+  def _defer_keys(self, key: str) -> set[str]:
+    # step() may append .zst for upload while list_upload_files uses the on-disk name
+    keys = {key}
+    if key.endswith('.zst'):
+      keys.add(key[:-4])
+    else:
+      keys.add(key + '.zst')
+    return keys
+
+  def _is_deferred(self, key: str) -> bool:
+    now = time.monotonic()
+    until = None
+    for k in self._defer_keys(key):
+      u = self._defer_until.get(k)
+      if u is not None and (until is None or u > until):
+        until = u
+    if until is None:
+      return False
+    if now >= until:
+      for k in self._defer_keys(key):
+        self._defer_until.pop(k, None)
+      return False
+    return True
+
+  def _defer(self, key: str, delay_sec: float, reason: str) -> None:
+    delay = max(1.0, min(float(delay_sec), QMPILOT_DEFER_MAX_SEC))
+    until = time.monotonic() + delay
+    for k in self._defer_keys(key):
+      self._defer_until[k] = until
+    cloudlog.event("upload_deferred", key=key, delay_sec=delay, reason=reason)
+
+  def _fetch_allow_heavy(self, log_id: str) -> bool | None:
+    """GET /v1.4/{dongle}/upload_policy/ with the existing QmpilotApiKey.
+
+    Returns True/False from server, or None if the request failed (caller may
+    fall back to upload_url + 503 handling).
+    """
+    now = time.monotonic()
+    cached = self._policy_cache.get(log_id)
+    if cached is not None and now < cached[0]:
+      return cached[1]
+
+    try:
+      resp = requests.get(
+        f"{self.api.api_host}/v1.4/{self.dongle_id}/upload_policy/",
+        params={"log_id": log_id, "access_token": self.qmpilot_api_key},
+        headers={"X-Device-Key": self.qmpilot_api_key},
+        timeout=10,
+      )
+      if resp.status_code != 200:
+        cloudlog.event("upload_policy_failed", log_id=log_id, status=resp.status_code, body=resp.text[:200])
+        return None
+      body = resp.json()
+      allow = bool(body.get("allow_heavy"))
+      self._policy_cache[log_id] = (now + QMPILOT_POLICY_CACHE_TTL, allow)
+      cloudlog.event("upload_policy", log_id=log_id, allow_heavy=allow, saved=body.get("saved"))
+      return allow
+    except Exception:
+      cloudlog.exception(f"upload_policy_exception log_id={log_id}")
+      return None
+
+  def should_upload(self, name: str, key: str) -> bool:
+    """Light files always; heavy only when route is Saved (allow_heavy)."""
+    if not self.qmpilot_mode:
+      return True
+
+    filename = qmpilot_filename(name, key)
+    if filename in QMPILOT_LIGHT or name in QMPILOT_LIGHT:
+      return True
+    if filename not in QMPILOT_HEAVY and name not in QMPILOT_HEAVY:
+      return True  # unknown: keep old behavior
+
+    log_id = qmpilot_log_id(key)
+    if log_id is None:
+      return True
+
+    allow = self._fetch_allow_heavy(log_id)
+    if allow is None:
+      # Network/policy blip — try upload_url; 503 handler will defer if unsaved
+      return True
+    return allow
 
   def list_upload_files(self, metered: bool) -> Iterator[tuple[str, str, str]]:
     r = self.params.get("AthenadRecentlyViewedRoutes")
@@ -159,6 +280,8 @@ class Uploader:
           continue
         if is_uploaded:
           continue
+        if self._is_deferred(key):
+          continue
 
         # limit uploading on metered connections
         if metered:
@@ -169,7 +292,7 @@ class Uploader:
           if name == "qcamera.ts" and not any(logdir.startswith(r.split('|')[-1]) for r in requested_routes):
             continue
           # on metered, skip bulky full-res assets unless explicitly viewed
-          if self.qmpilot_mode and name in ("rlog", "rlog.zst", "rlog.bz2", "fcamera.hevc", "ecamera.hevc", "dcamera.hevc"):
+          if self.qmpilot_mode and name in QMPILOT_HEAVY:
             if not any(logdir.startswith(r.split('|')[-1]) for r in requested_routes):
               continue
 
@@ -183,9 +306,21 @@ class Uploader:
         return name, key, fn
 
     if self.qmpilot_mode:
+      # 1) Always finish light files first (any route)
       for name, key, fn in upload_files:
-        if name in QMPILOT_FIRST_PASS:
+        if name in QMPILOT_LIGHT:
           return name, key, fn
+
+      # 2) Heavy only for Saved routes (allow_heavy); skip/defer unsaved so they
+      #    cannot starve Saved routes behind endless 503 retries.
+      for name, key, fn in upload_files:
+        if name not in QMPILOT_HEAVY and qmpilot_filename(name, key) not in QMPILOT_HEAVY:
+          continue
+        if self.should_upload(name, key):
+          return name, key, fn
+        self._defer(key, QMPILOT_POLICY_CACHE_TTL, "policy_unsaved")
+
+      return None
 
     for name, key, fn in upload_files:
       if name in self.immediate_priority:
@@ -247,7 +382,8 @@ class Uploader:
 
   def do_upload(self, key: str, fn: str):
     url_resp = self._request_upload_url(key)
-    if url_resp.status_code == 412:
+    # 412 = ignore; 503/403 = Save gate / defer — return as-is, do NOT parse JSON body
+    if url_resp.status_code in (412, 503, 403):
       return url_resp
 
     url_resp_json = json.loads(url_resp.text)
@@ -277,6 +413,11 @@ class Uploader:
       cloudlog.exception("upload: getsize failed")
       return False
 
+    # Policy gate before requesting upload_url (heavy + unsaved → keep local, retry later)
+    if self.qmpilot_mode and not self.should_upload(name, key):
+      self._defer(key, QMPILOT_POLICY_CACHE_TTL, "policy_unsaved")
+      return True  # deferred intentionally — do not mark uploaded, do not hard-fail backoff
+
     cloudlog.event("upload_start", key=key, fn=fn, sz=sz, network_type=network_type, metered=metered,
                    api_host=self.api.api_host, qmpilot=self.qmpilot_mode)
 
@@ -295,6 +436,21 @@ class Uploader:
         stat = self.do_upload(key, fn)
       except Exception as e:
         last_exc = (e, traceback.format_exc())
+
+      # Server Save gate: keep file on disk, defer, do NOT mark uploaded
+      if self.qmpilot_mode and stat is not None and stat.status_code in (503, 403):
+        retry_after = QMPILOT_DEFER_DEFAULT_SEC
+        try:
+          retry_after = float(stat.headers.get("Retry-After", retry_after))
+        except (TypeError, ValueError):
+          pass
+        # Invalidate policy cache so next attempt re-polls after Save
+        log_id = qmpilot_log_id(key)
+        if log_id is not None:
+          self._policy_cache.pop(log_id, None)
+        self._defer(key, retry_after, f"upload_url_{stat.status_code}")
+        cloudlog.event("upload_gated", key=key, fn=fn, status=stat.status_code, retry_after=retry_after)
+        return True  # deferred — file kept; avoid upload backoff starving other routes
 
       # comma marks auth failures as "done" to avoid retry storms; qmpilot must not
       ok_codes = (200, 201, 412) if self.qmpilot_mode else (200, 201, 401, 403, 412)
