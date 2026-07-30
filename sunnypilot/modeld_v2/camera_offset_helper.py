@@ -5,14 +5,8 @@ This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 
 CameraOffset + per-device ecam/fcam focal-length overrides for non-Comma C3XL
-clones. Params:
-
-  EcamFocalLength / FcamFocalLength  — pinhole fx/fy for modeld warp + UI
-                                     (defaults 650 / 2700; 0 = Comma DEVICE_CAMERAS)
-  CameraOffset                       — lateral shear (meters)
-
-Tune in UI: Settings → Models (advanced) → Wide/Road Camera Focal Length.
-A/B sweep ecam {600, 630, 650, 660, 690, 720}; fcam around 2700 if needed.
+clones (JSON via camera_fl_params, defaults 650 / 2700). CameraOffset is lateral
+shear (meters). Tune in UI: Settings → Models → Wide/Road Camera Focal Length.
 """
 import numpy as np
 
