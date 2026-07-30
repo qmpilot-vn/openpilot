@@ -5,8 +5,9 @@ import pyray as rl
 
 from openpilot.sunnypilot.modeld_v2.camera_fl_params import get_focal_lengths, set_one_focal_length
 from openpilot.system.ui.lib.application import gui_app, FontWeight
+from openpilot.system.ui.widgets.list_view import ItemAction
 from openpilot.system.ui.sunnypilot.widgets.option_control import LABEL_WIDTH, OptionControlSP
-from openpilot.system.ui.widgets.list_view import ItemAction, ListItemSP
+from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP
 
 
 class CameraFlOptionControl(OptionControlSP):
