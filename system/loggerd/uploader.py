@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import json
 import os
 import random
 import requests
@@ -55,6 +54,8 @@ QMPILOT_FIRST_PASS = tuple(QMPILOT_LIGHT)
 QMPILOT_POLICY_CACHE_TTL = 90.0
 QMPILOT_DEFER_DEFAULT_SEC = 60.0
 QMPILOT_DEFER_MAX_SEC = 900.0
+QMPILOT_POLICY_FAIL_DEFER_SEC = 120.0
+QMPILOT_MISSING_FILE_DEFER_SEC = 300.0
 
 allow_sleep = bool(int(os.getenv("UPLOADER_SLEEP", "1")))
 force_wifi = os.getenv("FORCEWIFI") is not None
@@ -155,9 +156,10 @@ class Uploader:
     # stats for last successfully uploaded file
     self.last_filename = ""
 
-    # qmpilot Save gate: per-log_id policy cache + per-file deferrals (keep locals)
+    # qmpilot Save gate: per-log_id policy cache + per-file/route deferrals (keep locals)
     self._policy_cache: dict[str, tuple[float, bool]] = {}
     self._defer_until: dict[str, float] = {}
+    self._defer_log_until: dict[str, float] = {}
 
     if self.qmpilot_mode:
       # qmpilot-server only accepts route/seg/{qlog,rlog,cameras} — skip boot/crash
@@ -180,7 +182,24 @@ class Uploader:
       keys.add(key + '.zst')
     return keys
 
+  def _clamp_delay(self, delay_sec: float) -> float:
+    return max(1.0, min(float(delay_sec), QMPILOT_DEFER_MAX_SEC))
+
+  def _is_log_deferred(self, log_id: str | None) -> bool:
+    if not log_id:
+      return False
+    now = time.monotonic()
+    until = self._defer_log_until.get(log_id)
+    if until is None:
+      return False
+    if now >= until:
+      self._defer_log_until.pop(log_id, None)
+      return False
+    return True
+
   def _is_deferred(self, key: str) -> bool:
+    if self._is_log_deferred(qmpilot_log_id(key)):
+      return True
     now = time.monotonic()
     until = None
     for k in self._defer_keys(key):
@@ -196,17 +215,22 @@ class Uploader:
     return True
 
   def _defer(self, key: str, delay_sec: float, reason: str) -> None:
-    delay = max(1.0, min(float(delay_sec), QMPILOT_DEFER_MAX_SEC))
+    delay = self._clamp_delay(delay_sec)
     until = time.monotonic() + delay
     for k in self._defer_keys(key):
       self._defer_until[k] = until
     cloudlog.event("upload_deferred", key=key, delay_sec=delay, reason=reason)
 
+  def _defer_log(self, log_id: str, delay_sec: float, reason: str) -> None:
+    delay = self._clamp_delay(delay_sec)
+    self._defer_log_until[log_id] = time.monotonic() + delay
+    cloudlog.event("upload_log_deferred", log_id=log_id, delay_sec=delay, reason=reason)
+
   def _fetch_allow_heavy(self, log_id: str) -> bool | None:
     """GET /v1.4/{dongle}/upload_policy/ with the existing QmpilotApiKey.
 
-    Returns True/False from server, or None if the request failed (caller may
-    fall back to upload_url + 503 handling).
+    Returns True/False from server, or None if the request failed.
+    None must NOT fall through to upload_url (that hot-loops 503s on unsaved).
     """
     now = time.monotonic()
     cached = self._policy_cache.get(log_id)
@@ -232,26 +256,39 @@ class Uploader:
       cloudlog.exception(f"upload_policy_exception log_id={log_id}")
       return None
 
+  def _is_heavy(self, name: str, key: str) -> bool:
+    filename = qmpilot_filename(name, key)
+    return filename in QMPILOT_HEAVY or name in QMPILOT_HEAVY
+
+  def _is_light(self, name: str, key: str) -> bool:
+    filename = qmpilot_filename(name, key)
+    return filename in QMPILOT_LIGHT or name in QMPILOT_LIGHT
+
   def should_upload(self, name: str, key: str) -> bool:
     """Light files always; heavy only when route is Saved (allow_heavy)."""
     if not self.qmpilot_mode:
       return True
 
-    filename = qmpilot_filename(name, key)
-    if filename in QMPILOT_LIGHT or name in QMPILOT_LIGHT:
+    if self._is_light(name, key):
       return True
-    if filename not in QMPILOT_HEAVY and name not in QMPILOT_HEAVY:
+    if not self._is_heavy(name, key):
       return True  # unknown: keep old behavior
 
     log_id = qmpilot_log_id(key)
     if log_id is None:
       return True
+    if self._is_log_deferred(log_id):
+      return False
 
     allow = self._fetch_allow_heavy(log_id)
     if allow is None:
-      # Network/policy blip — try upload_url; 503 handler will defer if unsaved
-      return True
-    return allow
+      # Policy blip — defer route; do NOT call upload_url (avoids 503 storms)
+      self._defer_log(log_id, QMPILOT_POLICY_FAIL_DEFER_SEC, "policy_unavailable")
+      return False
+    if not allow:
+      self._defer_log(log_id, QMPILOT_POLICY_CACHE_TTL, "policy_unsaved")
+      return False
+    return True
 
   def list_upload_files(self, metered: bool) -> Iterator[tuple[str, str, str]]:
     r = self.params.get("AthenadRecentlyViewedRoutes")
@@ -292,7 +329,7 @@ class Uploader:
           if name == "qcamera.ts" and not any(logdir.startswith(r.split('|')[-1]) for r in requested_routes):
             continue
           # on metered, skip bulky full-res assets unless explicitly viewed
-          if self.qmpilot_mode and name in QMPILOT_HEAVY:
+          if self.qmpilot_mode and self._is_heavy(name, key):
             if not any(logdir.startswith(r.split('|')[-1]) for r in requested_routes):
               continue
 
@@ -308,17 +345,16 @@ class Uploader:
     if self.qmpilot_mode:
       # 1) Always finish light files first (any route)
       for name, key, fn in upload_files:
-        if name in QMPILOT_LIGHT:
+        if self._is_light(name, key):
           return name, key, fn
 
-      # 2) Heavy only for Saved routes (allow_heavy); skip/defer unsaved so they
-      #    cannot starve Saved routes behind endless 503 retries.
+      # 2) Heavy only for Saved routes (allow_heavy). Unsaved / policy-fail are
+      #    deferred at log_id scope so they cannot starve Saved routes or spam 503.
       for name, key, fn in upload_files:
-        if name not in QMPILOT_HEAVY and qmpilot_filename(name, key) not in QMPILOT_HEAVY:
+        if not self._is_heavy(name, key):
           continue
         if self.should_upload(name, key):
           return name, key, fn
-        self._defer(key, QMPILOT_POLICY_CACHE_TTL, "policy_unsaved")
 
       return None
 
@@ -385,22 +421,39 @@ class Uploader:
     # 412 = ignore; 503/403 = Save gate / defer — return as-is, do NOT parse JSON body
     if url_resp.status_code in (412, 503, 403):
       return url_resp
+    if url_resp.status_code != 200:
+      cloudlog.event("upload_url_bad_status", key=key, status=url_resp.status_code, body=url_resp.text[:200])
+      return url_resp
 
-    url_resp_json = json.loads(url_resp.text)
+    url_resp_json = url_resp.json()
     url = url_resp_json['url']
-    headers = url_resp_json['headers']
-    cloudlog.debug("upload_url v1.4 %s %s", url, str(headers))
+    headers = dict(url_resp_json.get('headers') or {})
+    cloudlog.event("upload_url_ok", key=self._remote_key(key), url=url[:160])
 
     if fake_upload:
       return FakeResponse()
+
+    # Exact sequence after 200: assert local file, PUT bytes, then caller does callback
+    try:
+      sz = os.path.getsize(fn)
+    except OSError:
+      cloudlog.event("upload_missing_local", key=key, fn=fn)
+      raise FileNotFoundError(fn)
+    if sz <= 0:
+      cloudlog.event("upload_empty_local", key=key, fn=fn, sz=sz)
+      raise FileNotFoundError(fn)
 
     stream = None
     try:
       compress = key.endswith('.zst') and not fn.endswith('.zst')
       stream, content_length = get_upload_stream(fn, compress)
+      # MinIO/S3-compatible PUTs require Content-Length (no chunked encoding)
+      headers['Content-Length'] = str(content_length)
+      headers.pop('Transfer-Encoding', None)
       timeout = self._put_timeout(content_length)
-      cloudlog.debug("upload PUT timeout=%s sz=%s", timeout, content_length)
+      cloudlog.event("upload_put_start", key=key, fn=fn, sz=content_length, timeout=str(timeout))
       response = requests.put(url, data=stream, headers=headers, timeout=timeout)
+      cloudlog.event("upload_put_done", key=key, status=response.status_code, sz=content_length)
       return response
     finally:
       if stream:
@@ -411,18 +464,25 @@ class Uploader:
       sz = os.path.getsize(fn)
     except OSError:
       cloudlog.exception("upload: getsize failed")
+      if self.qmpilot_mode:
+        self._defer(key, QMPILOT_MISSING_FILE_DEFER_SEC, "missing_local")
+        return True  # keep trying other files; do NOT mark uploaded
       return False
 
     # Policy gate before requesting upload_url (heavy + unsaved → keep local, retry later)
     if self.qmpilot_mode and not self.should_upload(name, key):
-      self._defer(key, QMPILOT_POLICY_CACHE_TTL, "policy_unsaved")
+      # should_upload already deferred log_id when unsaved / policy unavailable
       return True  # deferred intentionally — do not mark uploaded, do not hard-fail backoff
 
     cloudlog.event("upload_start", key=key, fn=fn, sz=sz, network_type=network_type, metered=metered,
                    api_host=self.api.api_host, qmpilot=self.qmpilot_mode)
 
     if sz == 0:
-      # tag files of 0 size as uploaded
+      if self.qmpilot_mode and self._is_heavy(name, key):
+        # Never mark empty heavy as uploaded — that permanently skips PUT/callback
+        self._defer(key, QMPILOT_MISSING_FILE_DEFER_SEC, "empty_heavy")
+        return True
+      # tag empty light/unknown files as uploaded
       success = True
     elif name in MAX_UPLOAD_SIZES and sz > MAX_UPLOAD_SIZES[name]:
       cloudlog.event("uploader_too_large", key=key, fn=fn, sz=sz)
@@ -437,20 +497,28 @@ class Uploader:
       except Exception as e:
         last_exc = (e, traceback.format_exc())
 
-      # Server Save gate: keep file on disk, defer, do NOT mark uploaded
+      # Server Save gate: keep file on disk, defer whole route, do NOT mark uploaded
       if self.qmpilot_mode and stat is not None and stat.status_code in (503, 403):
         retry_after = QMPILOT_DEFER_DEFAULT_SEC
         try:
           retry_after = float(stat.headers.get("Retry-After", retry_after))
         except (TypeError, ValueError):
           pass
-        # Invalidate policy cache so next attempt re-polls after Save
         log_id = qmpilot_log_id(key)
         if log_id is not None:
           self._policy_cache.pop(log_id, None)
-        self._defer(key, retry_after, f"upload_url_{stat.status_code}")
+          self._defer_log(log_id, retry_after, f"upload_url_{stat.status_code}")
+        else:
+          self._defer(key, retry_after, f"upload_url_{stat.status_code}")
         cloudlog.event("upload_gated", key=key, fn=fn, status=stat.status_code, retry_after=retry_after)
         return True  # deferred — file kept; avoid upload backoff starving other routes
+
+      # PUT/network failure after upload_url: keep local, defer this file, continue queue
+      if self.qmpilot_mode and (stat is None or stat.status_code not in (200, 201, 412)):
+        self._defer(key, QMPILOT_DEFER_DEFAULT_SEC, "put_or_url_failed")
+        cloudlog.event("upload_failed", stat=stat, exc=last_exc, key=key, fn=fn, sz=sz,
+                       network_type=network_type, metered=metered)
+        return True  # do not mark uploaded; do not exponential-backoff the whole uploader
 
       # comma marks auth failures as "done" to avoid retry storms; qmpilot must not
       ok_codes = (200, 201, 412) if self.qmpilot_mode else (200, 201, 401, 403, 412)
@@ -469,13 +537,16 @@ class Uploader:
         success = False
         cloudlog.event("upload_failed", stat=stat, exc=last_exc, key=key, fn=fn, sz=sz, network_type=network_type, metered=metered)
 
-    # qmpilot-server needs the callback to index / process the route
+    # qmpilot-server needs the callback to index / process the route — only after successful PUT
     if success and self.qmpilot_mode and sz > 0 and not (name in MAX_UPLOAD_SIZES and sz > MAX_UPLOAD_SIZES[name]):
       if not self.do_callback(key):
-        success = False
+        # PUT may have landed; do not mark uploaded so callback is retried
+        self._defer(key, QMPILOT_DEFER_DEFAULT_SEC, "callback_failed")
+        cloudlog.event("upload_callback_retry", key=key, fn=fn)
+        return True
 
     if success:
-      # tag file as uploaded
+      # tag file as uploaded only after PUT (+ callback in qmpilot mode)
       try:
         setxattr(fn, UPLOAD_ATTR_NAME, UPLOAD_ATTR_VALUE)
       except OSError:
