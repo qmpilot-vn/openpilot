@@ -233,7 +233,10 @@ def main(demo=False):
   meta_main = FrameMeta()
   meta_extra = FrameMeta()
   camera_offset_helper = CameraOffsetHelper()
-  camera_offset_helper.set_focal_lengths(*get_focal_lengths())
+  ecam_fl, fcam_fl = get_focal_lengths()
+  camera_offset_helper.set_focal_lengths(ecam_fl, fcam_fl)
+  cloudlog.warning("camera FL override active: ecam=%.1f fcam=%.1f (Comma stock was ecam=567 fcam=2648)",
+                   ecam_fl, fcam_fl)
 
   if demo:
     CP = get_demo_car_params()
@@ -289,7 +292,10 @@ def main(demo=False):
       model.lat_delay = get_lat_delay(params, sm["liveDelay"].lateralDelay)
       model.PLANPLUS_CONTROL = params.get("PlanplusControl", return_default=True)
       camera_offset_helper.set_offset(params.get("CameraOffset", return_default=True))
-      camera_offset_helper.set_focal_lengths(*get_focal_lengths())
+      ecam_fl, fcam_fl = get_focal_lengths()
+      if (ecam_fl, fcam_fl) != (camera_offset_helper.ecam_fl, camera_offset_helper.fcam_fl):
+        cloudlog.warning("camera FL updated: ecam=%.1f fcam=%.1f", ecam_fl, fcam_fl)
+      camera_offset_helper.set_focal_lengths(ecam_fl, fcam_fl)
 
     lat_delay = model.lat_delay + model.LAT_SMOOTH_SECONDS
     if sm.updated["liveCalibration"] and sm.seen['roadCameraState'] and sm.seen['deviceState']:

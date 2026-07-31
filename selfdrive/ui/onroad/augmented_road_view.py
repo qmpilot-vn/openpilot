@@ -52,7 +52,8 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
 
     self._ecam_fl = 0.0
     self._fcam_fl = 0.0
-    self._matrix_cache_key = (0, 0.0, 0.0, stream_type, 0.0, 0.0)
+    self._wide_euler_bias_deg = (0.0, 1.0, 0.0)
+    self._matrix_cache_key = (0, 0.0, 0.0, stream_type, 0.0, 0.0, (0.0, 1.0, 0.0))
     self._cached_matrix: np.ndarray | None = None
     self._content_rect = rl.Rectangle()
 
@@ -139,13 +140,16 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     return str(sm['deviceState'].deviceType)
 
   def _refresh_focal_length_params(self):
-    """Keep UI overlay K in sync with modeld (camera_fl_params JSON)."""
+    """Keep UI overlay K + wide-euler bias in sync with camera_fl_params JSON."""
     try:
-      from openpilot.sunnypilot.modeld_v2.camera_fl_params import get_focal_lengths
+      from openpilot.sunnypilot.modeld_v2.camera_fl_params import get_focal_lengths, get_wide_euler_bias_deg
       self._ecam_fl, self._fcam_fl = get_focal_lengths()
+      bias = get_wide_euler_bias_deg()
+      self._wide_euler_bias_deg = (float(bias[0]), float(bias[1]), float(bias[2]))
     except Exception:
       self._ecam_fl = 650.0
       self._fcam_fl = 2700.0
+      self._wide_euler_bias_deg = (0.0, 1.0, 0.0)
 
   def _switch_stream_if_needed(self, sm):
     if sm['selfdriveState'].experimentalMode and WIDE_CAM in self.available_streams:
@@ -181,22 +185,25 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     device_from_calib = rot_from_euler(calib.rpyCalib)
     self.view_from_calib = view_frame_from_device_frame @ device_from_calib
 
-    # Wide extrinsic: only mici/C4 composes wideFromDeviceEuler. On C3/C3X
-    # (and when device type is still unknown) keep rpyCalib-only so a bad
-    # 2026-model wide euler cannot skew the overlay.
+    # Wide extrinsic: use wideFromDeviceEuler on tici/tizi/mici, plus device-wide
+    # JSON pitch/yaw/roll bias (overlay only; does not change modeld warp).
+    self._refresh_focal_length_params()
+    dtype = self._device_type(sm)
     use_wide_euler = (
-      self._device_type(sm) == 'mici'
+      dtype in ('tici', 'tizi', 'mici')
       and hasattr(calib, 'wideFromDeviceEuler')
       and len(calib.wideFromDeviceEuler) == 3
     )
     if use_wide_euler:
-      wide_from_device = rot_from_euler(calib.wideFromDeviceEuler)
+      bias_rad = np.radians(np.array(self._wide_euler_bias_deg, dtype=np.float64))
+      wide_euler = np.array(calib.wideFromDeviceEuler, dtype=np.float64) + bias_rad
+      wide_from_device = rot_from_euler(wide_euler)
       self.view_from_wide_calib = view_frame_from_device_frame @ wide_from_device @ device_from_calib
     else:
       self.view_from_wide_calib = self.view_from_calib
 
   def _cam_intrinsics(self, device_camera: DeviceCameraConfig, is_wide_camera: bool) -> np.ndarray:
-    """Intrinsics used to project lanes/path; Params FL > 0 overrides stock fx/fy."""
+    """Intrinsics used to project lanes/path; JSON FL > 0 overrides stock fx/fy."""
     self._refresh_focal_length_params()
     if is_wide_camera:
       return intrinsics_with_fl(device_camera.ecam.intrinsics, self._ecam_fl)
@@ -212,6 +219,7 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
       self.stream_type,
       self._ecam_fl,
       self._fcam_fl,
+      self._wide_euler_bias_deg,
     )
     if cache_key == self._matrix_cache_key and self._cached_matrix is not None:
       return self._cached_matrix
