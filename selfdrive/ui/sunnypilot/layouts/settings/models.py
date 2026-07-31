@@ -236,8 +236,6 @@ class ModelsLayout(Widget):
     self.lane_turn_value_control.set_visible(turn_desire and advanced_controls)
     self.lagd_toggle.action_item.set_state(live_delay)
     self.delay_control.set_visible(not live_delay and advanced_controls)
-    self.ecam_fl_control.set_visible(advanced_controls)
-    self.fcam_fl_control.set_visible(advanced_controls)
     new_step = int(round(100 / CV.MPH_TO_KPH)) if ui_state.is_metric else 100
     if self.lane_turn_value_control.action_item.value_change_step != new_step:
       self.lane_turn_value_control.action_item.value_change_step = new_step
