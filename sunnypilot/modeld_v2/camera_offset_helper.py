@@ -4,9 +4,11 @@ Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
 This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 
-CameraOffset + per-device ecam/fcam focal-length overrides for non-Comma C3XL
-clones (JSON via camera_fl_params, defaults 650 / 2700). CameraOffset is lateral
-shear (meters). Tune FL via /data/qmpilot/camera_focal_length.json.
+CameraOffset (lateral shear, meters) for modeld warp.
+
+Optional ecam/fcam FL overrides exist on this helper for tests / tooling, but
+modeld leaves them at 0 (stock DEVICE_CAMERAS). Overlay FL + wide-euler bias
+live in camera_fl_params JSON and are applied only in augmented_road_view.
 """
 import numpy as np
 

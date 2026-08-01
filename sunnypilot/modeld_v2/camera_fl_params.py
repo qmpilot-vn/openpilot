@@ -1,8 +1,8 @@
 """
-Persistent ecam/fcam focal-length + wide-euler bias for non-Comma C3XL.
+Aug-view-only ecam/fcam focal-length + wide-euler bias for non-Comma C3XL.
 
-Stored in JSON (not Params) so prebuilt releases work without rebuilding
-common/params_pyx.so.
+Used by raylib overlay (augmented_road_view). Modeld warp always uses stock
+DEVICE_CAMERAS (ecam=567, fcam=2648) and does not read this file.
 
 Device file: /data/qmpilot/camera_focal_length.json
 """
