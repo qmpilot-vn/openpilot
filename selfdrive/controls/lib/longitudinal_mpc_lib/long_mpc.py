@@ -57,8 +57,6 @@ COMFORT_BRAKE = 2.5
 STOP_DISTANCE = 6.0
 # Floor for the tightened standstill gap (see stop_lead_obstacle_adjust_m).
 STOP_LEAD_MIN_GAP = 2.5
-# Cap on the closing-speed lead margin (see lead_approach_margin_s).
-LEAD_APPROACH_MARGIN_MAX = 8.0
 CRUISE_MIN_ACCEL = -1.2
 CRUISE_MAX_ACCEL = 1.6
 MIN_X_LEAD_FACTOR = 0.5
@@ -221,7 +219,6 @@ class LongitudinalMpc:
   def __init__(self, dt=DT_MDL):
     self.dt = dt
     self.stop_lead_obstacle_adjust_m = 0.0
-    self.lead_approach_margin_s = 0.0
     self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
     self.reset()
     self.source = LongitudinalPlanSource.cruise
@@ -332,17 +329,6 @@ class LongitudinalMpc:
     # and then treat that as a stopped car/obstacle at this new distance.
     lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
     lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
-
-    # VinFast: start decelerating sooner for a lead we are closing on by treating it as
-    # nearer than it is. Scaled by closing speed, so a matched-speed follow and the
-    # standstill gap are untouched: the comfort constraint just bites this many meters
-    # earlier during an approach.
-    approach_margin_s = float(getattr(self, "lead_approach_margin_s", 0.0))
-    if approach_margin_s > 0.0:
-      closing_0 = np.maximum(v_ego - lead_xv_0[:, 1], 0.0)
-      closing_1 = np.maximum(v_ego - lead_xv_1[:, 1], 0.0)
-      lead_0_obstacle -= np.minimum(approach_margin_s * closing_0, LEAD_APPROACH_MARGIN_MAX)
-      lead_1_obstacle -= np.minimum(approach_margin_s * closing_1, LEAD_APPROACH_MARGIN_MAX)
 
     # VinFast: reduce standstill gap behind a stopped lead (set from longitudinal_planner).
     # Engage a bit earlier than crawl speed so red-light approaches settle to the
