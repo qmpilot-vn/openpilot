@@ -28,7 +28,6 @@ from openpilot.sunnypilot.modeld_v2.constants import Plan
 from openpilot.sunnypilot.modeld_v2.warp import Warp
 from openpilot.sunnypilot.modeld_v2.meta_helper import load_meta_constants
 from openpilot.sunnypilot.modeld_v2.camera_offset_helper import CameraOffsetHelper
-from openpilot.sunnypilot.modeld_v2.camera_fl_params import get_focal_lengths
 
 from openpilot.sunnypilot.livedelay.helpers import get_lat_delay
 from openpilot.sunnypilot.modeld_v2.modeld_base import ModelStateBase
@@ -232,11 +231,9 @@ def main(demo=False):
   buf_main, buf_extra = None, None
   meta_main = FrameMeta()
   meta_extra = FrameMeta()
+  # Warp uses stock DEVICE_CAMERAS only (ecam_fl/fcam_fl stay 0).
+  # Overlay FL + wide-euler bias are UI-only via camera_fl_params JSON.
   camera_offset_helper = CameraOffsetHelper()
-  ecam_fl, fcam_fl = get_focal_lengths()
-  camera_offset_helper.set_focal_lengths(ecam_fl, fcam_fl)
-  cloudlog.warning("camera FL override active: ecam=%.1f fcam=%.1f (Comma stock was ecam=567 fcam=2648)",
-                   ecam_fl, fcam_fl)
 
   if demo:
     CP = get_demo_car_params()
@@ -292,10 +289,6 @@ def main(demo=False):
       model.lat_delay = get_lat_delay(params, sm["liveDelay"].lateralDelay)
       model.PLANPLUS_CONTROL = params.get("PlanplusControl", return_default=True)
       camera_offset_helper.set_offset(params.get("CameraOffset", return_default=True))
-      ecam_fl, fcam_fl = get_focal_lengths()
-      if (ecam_fl, fcam_fl) != (camera_offset_helper.ecam_fl, camera_offset_helper.fcam_fl):
-        cloudlog.warning("camera FL updated: ecam=%.1f fcam=%.1f", ecam_fl, fcam_fl)
-      camera_offset_helper.set_focal_lengths(ecam_fl, fcam_fl)
 
     lat_delay = model.lat_delay + model.LAT_SMOOTH_SECONDS
     if sm.updated["liveCalibration"] and sm.seen['roadCameraState'] and sm.seen['deviceState']:
