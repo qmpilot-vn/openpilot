@@ -59,11 +59,6 @@ VF_MILD_DECEL_SCALE = 0.93
 VF_MILD_SOFTEN_START = 0.4  # [m/s²] full softening below this decel
 VF_MILD_DECEL_FLOOR = -1.6  # [m/s²] no softening at or beyond this decel
 
-# VF8/VF9: how much sooner to start decelerating for a lead we are closing on, as
-# seconds of closing speed (see LongitudinalMpc.lead_approach_margin_s). Nothing in
-# the softening above can move the onset, only the MPC's lead distance can.
-VF_LEAD_APPROACH_MARGIN_S = 0.4  # [s]
-
 
 def get_max_accel(v_ego):
   return np.interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_MAX_VALS)
@@ -172,9 +167,6 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     # Implemented in LongitudinalMpc by shifting the lead obstacle closer when lead is stopped and ego is low speed.
     # MPC STOP_DISTANCE is 6.0 m; targeting ~3.5 m standstill gap => shift by ~2.5 m.
     self.mpc.stop_lead_obstacle_adjust_m = 2.5 if CP.brand == "vinfast" else 0.0
-    # VF8/VF9: begin the deceleration earlier when closing on a lead.
-    self.mpc.lead_approach_margin_s = (VF_LEAD_APPROACH_MARGIN_S
-                                       if CP.carFingerprint in VF_REDLIGHT_FINGERPRINTS else 0.0)
     # TODO remove mpc modes when TR released
     self.mpc.mode = 'acc'
     LongitudinalPlannerSP.__init__(self, self.CP, CP_SP, self.mpc)
