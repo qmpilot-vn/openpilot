@@ -207,9 +207,9 @@ class Controls(ControlsExt, ModelStateBase):
       if v_ego_kph < 60.0:
         # Different max offsets for different speed ranges
         if v_ego_kph < 20.0:
-          offset_max = 0.00015  # Stronger offset below 20 km/h
+          offset_max = -0.0015  # Stronger left bias below 20 km/h
         elif v_ego_kph < 40.0:
-          offset_max = -0.0005  # Moderate offset between 20-40 km/h
+          offset_max = -0.001  # Moderate left bias between 20-40 km/h
         else:
           # Exponential decay from -0.0004 to zero between 40-60 km/h
           v_scale_kph = 10.0  # km/h, controls decay rate (smaller = faster decay)
