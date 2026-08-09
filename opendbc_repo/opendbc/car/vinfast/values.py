@@ -35,3 +35,8 @@ _mod.__file__ = str(_so)
 _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
+
+# tai: easier hand-torque lane-change / override detection (stock packaged .so is 2.5 Nm)
+_mod.CarControllerParams.STEER_DRIVER_PRESS_NM = 1.5
+# keep hysteresis below press (noise ~1 Nm); scaled from stock 2.5 / 1.25
+_mod.CarControllerParams.STEER_DRIVER_RELEASE_NM = 0.75
