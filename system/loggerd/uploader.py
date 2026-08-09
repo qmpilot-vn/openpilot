@@ -109,8 +109,9 @@ class Uploader:
     self.root = root
 
     self.params = Params()
+    # qmpilot upload protocol only when pointing at a non-comma host with a key
     self.qmpilot_api_key = get_qmpilot_api_key()
-    self.qmpilot_mode = bool(self.qmpilot_api_key)
+    self.qmpilot_mode = bool(self.qmpilot_api_key) and get_api_host() != DEFAULT_API_HOST
 
     # stats for last successfully uploaded file
     self.last_filename = ""
