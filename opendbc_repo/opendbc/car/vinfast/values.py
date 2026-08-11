@@ -35,3 +35,8 @@ _mod.__file__ = str(_so)
 _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
+
+# Driver-torque override detection: the packaged .so reads these at runtime (stock 2.5 / 1.25 Nm).
+_mod.CarControllerParams.STEER_DRIVER_PRESS_NM = 2.0
+# Release must stay below press so EPS noise (~1 Nm) can't latch a press off and on.
+_mod.CarControllerParams.STEER_DRIVER_RELEASE_NM = 1.0
