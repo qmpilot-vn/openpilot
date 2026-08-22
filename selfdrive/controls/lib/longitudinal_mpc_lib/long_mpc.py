@@ -56,7 +56,8 @@ T_DIFFS = np.diff(T_IDXS, prepend=[0.])
 COMFORT_BRAKE = 2.5
 STOP_DISTANCE = 6.0
 # Floor for the tightened standstill gap (see stop_lead_obstacle_adjust_m).
-STOP_LEAD_MIN_GAP = 2.5
+# VinFast ACC never sits closer than this behind a stopped lead.
+STOP_LEAD_MIN_GAP = 4.0
 CRUISE_MIN_ACCEL = -1.2
 CRUISE_MAX_ACCEL = 1.6
 MIN_X_LEAD_FACTOR = 0.5
@@ -330,9 +331,9 @@ class LongitudinalMpc:
     lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
     lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
 
-    # VinFast: reduce standstill gap behind a stopped lead (set from longitudinal_planner).
-    # Engage a bit earlier than crawl speed so red-light approaches settle to the
-    # tighter gap instead of stopping short from the approach decel boost.
+    # VinFast: tighten standstill gap behind a stopped lead (set from longitudinal_planner).
+    # Personality maps to 4 / 5 / 6 m. Engage a bit earlier than crawl speed so
+    # red-light approaches settle to that gap instead of stopping short.
     stop_adjust = float(getattr(self, "stop_lead_obstacle_adjust_m", 0.0))
     if stop_adjust > 0.0 and v_ego < 5.0:
       min_safe = STOP_LEAD_MIN_GAP
