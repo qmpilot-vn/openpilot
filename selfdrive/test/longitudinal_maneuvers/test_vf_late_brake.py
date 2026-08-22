@@ -12,7 +12,8 @@ from openpilot.common.realtime import DT_CTRL, DT_MDL
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl, LongCtrlState
 from openpilot.selfdrive.controls.lib.longitudinal_planner import (
   VF_MILD_DECEL_FLOOR, VF_MILD_DECEL_SCALE, VF_REDLIGHT_ENGAGE_FRAMES, VF_REDLIGHT_HOLD_FRAMES,
-  LongitudinalPlanner, is_vf_red_light_slowdown, vf_mild_decel_scale)
+  VF_STOP_LEAD_GAP_M, LongitudinalPlanner, is_vf_red_light_slowdown, vf_mild_decel_scale,
+  vf_stop_lead_adjust_m)
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import STOP_LEAD_MIN_GAP
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.controls.radard import _LEAD_ACCEL_TAU
@@ -96,6 +97,21 @@ def build_sm(v_ego, d_rel, v_lead, path_x, desired_a, brake_prob=0.0, should_sto
     'gpsLocation': messaging.new_message('gpsLocation').gpsLocation,
     'gpsLocationExternal': messaging.new_message('gpsLocationExternal').gpsLocationExternal,
   }
+
+
+class TestVFStopLeadAdjust:
+  def test_gaps_match_personality(self):
+    assert VF_STOP_LEAD_GAP_M[int(log.LongitudinalPersonality.aggressive)] == 4.0
+    assert VF_STOP_LEAD_GAP_M[int(log.LongitudinalPersonality.standard)] == 5.0
+    assert VF_STOP_LEAD_GAP_M[int(log.LongitudinalPersonality.relaxed)] == 6.0
+
+  def test_adjust_is_stop_distance_minus_gap(self):
+    assert vf_stop_lead_adjust_m(log.LongitudinalPersonality.aggressive) == pytest.approx(2.0)
+    assert vf_stop_lead_adjust_m(log.LongitudinalPersonality.standard) == pytest.approx(1.0)
+    assert vf_stop_lead_adjust_m(log.LongitudinalPersonality.relaxed) == pytest.approx(0.0)
+
+  def test_unknown_personality_uses_standard(self):
+    assert vf_stop_lead_adjust_m(99) == pytest.approx(1.0)
 
 
 class TestVFMildDecelScale:
@@ -213,6 +229,7 @@ class ApproachSim:
     self.planner = LongitudinalPlanner(CP, CP_SP, init_v=v_ego)
     self.LoC = LongControl(CP, CP_SP)
     if stop_adjust is not None:
+      self.planner.vf_stop_lead_adjust_override = stop_adjust
       self.planner.mpc.stop_lead_obstacle_adjust_m = stop_adjust
     self.v_ego = v_ego
     self.d_rel = d_rel
