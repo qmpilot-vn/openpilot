@@ -214,15 +214,15 @@ class TestAutoLaneChangeController:
 
 class TestVFLaneChangeNudge:
   def test_ignores_noise_and_wrong_direction(self):
-    frames, applied = vf_lane_change_nudge(1.0, True, 0)
+    frames, applied = vf_lane_change_nudge(0.7, True, 0)
     assert frames == 0 and not applied
     frames, applied = vf_lane_change_nudge(2.0, False, 2)
     assert frames == 0 and not applied
 
-  def test_tap_fires_after_hold(self):
+  def test_tap_fires_on_first_frame(self):
     frames, applied = 0, False
     for _ in range(VF_LC_NUDGE_FRAMES):
-      frames, applied = vf_lane_change_nudge(1.3, True, frames)
+      frames, applied = vf_lane_change_nudge(0.85, True, frames)
     assert applied
     assert frames == VF_LC_NUDGE_FRAMES
 
