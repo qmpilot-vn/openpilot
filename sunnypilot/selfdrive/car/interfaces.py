@@ -82,12 +82,16 @@ def _cleanup_unsupported_params(CP: structs.CarParams, CP_SP: structs.CarParamsS
     cloudlog.warning("ICBM not available or openpilot Longitudinal Control enabled, cleaning up params")
     params.remove("IntelligentCruiseButtonManagement")
 
+  if CP.brand != "vinfast":
+    params.remove("VnLegalFollowDistance")
+
   if not CP.openpilotLongitudinalControl and CP_SP.pcmCruiseSpeed:
     cloudlog.warning("openpilot Longitudinal Control and ICBM not available, cleaning up params")
     params.remove("DynamicExperimentalControl")
     params.remove("CustomAccIncrementsEnabled")
     params.remove("SmartCruiseControlVision")
     params.remove("SmartCruiseControlMap")
+    params.remove("VnLegalFollowDistance")
 
   set_speed_limit_assist_availability(CP, CP_SP, params)
 
@@ -132,6 +136,11 @@ def initialize_params(params) -> list[dict[str, Any]]:
   keys.extend([
     "ToyotaEnforceStockLongitudinal",
     "ToyotaStopAndGoHack",
+  ])
+
+  # vinfast
+  keys.extend([
+    "VnLegalFollowDistance",
   ])
 
   return [{k: params.get(k, return_default=True)} for k in keys]

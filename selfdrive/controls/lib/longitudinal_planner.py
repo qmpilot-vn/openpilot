@@ -9,10 +9,12 @@ from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import DT_MDL
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.controls.lib.longcontrol import LongCtrlState
-from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc
+from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc, get_T_FOLLOW
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import T_IDXS as T_IDXS_MPC
 from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_from_plan
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
+from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_min_follow_m
+from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlannerSP
@@ -181,6 +183,10 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.output_should_stop = False
     self.vf_redlight_count = 0
     self.vf_redlight_hold = 0
+    self.vn_follow_m = None
+    self.params = Params()
+    self.vn_follow_enabled = self.CP.brand == "vinfast" and self.params.get_bool("VnLegalFollowDistance")
+    self._vn_follow_param_frame = 0
 
     self.v_desired_trajectory = np.zeros(CONTROL_N)
     self.a_desired_trajectory = np.zeros(CONTROL_N)
@@ -286,9 +292,24 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     if force_slow_decel:
       v_cruise = 0.0
 
+    t_follow = None
+    if self.CP.brand == "vinfast":
+      if self._vn_follow_param_frame % max(1, int(1. / self.dt)) == 0:
+        self.vn_follow_enabled = self.params.get_bool("VnLegalFollowDistance")
+      self._vn_follow_param_frame += 1
+      if self.vn_follow_enabled:
+        # Highway floor: max(personality T_FOLLOW, legal 35/55/70/100 m). No-op below 60 km/h.
+        self.vn_follow_m = vn_min_follow_m(v_ego, self.vn_follow_m)
+        t_follow = effective_t_follow(v_ego, get_T_FOLLOW(sm['selfdriveState'].personality), self.vn_follow_m)
+      else:
+        self.vn_follow_m = None
+    else:
+      self.vn_follow_m = None
+      self.vn_follow_enabled = False
+
     self.mpc.set_weights(prev_accel_constraint, personality=sm['selfdriveState'].personality)
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
-    self.mpc.update(sm['radarState'], v_cruise, personality=sm['selfdriveState'].personality)
+    self.mpc.update(sm['radarState'], v_cruise, personality=sm['selfdriveState'].personality, t_follow=t_follow)
 
     self.v_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.v_solution)
     self.a_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.a_solution)
@@ -316,6 +337,12 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     else:
       output_a_target = min(output_a_target_mpc, output_a_target_e2e)
       self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
+      # VN floor: if closer than the legal gap, do not let e2e coast/accel inside it.
+      lead = sm['radarState'].leadOne
+      vn_gap = self.vn_follow_m
+      if (vn_gap is not None and lead.status and float(lead.dRel) < vn_gap
+          and output_a_target_e2e > output_a_target_mpc):
+        output_a_target = output_a_target_mpc
 
     # VF8/VF9: delay the onset of braking; small boost only on committed red-light stops.
     output_a_target = apply_vf_late_brake(sm, self.CP, output_a_target, self.vf_red_light_committed(sm))
