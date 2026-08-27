@@ -47,6 +47,38 @@
 
 ExitHandler do_exit;
 
+static bool fingerprint_is_vinfast(const std::string &fp) {
+  return fp.rfind("VINFAST_", 0) == 0;
+}
+
+static bool car_params_blob_is_vinfast(const std::string &blob) {
+  if (blob.size() < 8) {
+    return false;
+  }
+  try {
+    AlignedBuffer aligned_buf;
+    capnp::FlatArrayMessageReader cmsg(aligned_buf.align(blob.data(), blob.size()));
+    return fingerprint_is_vinfast(cmsg.getRoot<cereal::CarParams>().getCarFingerprint().cStr());
+  } catch (...) {
+    return false;
+  }
+}
+
+// Live carParams is only published onroad after CAN. Parked VF still has
+// CarPlatformBundle / CarParamsPersistent from the last drive.
+static bool vinfast_harness_from_params(Params &params) {
+  const std::string bundle = params.get("CarPlatformBundle");
+  if (bundle.find("VINFAST_") != std::string::npos || bundle.find("vinfast") != std::string::npos) {
+    return true;
+  }
+  for (const char *key : {"CarParams", "CarParamsCache", "CarParamsPersistent", "CarParamsPrevRoute"}) {
+    if (car_params_blob_is_vinfast(params.get(key))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool check_all_connected(const std::vector<Panda *> &pandas) {
   for (const auto& panda : pandas) {
     if (!panda->connected()) {
@@ -507,7 +539,10 @@ void pandad_run(std::vector<Panda *> &pandas) {
       if (sm.allAliveAndValid({"carParams"})) {
         const auto cp = sm["carParams"].getCarParams();
         const std::string fingerprint = cp.getCarFingerprint().cStr();
-        mask_vinfast_harness_ignition = fingerprint.rfind("VINFAST_", 0) == 0;
+        mask_vinfast_harness_ignition = fingerprint_is_vinfast(fingerprint);
+      }
+      if (!mask_vinfast_harness_ignition) {
+        mask_vinfast_harness_ignition = vinfast_harness_from_params(params);
       }
 
       process_panda_state(pandas, &pm, engaged, engaged_mads, close_relay, spoofing_started, always_offroad, mask_vinfast_harness_ignition);
