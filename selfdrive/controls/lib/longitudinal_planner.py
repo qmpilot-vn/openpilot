@@ -3,13 +3,14 @@ import math
 import numpy as np
 
 import cereal.messaging as messaging
+from cereal import log
 from opendbc.car.interfaces import ACCEL_MIN, ACCEL_MAX
 from openpilot.common.constants import CV
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import DT_MDL
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.controls.lib.longcontrol import LongCtrlState
-from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc, get_T_FOLLOW
+from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc, LongitudinalPlanSource, STOP_DISTANCE, get_T_FOLLOW
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import T_IDXS as T_IDXS_MPC
 from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_from_plan
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
@@ -19,7 +20,6 @@ from openpilot.common.swaglog import cloudlog
 
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlannerSP
 
-LON_MPC_STEP = 0.2  # first step is 0.2s
 A_CRUISE_MAX_VALS = [1.6, 1.2, 0.8, 0.6]
 A_CRUISE_MAX_BP = [0., 10.0, 25., 40.]
 CONTROL_N_T_IDX = ModelConstants.T_IDXS[:CONTROL_N]
@@ -60,6 +60,25 @@ VF_REDLIGHT_HOLD_FRAMES = 20    # ~1.0 s of hold once committed
 VF_MILD_DECEL_SCALE = 0.93
 VF_MILD_SOFTEN_START = 0.4  # [m/s²] full softening below this decel
 VF_MILD_DECEL_FLOOR = -1.6  # [m/s²] no softening at or beyond this decel
+
+# VinFast ACC standstill gap behind a stopped lead (camera-frame).
+# MPC STOP_DISTANCE is 6.0 m; personality matches the moving T_FOLLOW characteristic.
+# Aggressive is the 4 m floor; relaxed is stock openpilot; standard in between.
+VF_STOP_LEAD_GAP_M = {
+  int(log.LongitudinalPersonality.aggressive): 4.0,
+  int(log.LongitudinalPersonality.standard): 5.0,
+  int(log.LongitudinalPersonality.relaxed): 6.0,
+}
+
+
+def vf_stop_lead_adjust_m(personality) -> float:
+  """How far to pull a stopped lead toward ego so the standstill gap matches personality."""
+  try:
+    key = int(personality)
+  except (TypeError, ValueError):
+    key = int(log.LongitudinalPersonality.standard)
+  gap = VF_STOP_LEAD_GAP_M.get(key, VF_STOP_LEAD_GAP_M[int(log.LongitudinalPersonality.standard)])
+  return max(0.0, STOP_DISTANCE - gap)
 
 
 def get_max_accel(v_ego):
@@ -165,12 +184,13 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
   def __init__(self, CP, CP_SP, init_v=0.0, init_a=0.0, dt=DT_MDL):
     self.CP = CP
     self.mpc = LongitudinalMpc(dt=dt)
-    # VinFast: reduce standstill gap behind a stopped lead (closer at red lights/traffic jams).
-    # Implemented in LongitudinalMpc by shifting the lead obstacle closer when lead is stopped and ego is low speed.
-    # MPC STOP_DISTANCE is 6.0 m; targeting ~3.5 m standstill gap => shift by ~2.5 m.
-    self.mpc.stop_lead_obstacle_adjust_m = 2.5 if CP.brand == "vinfast" else 0.0
-    # TODO remove mpc modes when TR released
-    self.mpc.mode = 'acc'
+    # VinFast: tighten standstill gap behind a stopped lead (ACC / e2e-off).
+    # Recomputed each cycle from LongitudinalPersonality (4 / 5 / 6 m).
+    # Tests can pin vf_stop_lead_adjust_override so ApproachSim keeps a fixed adjust.
+    self.vf_stop_lead_adjust_override = None
+    self.mpc.stop_lead_obstacle_adjust_m = (
+      vf_stop_lead_adjust_m(log.LongitudinalPersonality.standard) if CP.brand == "vinfast" else 0.0
+    )
     LongitudinalPlannerSP.__init__(self, self.CP, CP_SP, self.mpc)
     self.fcw = False
     self.dt = dt
@@ -191,7 +211,6 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.v_desired_trajectory = np.zeros(CONTROL_N)
     self.a_desired_trajectory = np.zeros(CONTROL_N)
     self.j_desired_trajectory = np.zeros(CONTROL_N)
-    self.solverExecutionTime = 0.0
 
   def vf_red_light_committed(self, sm) -> bool:
     """Debounced red-light stop intent, held briefly so the scale cannot chatter."""
@@ -233,14 +252,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     return x, v, a, j, throttle_prob
 
   def update(self, sm):
-    mode = 'blended' if sm['selfdriveState'].experimentalMode else 'acc'
-    if not self.mlsim:
-      self.mpc.mode = mode
     LongitudinalPlannerSP.update(self, sm)
-    if dec_mpc_mode := self.get_mpc_mode():
-      mode = dec_mpc_mode
-      if not self.mlsim:
-        self.mpc.mode = dec_mpc_mode
 
     if len(sm['carControl'].orientationNED) == 3:
       accel_coast = get_coast_accel(sm['carControl'].orientationNED[1])
@@ -263,12 +275,9 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     # No change cost when user is controlling the speed, or when standstill
     prev_accel_constraint = not (reset_state or sm['carState'].standstill)
 
-    if mode == 'acc':
-      accel_clip = [ACCEL_MIN, get_max_accel(v_ego)]
-      steer_angle_without_offset = sm['carState'].steeringAngleDeg - sm['liveParameters'].angleOffsetDeg
-      accel_clip = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_clip, self.CP)
-    else:
-      accel_clip = [ACCEL_MIN, ACCEL_MAX]
+    accel_clip = [ACCEL_MIN, get_max_accel(v_ego)]
+    steer_angle_without_offset = sm['carState'].steeringAngleDeg - sm['liveParameters'].angleOffsetDeg
+    accel_clip = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_clip, self.CP)
 
     if reset_state:
       self.v_desired_filter.x = v_ego
@@ -277,7 +286,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
 
     # Prevent divergence, smooth in current v_ego
     self.v_desired_filter.x = max(0.0, self.v_desired_filter.update(v_ego))
-    x, v, a, j, throttle_prob = self.parse_model(sm['modelV2'])
+    _, _, _, _, throttle_prob = self.parse_model(sm['modelV2'])
     # Don't clip at low speeds since throttle_prob doesn't account for creep
     self.allow_throttle = throttle_prob > ALLOW_THROTTLE_THRESHOLD or v_ego <= MIN_ALLOW_THROTTLE_SPEED
 
@@ -294,6 +303,10 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
 
     t_follow = None
     if self.CP.brand == "vinfast":
+      if self.vf_stop_lead_adjust_override is not None:
+        self.mpc.stop_lead_obstacle_adjust_m = float(self.vf_stop_lead_adjust_override)
+      else:
+        self.mpc.stop_lead_obstacle_adjust_m = vf_stop_lead_adjust_m(sm['selfdriveState'].personality)
       if self._vn_follow_param_frame % max(1, int(1. / self.dt)) == 0:
         self.vn_follow_enabled = self.params.get_bool("VnLegalFollowDistance")
       self._vn_follow_param_frame += 1
@@ -331,11 +344,8 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     output_a_target_e2e = sm['modelV2'].action.desiredAcceleration
     output_should_stop_e2e = sm['modelV2'].action.shouldStop
 
-    if mode == 'acc' or not self.mlsim:
-      output_a_target = output_a_target_mpc
-      self.output_should_stop = output_should_stop_mpc
-    else:
-      output_a_target = min(output_a_target_mpc, output_a_target_e2e)
+    if self.is_e2e(sm):
+      output_a_target = min(output_a_target_e2e, output_a_target_mpc)
       self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
       # VN floor: if closer than the legal gap, do not let e2e coast/accel inside it.
       lead = sm['radarState'].leadOne
@@ -343,6 +353,11 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       if (vn_gap is not None and lead.status and float(lead.dRel) < vn_gap
           and output_a_target_e2e > output_a_target_mpc):
         output_a_target = output_a_target_mpc
+      elif output_a_target < output_a_target_mpc:
+        self.mpc.source = LongitudinalPlanSource.e2e
+    else:
+      output_a_target = output_a_target_mpc
+      self.output_should_stop = output_should_stop_mpc
 
     # VF8/VF9: delay the onset of braking; small boost only on committed red-light stops.
     output_a_target = apply_vf_late_brake(sm, self.CP, output_a_target, self.vf_red_light_committed(sm))
