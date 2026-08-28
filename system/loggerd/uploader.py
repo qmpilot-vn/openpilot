@@ -56,6 +56,10 @@ QMPILOT_DEFER_DEFAULT_SEC = 60.0
 QMPILOT_DEFER_MAX_SEC = 900.0
 QMPILOT_POLICY_FAIL_DEFER_SEC = 120.0
 QMPILOT_MISSING_FILE_DEFER_SEC = 300.0
+QMPILOT_FAIL_SKIP_THRESHOLD = 5
+QMPILOT_FAIL_LONG_DEFER_SEC = 900.0
+QMPILOT_LIGHT_PUT_READ_SEC = 60.0
+QMPILOT_LIGHT_PUT_MAX_SEC = 120.0
 
 allow_sleep = bool(int(os.getenv("UPLOADER_SLEEP", "1")))
 force_wifi = os.getenv("FORCEWIFI") is not None
@@ -160,6 +164,7 @@ class Uploader:
     self._policy_cache: dict[str, tuple[float, bool]] = {}
     self._defer_until: dict[str, float] = {}
     self._defer_log_until: dict[str, float] = {}
+    self._fail_counts: dict[str, int] = {}
 
     if self.qmpilot_mode:
       # qmpilot-server only accepts route/seg/{qlog,rlog,cameras} — skip boot/crash
@@ -197,9 +202,11 @@ class Uploader:
       return False
     return True
 
-  def _is_deferred(self, key: str) -> bool:
-    if self._is_log_deferred(qmpilot_log_id(key)):
-      return True
+  def _is_deferred(self, key: str, name: str | None = None) -> bool:
+    # Route-level deferrals (policy/503 on heavy) must not block light uploads.
+    if name is None or not self._is_light(name, key):
+      if self._is_log_deferred(qmpilot_log_id(key)):
+        return True
     now = time.monotonic()
     until = None
     for k in self._defer_keys(key):
@@ -225,6 +232,21 @@ class Uploader:
     delay = self._clamp_delay(delay_sec)
     self._defer_log_until[log_id] = time.monotonic() + delay
     cloudlog.event("upload_log_deferred", log_id=log_id, delay_sec=delay, reason=reason)
+
+  def _record_upload_failure(self, key: str) -> None:
+    """Defer failed uploads; after repeated failures, back off longer and move on."""
+    count = self._fail_counts.get(key, 0) + 1
+    self._fail_counts[key] = count
+    if count >= QMPILOT_FAIL_SKIP_THRESHOLD:
+      self._defer(key, QMPILOT_FAIL_LONG_DEFER_SEC, "failures_exceeded")
+      cloudlog.event("upload_failures_exceeded", key=key, count=count,
+                     delay_sec=QMPILOT_FAIL_LONG_DEFER_SEC)
+    else:
+      self._defer(key, QMPILOT_DEFER_DEFAULT_SEC, "put_or_url_failed")
+
+  def _clear_upload_failures(self, key: str) -> None:
+    for k in self._defer_keys(key):
+      self._fail_counts.pop(k, None)
 
   def _fetch_allow_heavy(self, log_id: str) -> bool | None:
     """GET /v1.4/{dongle}/upload_policy/ with the existing QmpilotApiKey.
@@ -317,7 +339,7 @@ class Uploader:
           continue
         if is_uploaded:
           continue
-        if self._is_deferred(key):
+        if self._is_deferred(key, name):
           continue
 
         # limit uploading on metered connections
@@ -408,10 +430,14 @@ class Uploader:
       cloudlog.exception(f"upload_callback_exception key={remote_key}")
       return False
 
-  def _put_timeout(self, sz: int) -> float | tuple[float, float]:
+  def _put_timeout(self, sz: int, *, light: bool = False) -> float | tuple[float, float]:
     """PUT timeout. qmpilot over CF tunnel needs long read timeouts for cameras."""
     if not self.qmpilot_mode:
       return 10
+    if light:
+      # qlog/qcamera are small — fail fast so one stuck PUT does not block the queue
+      read_s = max(QMPILOT_LIGHT_PUT_READ_SEC, (sz / 250_000.0) + 30.0)
+      return (15.0, min(read_s, QMPILOT_LIGHT_PUT_MAX_SEC))
     # connect 15s; read allows ~0.25 MB/s worst-case + 60s headroom, cap 30 min
     read_s = max(120.0, (sz / 250_000.0) + 60.0)
     return (15.0, min(read_s, 1800.0))
@@ -450,7 +476,7 @@ class Uploader:
       # MinIO/S3-compatible PUTs require Content-Length (no chunked encoding)
       headers['Content-Length'] = str(content_length)
       headers.pop('Transfer-Encoding', None)
-      timeout = self._put_timeout(content_length)
+      timeout = self._put_timeout(content_length, light=self._is_light(key.rsplit('/', 1)[-1], key))
       cloudlog.event("upload_put_start", key=key, fn=fn, sz=content_length, timeout=str(timeout))
       response = requests.put(url, data=stream, headers=headers, timeout=timeout)
       cloudlog.event("upload_put_done", key=key, status=response.status_code, sz=content_length)
@@ -505,7 +531,7 @@ class Uploader:
         except (TypeError, ValueError):
           pass
         log_id = qmpilot_log_id(key)
-        if log_id is not None:
+        if self._is_heavy(name, key) and log_id is not None:
           self._policy_cache.pop(log_id, None)
           self._defer_log(log_id, retry_after, f"upload_url_{stat.status_code}")
         else:
@@ -515,7 +541,7 @@ class Uploader:
 
       # PUT/network failure after upload_url: keep local, defer this file, continue queue
       if self.qmpilot_mode and (stat is None or stat.status_code not in (200, 201, 412)):
-        self._defer(key, QMPILOT_DEFER_DEFAULT_SEC, "put_or_url_failed")
+        self._record_upload_failure(key)
         cloudlog.event("upload_failed", stat=stat, exc=last_exc, key=key, fn=fn, sz=sz,
                        network_type=network_type, metered=metered)
         return True  # do not mark uploaded; do not exponential-backoff the whole uploader
@@ -532,6 +558,7 @@ class Uploader:
           speed = (content_length / 1e6) / dt if dt > 0 else 0
           cloudlog.event("upload_success", key=key, fn=fn, sz=sz, content_length=content_length,
                          network_type=network_type, metered=metered, speed=speed)
+          self._clear_upload_failures(key)
         success = True
       else:
         success = False
@@ -593,7 +620,13 @@ def main(exit_event: threading.Event | None = None) -> None:
   backoff = 0.1
   while not exit_event.is_set():
     sm.update(0)
+    if not sm.valid['deviceState']:
+      sm.update(1000)
     offroad = params.get_bool("IsOffroad")
+    if not sm.valid['deviceState']:
+      if allow_sleep:
+        time.sleep(5 if offroad else 1)
+      continue
     network_type = sm['deviceState'].networkType if not force_wifi else NetworkType.wifi
     if network_type == NetworkType.none:
       if allow_sleep:
