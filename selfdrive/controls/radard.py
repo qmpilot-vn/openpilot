@@ -1,7 +1,9 @@
 """_BYTECODE_SHIM — logic is loaded from __pycache__/radard_impl.*.pyc (same Python minor as build).
 
-VF6/VF7 InfoCAN post-load patches: position-only distance stick-slip at red lights
-makes vLead/aLeadK chatter; clamp near-stopped leads so ego speed does not ping-pong.
+VF6/VF7 InfoCAN post-load patches:
+* red-light stick-slip: clamp near-stopped leads so ego speed does not ping-pong
+* urban following: position-only aLeadK/vLead spikes look like emergency braking
+  (seg11 ~21.7s: aLeadK pegged at -3.5 while vision still ~7 m/s)
 """
 import importlib.util
 import sys
@@ -24,6 +26,11 @@ _spec.loader.exec_module(_mod)
 if hasattr(_mod, "POSITION_ONLY_MAX_VLEAD_STEP"):
   _mod.POSITION_ONLY_MAX_VLEAD_STEP = 0.5
 
+# Blend toward vision sooner: the 30 km/h moto event had |vRadar−vVision|≈2.3 m/s,
+# under the old 3.0 threshold, so MPC kept the fake radar kinematics.
+if hasattr(_mod, "POSITION_ONLY_FUSION_MAX_VABS"):
+  _mod.POSITION_ONLY_FUSION_MAX_VABS = 1.5
+
 # VF7 InfoCAN: offset motorbikes in the host lane at red lights (no-op if absent).
 if hasattr(_mod, "INFO_HOST_CREEP_MAX_LAT"):
   _mod.INFO_HOST_CREEP_MAX_LAT = 2.0
@@ -32,6 +39,14 @@ if hasattr(_mod, "INFO_HOST_MIN_TRACK_CNT"):
 
 # Treat lead as stationary when absolute speed estimate is below this at low ego speed.
 _VF_STOPPED_LEAD_V = 1.2  # [m/s]
+# Position-only aLeadK floor for published leads. Impl interpolates to -3.5 below 40 m
+# (hardcoded left= in _position_only_aleadk_floor); that is what long MPC treated as
+# an emergency stop. Keep a real close TTC uncapped.
+_VF_INFOCAN_ALEADK_FLOOR = -1.2  # [m/s²]
+_VF_INFOCAN_VLEAD_STEP = 0.25    # [m/s] per ~50 ms frame → 5 m/s²
+_VF_INFOCAN_TTC_URGENT = 1.8     # [s]
+_VF_INFOCAN_URGENT_DREL = 12.0   # [m]
+_prev_vleadk: dict[int, float] = {}
 
 
 def _stabilize_stopped_infocan_lead(lead_dict: dict[str, Any],
@@ -63,12 +78,51 @@ def _stabilize_stopped_infocan_lead(lead_dict: dict[str, Any],
   return lead_dict
 
 
+def _temper_position_only_lead(lead_dict: dict[str, Any],
+                               track: Any,
+                               v_ego: float) -> dict[str, Any]:
+  """Stop InfoCAN range stick-slip from looking like an emergency stop to long MPC."""
+  if (not lead_dict.get("status", False)) or (not lead_dict.get("radar", False)):
+    return lead_dict
+  if getattr(track, "measured", True):
+    return lead_dict
+
+  d_rel = float(lead_dict.get("dRel", getattr(track, "dRel", 0.0)))
+  v_lead = float(lead_dict.get("vLeadK", getattr(track, "vLeadK", 0.0)))
+  closing = max(0.0, float(v_ego) - v_lead)
+  ttc = d_rel / max(closing, 0.1)
+  urgent = ttc < _VF_INFOCAN_TTC_URGENT and d_rel < _VF_INFOCAN_URGENT_DREL
+
+  if not urgent:
+    a = float(lead_dict.get("aLeadK", 0.0))
+    lead_dict["aLeadK"] = max(_VF_INFOCAN_ALEADK_FLOOR, a)
+    tid = int(getattr(track, "identifier", lead_dict.get("radarTrackId", -1)))
+    prev = _prev_vleadk.get(tid)
+    if prev is not None:
+      v_lead = max(prev - _VF_INFOCAN_VLEAD_STEP, min(prev + _VF_INFOCAN_VLEAD_STEP, v_lead))
+    if tid >= 0:
+      _prev_vleadk[tid] = v_lead
+    lead_dict["vLeadK"] = v_lead
+    lead_dict["vLead"] = v_lead
+    lead_dict["vRel"] = v_lead - float(v_ego)
+  return lead_dict
+
+
 _orig_stabilize_low_speed = getattr(_mod, "stabilize_low_speed_radar_lead", None)
 if _orig_stabilize_low_speed is not None:
   def stabilize_low_speed_radar_lead(lead_dict, track, v_ego):
     lead_dict = _orig_stabilize_low_speed(lead_dict, track, v_ego)
-    return _stabilize_stopped_infocan_lead(lead_dict, track, v_ego)
+    lead_dict = _stabilize_stopped_infocan_lead(lead_dict, track, v_ego)
+    return _temper_position_only_lead(lead_dict, track, v_ego)
 
   _mod.stabilize_low_speed_radar_lead = stabilize_low_speed_radar_lead
+
+_orig_stabilize_position_only = getattr(_mod, "stabilize_position_only_radar_lead", None)
+if _orig_stabilize_position_only is not None:
+  def stabilize_position_only_radar_lead(lead_dict, track, v_ego):
+    lead_dict = _orig_stabilize_position_only(lead_dict, track, v_ego)
+    return _temper_position_only_lead(lead_dict, track, v_ego)
+
+  _mod.stabilize_position_only_radar_lead = stabilize_position_only_radar_lead
 
 sys.modules[__name__] = _mod
