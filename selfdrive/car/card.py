@@ -40,6 +40,17 @@ VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 100.0, "VINFAST_VF9": 100.0}
 # the plan more abruptly than the car needs. deg/step at 100 Hz, keyed by speed in m/s.
 VINFAST_STEER_ANGLE_RATE = {"VINFAST_VF9": ([0., 20., 40.], [1.5, 1.0, 0.6])}
 
+# LongControl stop-hold only (not re-engage). 30% softer than stock -2.0 / 0.8,
+# same last-meter ramp as VF8/VF9 so VF6/VF7 do not get a second brake poke.
+VINFAST_STOP_ACCEL = {
+  "VINFAST_VF6": -1.4, "VINFAST_VF7": -1.4,
+  "VINFAST_VF8": -1.4, "VINFAST_VF9": -1.4,
+}
+VINFAST_STOPPING_DECEL_RATE = {
+  "VINFAST_VF6": 0.56, "VINFAST_VF7": 0.56,
+  "VINFAST_VF8": 0.56, "VINFAST_VF9": 0.56,
+}
+
 # forward
 carlog.addHandler(ForwardingHandler(cloudlog))
 
@@ -91,6 +102,20 @@ def apply_vinfast_steer_limits(CP: car.CarParams, CI: CarInterfaceBase) -> None:
     cloudlog.warning(f"{CP.carFingerprint}: limiting steer rate to {angle_rate[1]} deg/step (port allows {limits.ANGLE_RATE_LIMIT_UP[1]})")
     limits.ANGLE_RATE_LIMIT_UP = angle_rate
     limits.ANGLE_RATE_LIMIT_DOWN = angle_rate
+
+
+def apply_vinfast_stop_hold(CP: car.CarParams) -> None:
+  """Soften LongControl stopping ramp/floor. Does not change re-engage."""
+  stop_accel = VINFAST_STOP_ACCEL.get(CP.carFingerprint)
+  stop_rate = VINFAST_STOPPING_DECEL_RATE.get(CP.carFingerprint)
+  if stop_accel is None and stop_rate is None:
+    return
+  if stop_accel is not None:
+    cloudlog.warning(f"{CP.carFingerprint}: stopAccel {CP.stopAccel} -> {stop_accel}")
+    CP.stopAccel = stop_accel
+  if stop_rate is not None:
+    cloudlog.warning(f"{CP.carFingerprint}: stoppingDecelRate {CP.stoppingDecelRate} -> {stop_rate}")
+    CP.stoppingDecelRate = stop_rate
 
 
 class Car:
@@ -167,6 +192,7 @@ class Car:
     set_alternative_experience(self.CP, self.CP_SP, self.params)
     set_car_specific_params(self.CP, self.CP_SP, self.params)
     apply_vinfast_steer_limits(self.CP, self.CI)
+    apply_vinfast_stop_hold(self.CP)
 
     # VinFast: MADS is not used; force off so CarParams/Panda match (no ENABLE_MADS=1024 in selfdrived).
     if self.CP.brand == "vinfast":

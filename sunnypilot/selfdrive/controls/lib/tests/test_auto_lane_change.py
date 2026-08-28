@@ -6,7 +6,8 @@ See the LICENSE.md file in the root directory for more details.
 """
 from openpilot.common.parameterized import parameterized
 from openpilot.common.realtime import DT_MDL
-from openpilot.selfdrive.controls.lib.desire_helper import DesireHelper, LaneChangeState, LaneChangeDirection
+from openpilot.selfdrive.controls.lib.desire_helper import (
+  DesireHelper, LaneChangeState, LaneChangeDirection, VF_LC_NUDGE_FRAMES, vf_lane_change_nudge)
 from openpilot.sunnypilot.selfdrive.controls.lib.auto_lane_change import AutoLaneChangeController, AutoLaneChangeMode, \
   AUTO_LANE_CHANGE_TIMER, ONE_SECOND_DELAY
 
@@ -209,3 +210,23 @@ class TestAutoLaneChangeController:
 
     # Lane change should never be allowed
     assert not self.alc.auto_lane_change_allowed
+
+
+class TestVFLaneChangeNudge:
+  def test_ignores_noise_and_wrong_direction(self):
+    frames, applied = vf_lane_change_nudge(0.7, True, 0)
+    assert frames == 0 and not applied
+    frames, applied = vf_lane_change_nudge(2.0, False, 2)
+    assert frames == 0 and not applied
+
+  def test_tap_fires_on_first_frame(self):
+    frames, applied = 0, False
+    for _ in range(VF_LC_NUDGE_FRAMES):
+      frames, applied = vf_lane_change_nudge(0.85, True, frames)
+    assert applied
+    assert frames == VF_LC_NUDGE_FRAMES
+
+  def test_drop_resets_count(self):
+    frames, _ = vf_lane_change_nudge(1.5, True, 0)
+    frames, applied = vf_lane_change_nudge(0.4, True, frames)
+    assert frames == 0 and not applied
