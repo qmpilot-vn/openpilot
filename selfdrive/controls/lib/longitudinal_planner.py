@@ -63,22 +63,38 @@ VF_MILD_DECEL_FLOOR = -1.6  # [m/s²] no softening at or beyond this decel
 
 # VinFast ACC standstill gap behind a stopped lead (camera-frame).
 # MPC STOP_DISTANCE is 6.0 m; personality matches the moving T_FOLLOW characteristic.
-# Aggressive is the 4 m floor; relaxed is stock openpilot; standard in between.
+# VF8/VF9: aggressive is the 4 m floor; relaxed is stock openpilot; standard in between.
 VF_STOP_LEAD_GAP_M = {
   int(log.LongitudinalPersonality.aggressive): 4.0,
   int(log.LongitudinalPersonality.standard): 5.0,
   int(log.LongitudinalPersonality.relaxed): 6.0,
 }
+# VF6/VF7 InfoCAN: 4 m sits on the moto at a red light. Sit at stock 6 m even on
+# aggressive, and give standard/relaxed extra room (negative MPC adjust).
+VF67_STOP_LEAD_GAP_M = {
+  int(log.LongitudinalPersonality.aggressive): 6.0,
+  int(log.LongitudinalPersonality.standard): 7.0,
+  int(log.LongitudinalPersonality.relaxed): 8.0,
+}
+VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7"}
 
 
-def vf_stop_lead_adjust_m(personality) -> float:
-  """How far to pull a stopped lead toward ego so the standstill gap matches personality."""
+def vf_stop_lead_gap_m(personality, fingerprint=None) -> float:
   try:
     key = int(personality)
   except (TypeError, ValueError):
     key = int(log.LongitudinalPersonality.standard)
-  gap = VF_STOP_LEAD_GAP_M.get(key, VF_STOP_LEAD_GAP_M[int(log.LongitudinalPersonality.standard)])
-  return max(0.0, STOP_DISTANCE - gap)
+  table = VF67_STOP_LEAD_GAP_M if fingerprint in VF67_STOP_FINGERPRINTS else VF_STOP_LEAD_GAP_M
+  return table.get(key, table[int(log.LongitudinalPersonality.standard)])
+
+
+def vf_stop_lead_adjust_m(personality, fingerprint=None) -> float:
+  """How far to shift a stopped lead so the standstill gap matches personality.
+
+  Positive pulls the obstacle toward ego (tighter than STOP_DISTANCE). Negative
+  pushes it out (VF6/VF7 7–8 m).
+  """
+  return STOP_DISTANCE - vf_stop_lead_gap_m(personality, fingerprint)
 
 
 def get_max_accel(v_ego):
@@ -184,12 +200,12 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
   def __init__(self, CP, CP_SP, init_v=0.0, init_a=0.0, dt=DT_MDL):
     self.CP = CP
     self.mpc = LongitudinalMpc(dt=dt)
-    # VinFast: tighten standstill gap behind a stopped lead (ACC / e2e-off).
-    # Recomputed each cycle from LongitudinalPersonality (4 / 5 / 6 m).
+    # VinFast: standstill gap behind a stopped lead (ACC / e2e-off).
+    # VF8/VF9: 4 / 5 / 6 m. VF6/VF7: 6 / 7 / 8 m. Recomputed from personality.
     # Tests can pin vf_stop_lead_adjust_override so ApproachSim keeps a fixed adjust.
     self.vf_stop_lead_adjust_override = None
     self.mpc.stop_lead_obstacle_adjust_m = (
-      vf_stop_lead_adjust_m(log.LongitudinalPersonality.standard) if CP.brand == "vinfast" else 0.0
+      vf_stop_lead_adjust_m(log.LongitudinalPersonality.standard, CP.carFingerprint) if CP.brand == "vinfast" else 0.0
     )
     LongitudinalPlannerSP.__init__(self, self.CP, CP_SP, self.mpc)
     self.fcw = False
@@ -306,7 +322,8 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       if self.vf_stop_lead_adjust_override is not None:
         self.mpc.stop_lead_obstacle_adjust_m = float(self.vf_stop_lead_adjust_override)
       else:
-        self.mpc.stop_lead_obstacle_adjust_m = vf_stop_lead_adjust_m(sm['selfdriveState'].personality)
+        self.mpc.stop_lead_obstacle_adjust_m = vf_stop_lead_adjust_m(
+          sm['selfdriveState'].personality, self.CP.carFingerprint)
       if self._vn_follow_param_frame % max(1, int(1. / self.dt)) == 0:
         self.vn_follow_enabled = self.params.get_bool("VnLegalFollowDistance")
       self._vn_follow_param_frame += 1
