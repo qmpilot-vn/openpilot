@@ -332,11 +332,11 @@ class LongitudinalMpc:
     lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
     lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
 
-    # VinFast: tighten standstill gap behind a stopped lead (set from longitudinal_planner).
-    # Personality maps to 4 / 5 / 6 m. Engage a bit earlier than crawl speed so
-    # red-light approaches settle to that gap instead of stopping short.
+    # VinFast: shift standstill gap behind a stopped lead (set from longitudinal_planner).
+    # Positive pulls the obstacle closer (VF8/VF9 4–6 m). Negative pushes it out
+    # (VF6/VF7 6–8 m). Apply below crawl speed so red-light approaches settle to that gap.
     stop_adjust = float(getattr(self, "stop_lead_obstacle_adjust_m", 0.0))
-    if stop_adjust > 0.0 and v_ego < 5.0:
+    if stop_adjust != 0.0 and v_ego < 5.0:
       min_safe = STOP_LEAD_MIN_GAP
       if lead_xv_0[0, 1] < 0.5:
         lead_0_obstacle = np.maximum(lead_0_obstacle - stop_adjust, min_safe)
