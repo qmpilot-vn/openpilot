@@ -15,7 +15,7 @@ LANE_CHANGE_TIME_MAX = 10.
 # frames so EPS noise (~1 Nm) does not chatter override. A lane-change tap is the
 # same ~1 Nm signal and is usually gone before that latch fills, so LC never starts.
 # Detect the tap from raw directional torque on the model thread instead.
-VF_LC_NUDGE_NM = 0.85
+VF_LC_NUDGE_NM = 0.8
 VF_LC_NUDGE_FRAMES = 1  # fire on the first model frame (~0.05 s)
 
 
