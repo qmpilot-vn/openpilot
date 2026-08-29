@@ -1,14 +1,17 @@
 """_BYTECODE_SHIM — logic is loaded from __pycache__/radard_impl.*.pyc (same Python minor as build).
 
-VF6/VF7 InfoCAN post-load patches:
+VF6/VF7 InfoCAN post-load patches (VF8/VF9 measured radar is unchanged):
 * red-light stick-slip: clamp near-stopped leads so ego speed does not ping-pong
 * urban following: position-only aLeadK/vLead spikes look like emergency braking
   (seg11 ~21.7s: aLeadK pegged at -3.5 while vision still ~7 m/s)
+* hold a stopped ~7 m InfoCAN lead across a one-frame 3.7 m vision swap
 """
 import importlib.util
 import sys
 from pathlib import Path
 from typing import Any
+
+from openpilot.selfdrive.controls.lib.infocan_lead import InfoCanLeadHold
 
 _IMPL_STEM = "radard_impl"
 _pyc = Path(__file__).resolve().parent / "__pycache__" / f"{_IMPL_STEM}.{sys.implementation.cache_tag}.pyc"
@@ -31,11 +34,14 @@ if hasattr(_mod, "POSITION_ONLY_MAX_VLEAD_STEP"):
 if hasattr(_mod, "POSITION_ONLY_FUSION_MAX_VABS"):
   _mod.POSITION_ONLY_FUSION_MAX_VABS = 1.5
 
-# VF7 InfoCAN: offset motorbikes in the host lane at red lights (no-op if absent).
-if hasattr(_mod, "INFO_HOST_CREEP_MAX_LAT"):
-  _mod.INFO_HOST_CREEP_MAX_LAT = 2.0
-if hasattr(_mod, "INFO_HOST_MIN_TRACK_CNT"):
-  _mod.INFO_HOST_MIN_TRACK_CNT = 2
+# Impl interpolates to -3.5 below 40 m. That is what long MPC treated as an
+# emergency stop on a rolling moto whose dRel was merely stick-slipping.
+if hasattr(_mod, "POSITION_ONLY_ALEADK_V"):
+  _mod.POSITION_ONLY_ALEADK_V = (-1.2, -1.0)
+
+# Real pyc knobs (INFO_HOST_* never existed). Widen creep path for VN lane-share.
+if hasattr(_mod, "URBAN_CREEP_PATH_MAX_LAT"):
+  _mod.URBAN_CREEP_PATH_MAX_LAT = 1.8
 
 # Treat lead as stationary when absolute speed estimate is below this at low ego speed.
 _VF_STOPPED_LEAD_V = 1.2  # [m/s]
@@ -124,5 +130,33 @@ if _orig_stabilize_position_only is not None:
     return _temper_position_only_lead(lead_dict, track, v_ego)
 
   _mod.stabilize_position_only_radar_lead = stabilize_position_only_radar_lead
+
+# A 3.7 m InfoCAN ghost has TTC/dRel that bypasses the packaged 3.5 m hold.
+# Tighten bypass only for unmeasured tracks; VF8/VF9 Doppler is unchanged.
+_orig_stability_hold = getattr(_mod, "apply_lead_stability_hold", None)
+if _orig_stability_hold is not None:
+  def apply_lead_stability_hold(lead_dict, track, v_ego):
+    if getattr(track, "measured", True):
+      return _orig_stability_hold(lead_dict, track, v_ego)
+    old_d = getattr(_mod, "LEAD_STABILITY_MIN_DREL", 3.5)
+    old_ttc = getattr(_mod, "LEAD_STABILITY_BYPASS_TTC", 1.0)
+    _mod.LEAD_STABILITY_MIN_DREL = 2.5
+    _mod.LEAD_STABILITY_BYPASS_TTC = 0.6
+    try:
+      return _orig_stability_hold(lead_dict, track, v_ego)
+    finally:
+      _mod.LEAD_STABILITY_MIN_DREL = old_d
+      _mod.LEAD_STABILITY_BYPASS_TTC = old_ttc
+
+  _mod.apply_lead_stability_hold = apply_lead_stability_hold
+
+_infocan_hold = InfoCanLeadHold()
+_orig_get_lead = getattr(_mod, "get_lead", None)
+if _orig_get_lead is not None:
+  def get_lead(v_ego, ready, tracks, *args, **kwargs):
+    lead = _orig_get_lead(v_ego, ready, tracks, *args, **kwargs)
+    return _infocan_hold.update(lead, tracks, v_ego)
+
+  _mod.get_lead = get_lead
 
 sys.modules[__name__] = _mod
