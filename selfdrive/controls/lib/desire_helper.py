@@ -1,4 +1,4 @@
-from cereal import log, custom
+from cereal import car, log, custom
 from openpilot.common.constants import CV
 from openpilot.common.realtime import DT_MDL
 from openpilot.sunnypilot.selfdrive.controls.lib.auto_lane_change import AutoLaneChangeController, AutoLaneChangeMode
@@ -10,6 +10,27 @@ TurnDirection = custom.ModelDataV2SP.TurnDirection
 
 LANE_CHANGE_SPEED_MIN = 20 * CV.KPH_TO_MS
 LANE_CHANGE_TIME_MAX = 10.
+
+# VinFast C4 carstate latches steeringPressed at STEER_DRIVER_PRESS_NM (2.0) for 15
+# frames so EPS noise (~1 Nm) does not chatter override. A lane-change tap is the
+# same ~1 Nm signal and is usually gone before that latch fills, so LC never starts.
+# Detect the tap from raw directional torque on the model thread instead.
+VF_LC_NUDGE_NM = 0.8
+VF_LC_NUDGE_FRAMES = 1  # fire on the first model frame (~0.05 s)
+
+
+def _torque_in_lane_change_direction(carstate, direction) -> bool:
+  return ((carstate.steeringTorque > 0 and direction == LaneChangeDirection.left) or
+          (carstate.steeringTorque < 0 and direction == LaneChangeDirection.right))
+
+
+def vf_lane_change_nudge(torque_nm: float, directional: bool, frames: int) -> tuple[int, bool]:
+  """Count a VinFast LC tap. Returns (updated_frames, applied)."""
+  if directional and abs(torque_nm) >= VF_LC_NUDGE_NM:
+    frames += 1
+  else:
+    frames = 0
+  return frames, frames >= VF_LC_NUDGE_FRAMES
 
 DESIRES = {
   LaneChangeDirection.none: {
@@ -51,6 +72,21 @@ class DesireHelper:
     self.alc = AutoLaneChangeController(self)
     self.lane_turn_controller = LaneTurnController(self)
     self.lane_turn_direction = TurnDirection.none
+    self.vf_lc_nudge_frames = 0
+    self._is_vinfast = None
+
+  def _use_vf_lc_nudge(self) -> bool:
+    if self._is_vinfast is not None:
+      return self._is_vinfast
+    try:
+      cp_bytes = self.alc.params.get("CarParams")
+      if not cp_bytes:
+        return False
+      with car.CarParams.from_bytes(cp_bytes) as cp:
+        self._is_vinfast = cp.brand == "vinfast" or "VINFAST" in str(cp.carFingerprint)
+    except Exception:
+      return False
+    return self._is_vinfast
 
   @staticmethod
   def get_lane_change_direction(CS):
@@ -84,9 +120,14 @@ class DesireHelper:
         # Update lane change direction
         self.lane_change_direction = self.get_lane_change_direction(carstate)
 
-        torque_applied = carstate.steeringPressed and \
-                         ((carstate.steeringTorque > 0 and self.lane_change_direction == LaneChangeDirection.left) or
-                          (carstate.steeringTorque < 0 and self.lane_change_direction == LaneChangeDirection.right))
+        directional = _torque_in_lane_change_direction(carstate, self.lane_change_direction)
+        torque_applied = bool(carstate.steeringPressed and directional)
+        if self._use_vf_lc_nudge():
+          self.vf_lc_nudge_frames, vf_nudge = vf_lane_change_nudge(
+            float(carstate.steeringTorque), directional, self.vf_lc_nudge_frames)
+          torque_applied = torque_applied or vf_nudge
+        else:
+          self.vf_lc_nudge_frames = 0
 
         blindspot_detected = ((carstate.leftBlindspot and self.lane_change_direction == LaneChangeDirection.left) or
                               (carstate.rightBlindspot and self.lane_change_direction == LaneChangeDirection.right))
@@ -124,6 +165,8 @@ class DesireHelper:
       self.lane_change_timer = 0.0
     else:
       self.lane_change_timer += DT_MDL
+    if self.lane_change_state != LaneChangeState.preLaneChange:
+      self.vf_lc_nudge_frames = 0
 
     self.prev_one_blinker = one_blinker
 
