@@ -36,13 +36,20 @@ EventName = log.OnroadEvent.EventName
 # works because the controller re-reads ANGLE_LIMITS on every cycle.
 VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 100.0, "VINFAST_VF9": 100.0}
 
-# VF8/VF9 LongControl stop-hold only (not re-engage). 30% softer than stock -2.0 / 0.8.
-VINFAST_STOP_ACCEL = {"VINFAST_VF8": -1.4, "VINFAST_VF9": -1.4}
-VINFAST_STOPPING_DECEL_RATE = {"VINFAST_VF8": 0.56, "VINFAST_VF9": 0.56}
-
 # VF9 is packaged with a 7/5/3 deg-per-step slew (~700 deg/s at standstill), which chases
 # the plan more abruptly than the car needs. deg/step at 100 Hz, keyed by speed in m/s.
 VINFAST_STEER_ANGLE_RATE = {"VINFAST_VF9": ([0., 20., 40.], [1.5, 1.0, 0.6])}
+
+# LongControl stop-hold only (not re-engage). 30% softer than stock -2.0 / 0.8,
+# same last-meter ramp as VF8/VF9 so VF6/VF7 do not get a second brake poke.
+VINFAST_STOP_ACCEL = {
+  "VINFAST_VF6": -1.4, "VINFAST_VF7": -1.4,
+  "VINFAST_VF8": -1.4, "VINFAST_VF9": -1.4,
+}
+VINFAST_STOPPING_DECEL_RATE = {
+  "VINFAST_VF6": 0.56, "VINFAST_VF7": 0.56,
+  "VINFAST_VF8": 0.56, "VINFAST_VF9": 0.56,
+}
 
 # forward
 carlog.addHandler(ForwardingHandler(cloudlog))

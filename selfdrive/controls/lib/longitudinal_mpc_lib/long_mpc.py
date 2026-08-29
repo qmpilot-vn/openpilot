@@ -54,9 +54,9 @@ T_IDXS = np.array(T_IDXS_LST)
 FCW_IDXS = T_IDXS < 5.0
 T_DIFFS = np.diff(T_IDXS, prepend=[0.])
 COMFORT_BRAKE = 2.5
-STOP_DISTANCE = 6.0
+STOP_DISTANCE = 6.0  # keep in lockstep with vn_follow.STOP_DISTANCE
 # Floor for the tightened standstill gap (see stop_lead_obstacle_adjust_m).
-# VinFast ACC never sits closer than this behind a stopped lead.
+# VinFast ACC never sits closer than this behind a stopped lead (VF8/VF9 aggressive).
 STOP_LEAD_MIN_GAP = 4.0
 CRUISE_MIN_ACCEL = -1.2
 CRUISE_MAX_ACCEL = 1.6
@@ -317,8 +317,9 @@ class LongitudinalMpc:
     lead_xv = self.extrapolate_lead(x_lead, v_lead, a_lead, a_lead_tau)
     return lead_xv
 
-  def update(self, radarstate, v_cruise, personality=log.LongitudinalPersonality.standard):
-    t_follow = get_T_FOLLOW(personality)
+  def update(self, radarstate, v_cruise, personality=log.LongitudinalPersonality.standard, t_follow=None):
+    if t_follow is None:
+      t_follow = get_T_FOLLOW(personality)
     v_ego = self.x0[1]
     self.status = radarstate.leadOne.status or radarstate.leadTwo.status
 
@@ -331,11 +332,11 @@ class LongitudinalMpc:
     lead_0_obstacle = lead_xv_0[:,0] + get_stopped_equivalence_factor(lead_xv_0[:,1])
     lead_1_obstacle = lead_xv_1[:,0] + get_stopped_equivalence_factor(lead_xv_1[:,1])
 
-    # VinFast: tighten standstill gap behind a stopped lead (set from longitudinal_planner).
-    # Personality maps to 4 / 5 / 6 m. Engage a bit earlier than crawl speed so
-    # red-light approaches settle to that gap instead of stopping short.
+    # VinFast: shift standstill gap behind a stopped lead (set from longitudinal_planner).
+    # Positive pulls the obstacle closer (VF8/VF9 4–6 m). Negative pushes it out
+    # (VF6/VF7 6–8 m). Apply below crawl speed so red-light approaches settle to that gap.
     stop_adjust = float(getattr(self, "stop_lead_obstacle_adjust_m", 0.0))
-    if stop_adjust > 0.0 and v_ego < 5.0:
+    if stop_adjust != 0.0 and v_ego < 5.0:
       min_safe = STOP_LEAD_MIN_GAP
       if lead_xv_0[0, 1] < 0.5:
         lead_0_obstacle = np.maximum(lead_0_obstacle - stop_adjust, min_safe)

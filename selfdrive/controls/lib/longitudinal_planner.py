@@ -10,10 +10,11 @@ from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import DT_MDL
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.controls.lib.longcontrol import LongCtrlState
-from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc, LongitudinalPlanSource, STOP_DISTANCE
+from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import LongitudinalMpc, LongitudinalPlanSource, STOP_DISTANCE, get_T_FOLLOW
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import T_IDXS as T_IDXS_MPC
 from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_from_plan
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
+from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_min_follow_m
 from openpilot.common.swaglog import cloudlog
 
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlannerSP
@@ -59,7 +60,7 @@ VF_MILD_DECEL_SCALE = 0.93
 VF_MILD_SOFTEN_START = 0.4  # [m/s²] full softening below this decel
 VF_MILD_DECEL_FLOOR = -1.6  # [m/s²] no softening at or beyond this decel
 
-# VinFast ACC standstill gap behind a stopped lead (camera-frame).
+# VF8/VF9 C4: standstill gap behind a stopped lead (camera-frame).
 # MPC STOP_DISTANCE is 6.0 m; personality matches the moving T_FOLLOW characteristic.
 # Aggressive is the 4 m floor; relaxed is stock openpilot; standard in between.
 VF_STOP_LEAD_GAP_M = {
@@ -67,16 +68,35 @@ VF_STOP_LEAD_GAP_M = {
   int(log.LongitudinalPersonality.standard): 5.0,
   int(log.LongitudinalPersonality.relaxed): 6.0,
 }
+# VF6/VF7 InfoCAN: a 4 m gap sits on the moto at a red light. Sit at stock 6 m even
+# on aggressive, and give standard/relaxed extra room (negative MPC adjust).
+VF67_STOP_LEAD_GAP_M = {
+  int(log.LongitudinalPersonality.aggressive): 6.0,
+  int(log.LongitudinalPersonality.standard): 7.0,
+  int(log.LongitudinalPersonality.relaxed): 8.0,
+}
+VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7"}
+
+# Set False to restore personality-only T_FOLLOW (no Thông tư 38/2024 floor).
+VN_LEGAL_FOLLOW = True
 
 
-def vf_stop_lead_adjust_m(personality) -> float:
-  """How far to pull a stopped lead toward ego so the standstill gap matches personality."""
+def vf_stop_lead_gap_m(personality, fingerprint=None) -> float:
   try:
     key = int(personality)
   except (TypeError, ValueError):
     key = int(log.LongitudinalPersonality.standard)
-  gap = VF_STOP_LEAD_GAP_M.get(key, VF_STOP_LEAD_GAP_M[int(log.LongitudinalPersonality.standard)])
-  return max(0.0, STOP_DISTANCE - gap)
+  table = VF67_STOP_LEAD_GAP_M if fingerprint in VF67_STOP_FINGERPRINTS else VF_STOP_LEAD_GAP_M
+  return table.get(key, table[int(log.LongitudinalPersonality.standard)])
+
+
+def vf_stop_lead_adjust_m(personality, fingerprint=None) -> float:
+  """How far to shift a stopped lead so the standstill gap matches the platform.
+
+  Positive pulls the obstacle toward ego (VF8/VF9 4–6 m). Negative pushes it
+  out (VF6/VF7 7–8 m). Zero leaves STOP_DISTANCE.
+  """
+  return STOP_DISTANCE - vf_stop_lead_gap_m(personality, fingerprint)
 
 
 def get_max_accel(v_ego):
@@ -182,12 +202,11 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
   def __init__(self, CP, CP_SP, init_v=0.0, init_a=0.0, dt=DT_MDL):
     self.CP = CP
     self.mpc = LongitudinalMpc(dt=dt)
-    # VinFast: tighten standstill gap behind a stopped lead (ACC / e2e-off).
-    # Recomputed each cycle from LongitudinalPersonality (4 / 5 / 6 m).
-    # Tests can pin vf_stop_lead_adjust_override so ApproachSim keeps a fixed adjust.
+    # VinFast standstill: VF8/VF9 4/5/6 m from personality. VF6/VF7 6/7/8 m.
+    # Tests can pin vf_stop_lead_adjust_override.
     self.vf_stop_lead_adjust_override = None
     self.mpc.stop_lead_obstacle_adjust_m = (
-      vf_stop_lead_adjust_m(log.LongitudinalPersonality.standard) if CP.brand == "vinfast" else 0.0
+      vf_stop_lead_adjust_m(log.LongitudinalPersonality.standard, CP.carFingerprint) if CP.brand == "vinfast" else 0.0
     )
     LongitudinalPlannerSP.__init__(self, self.CP, CP_SP, self.mpc)
     self.fcw = False
@@ -201,6 +220,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.output_should_stop = False
     self.vf_redlight_count = 0
     self.vf_redlight_hold = 0
+    self.vn_follow_m = None
 
     self.v_desired_trajectory = np.zeros(CONTROL_N)
     self.a_desired_trajectory = np.zeros(CONTROL_N)
@@ -295,15 +315,25 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     if force_slow_decel:
       v_cruise = 0.0
 
+    t_follow = None
     if self.CP.brand == "vinfast":
       if self.vf_stop_lead_adjust_override is not None:
         self.mpc.stop_lead_obstacle_adjust_m = float(self.vf_stop_lead_adjust_override)
       else:
-        self.mpc.stop_lead_obstacle_adjust_m = vf_stop_lead_adjust_m(sm['selfdriveState'].personality)
+        self.mpc.stop_lead_obstacle_adjust_m = vf_stop_lead_adjust_m(
+          sm['selfdriveState'].personality, self.CP.carFingerprint)
+      if VN_LEGAL_FOLLOW:
+        # Highway floor: max(personality T_FOLLOW, legal 35/55/70/100 m). No-op below 60 km/h.
+        self.vn_follow_m = vn_min_follow_m(v_ego, self.vn_follow_m)
+        t_follow = effective_t_follow(v_ego, get_T_FOLLOW(sm['selfdriveState'].personality), self.vn_follow_m)
+      else:
+        self.vn_follow_m = None
+    else:
+      self.vn_follow_m = None
 
     self.mpc.set_weights(prev_accel_constraint, personality=sm['selfdriveState'].personality)
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
-    self.mpc.update(sm['radarState'], v_cruise, personality=sm['selfdriveState'].personality)
+    self.mpc.update(sm['radarState'], v_cruise, personality=sm['selfdriveState'].personality, t_follow=t_follow)
 
     self.v_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.v_solution)
     self.a_desired_trajectory = np.interp(CONTROL_N_T_IDX, T_IDXS_MPC, self.mpc.a_solution)
@@ -328,7 +358,13 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     if self.is_e2e(sm):
       output_a_target = min(output_a_target_e2e, output_a_target_mpc)
       self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
-      if output_a_target < output_a_target_mpc:
+      # VN floor: if closer than the legal gap, do not let e2e coast/accel inside it.
+      lead = sm['radarState'].leadOne
+      vn_gap = self.vn_follow_m
+      if (vn_gap is not None and lead.status and float(lead.dRel) < vn_gap
+          and output_a_target_e2e > output_a_target_mpc):
+        output_a_target = output_a_target_mpc
+      elif output_a_target < output_a_target_mpc:
         self.mpc.source = LongitudinalPlanSource.e2e
     else:
       output_a_target = output_a_target_mpc
