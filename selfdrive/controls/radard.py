@@ -4,6 +4,10 @@ VF6/VF7 InfoCAN post-load patches:
 * red-light stick-slip: clamp near-stopped leads so ego speed does not ping-pong
 * urban following: position-only aLeadK/vLead spikes look like emergency braking
   (seg11 ~21.7s: aLeadK pegged at -3.5 while vision still ~7 m/s)
+
+VF8/VF9 + PMV2 highway post-load patches:
+* radar-only / candidate range and path corridor were too tight above ~100 km/h
+* |vRel| and static-lead caps dropped slowing/stopped in-path cars until close
 """
 import importlib.util
 import sys
@@ -36,6 +40,50 @@ if hasattr(_mod, "INFO_HOST_CREEP_MAX_LAT"):
   _mod.INFO_HOST_CREEP_MAX_LAT = 2.0
 if hasattr(_mod, "INFO_HOST_MIN_TRACK_CNT"):
   _mod.INFO_HOST_MIN_TRACK_CNT = 2
+
+# VF8/VF9 + PMV2 alpha-long: vision lead_prob locks late at highway speed, so
+# radard falls through to radar-only. MRR already reports to 300 m, but several
+# gates then drop the in-path track until it is already close.
+_VF_HIGHWAY_VEGO = 100.0 / 3.6
+_VF_RADAR_ONLY_MAX_DIST = 220.0
+_VF_MAX_LEAD_DIST = 250.0
+_VF_RADAR_ONLY_MAX_LAT = 4.5
+_VF_STATIC_LEAD_DIST_HIGHWAY = 180.0
+_VF_PATH_TOL_BP = [5.0, 30.0, 60.0, 120.0, 220.0]
+_VF_PATH_TOL_V = [1.2, 1.5, 2.5, 3.5, 4.5]
+_VF_URBAN_PATH_TOL_V = [1.9, 2.0, 2.5, 3.5, 4.5]
+if hasattr(_mod, "RADAR_ONLY_MAX_DIST"):
+  _mod.RADAR_ONLY_MAX_DIST = _VF_RADAR_ONLY_MAX_DIST
+if hasattr(_mod, "MAX_LEAD_DIST"):
+  _mod.MAX_LEAD_DIST = _VF_MAX_LEAD_DIST
+if hasattr(_mod, "RADAR_ONLY_MAX_LAT"):
+  _mod.RADAR_ONLY_MAX_LAT = _VF_RADAR_ONLY_MAX_LAT
+if hasattr(_mod, "PATH_TOL_BP"):
+  _mod.PATH_TOL_BP = _VF_PATH_TOL_BP
+if hasattr(_mod, "PATH_TOL_V"):
+  _mod.PATH_TOL_V = _VF_PATH_TOL_V
+if hasattr(_mod, "URBAN_PATH_TOL_V"):
+  _mod.URBAN_PATH_TOL_V = _VF_URBAN_PATH_TOL_V
+
+_orig_max_vrel = float(getattr(_mod, "MAX_VREL_FILTER", 25.0))
+_orig_max_static = float(getattr(_mod, "MAX_STATIC_LEAD_DIST", 50.0))
+_orig_select_best = getattr(_mod, "select_best_radar_track", None)
+if _orig_select_best is not None:
+  def select_best_radar_track(tracks, v_ego, *args, **kwargs):
+    # Stopped lead |vRel| ≈ v_ego; +10 m/s covers far-range vRel noise.
+    # Oncoming is ~2 v_ego and still rejected.
+    _mod.MAX_VREL_FILTER = max(_orig_max_vrel, float(v_ego) + 10.0)
+    if float(v_ego) >= _VF_HIGHWAY_VEGO:
+      _mod.MAX_STATIC_LEAD_DIST = _VF_STATIC_LEAD_DIST_HIGHWAY
+    else:
+      _mod.MAX_STATIC_LEAD_DIST = _orig_max_static
+    try:
+      return _orig_select_best(tracks, v_ego, *args, **kwargs)
+    finally:
+      _mod.MAX_VREL_FILTER = _orig_max_vrel
+      _mod.MAX_STATIC_LEAD_DIST = _orig_max_static
+
+  _mod.select_best_radar_track = select_best_radar_track
 
 # Treat lead as stationary when absolute speed estimate is below this at low ego speed.
 _VF_STOPPED_LEAD_V = 1.2  # [m/s]
