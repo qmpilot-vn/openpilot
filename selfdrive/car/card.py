@@ -7,6 +7,7 @@ import cereal.messaging as messaging
 
 from cereal import car, log, custom
 
+from openpilot.common.constants import CV
 from openpilot.common.params import Params
 from openpilot.common.realtime import config_realtime_process, Priority, Ratekeeper
 from openpilot.common.swaglog import cloudlog, ForwardingHandler
@@ -50,6 +51,13 @@ VINFAST_STOPPING_DECEL_RATE = {
   "VINFAST_VF6": 0.56, "VINFAST_VF7": 0.56,
   "VINFAST_VF8": 0.56, "VINFAST_VF9": 0.56,
 }
+
+# Wheel-speed vEgo reads low vs MHU at highway speed. Add this offset so
+# openpilot matches the cluster. No correction at/below 80 km/h; fade in
+# to full offset by 100 km/h.
+VINFAST_VEGO_OFFSET_KPH = 3.0
+VINFAST_VEGO_OFFSET_START_KPH = 80.0
+VINFAST_VEGO_OFFSET_FULL_KPH = 100.0
 
 # forward
 carlog.addHandler(ForwardingHandler(cloudlog))
@@ -102,6 +110,17 @@ def apply_vinfast_steer_limits(CP: car.CarParams, CI: CarInterfaceBase) -> None:
     cloudlog.warning(f"{CP.carFingerprint}: limiting steer rate to {angle_rate[1]} deg/step (port allows {limits.ANGLE_RATE_LIMIT_UP[1]})")
     limits.ANGLE_RATE_LIMIT_UP = angle_rate
     limits.ANGLE_RATE_LIMIT_DOWN = angle_rate
+
+
+def apply_vinfast_vego_offset(CS: car.CarState) -> None:
+  v_kph = float(CS.vEgo) * CV.MS_TO_KPH
+  if v_kph <= VINFAST_VEGO_OFFSET_START_KPH:
+    return
+  span = VINFAST_VEGO_OFFSET_FULL_KPH - VINFAST_VEGO_OFFSET_START_KPH
+  scale = min(1.0, (v_kph - VINFAST_VEGO_OFFSET_START_KPH) / span)
+  offset_ms = VINFAST_VEGO_OFFSET_KPH * scale * CV.KPH_TO_MS
+  CS.vEgo = max(CS.vEgo + offset_ms, 0.0)
+  CS.vEgoRaw = max(CS.vEgoRaw + offset_ms, 0.0)
 
 
 def apply_vinfast_stop_hold(CP: car.CarParams) -> None:
@@ -274,6 +293,8 @@ class Car:
 
     # Update carState from CAN
     CS, CS_SP = self.CI.update(can_list)
+    if self.CP.brand == "vinfast":
+      apply_vinfast_vego_offset(CS)
     CS_SP = convert_to_capnp(CS_SP)
 
     # Update radar tracks from CAN
