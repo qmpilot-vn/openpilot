@@ -27,6 +27,7 @@ legend = ["LAT_ACCEL_FACTOR", "MAX_LAT_ACCEL_MEASURED", "FRICTION"]
 "VINFAST_VF6" = [nan, 2.0, nan]
 "VINFAST_VF7_PLUS" = [nan, 2.0, nan]
 "VINFAST_VF8" = [nan, 2.0, nan]
+"VINFAST_VF8_ECO" = [nan, 2.0, nan]
 "VINFAST_VF9" = [nan, 2.0, nan]
 
 # Guess

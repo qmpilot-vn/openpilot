@@ -35,3 +35,11 @@ _mod.__file__ = str(_so)
 _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
+
+from copy import deepcopy
+
+from opendbc.car.vinfast.values import CAR as _CAR
+
+if _CAR.VINFAST_VF8_ECO not in _mod.FINGERPRINTS:
+  _mod.FINGERPRINTS[_CAR.VINFAST_VF8_ECO] = deepcopy(_mod.FINGERPRINTS[_CAR.VINFAST_VF8])
+  _mod.FW_VERSIONS[_CAR.VINFAST_VF8_ECO] = deepcopy(_mod.FW_VERSIONS[_CAR.VINFAST_VF8])
