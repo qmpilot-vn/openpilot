@@ -1,4 +1,3 @@
-import os
 import pickle
 
 import numpy as np
@@ -38,18 +37,14 @@ class TinygradRunner(ModelRunner, SupercomboTinygrad, PolicyTinygrad, VisionTiny
       f"Invalid model file {artifact_filename} for TinygradRunner"
 
     model_pkl_path = f"{CUSTOM_MODEL_PATH}/{artifact_filename}"
-    from openpilot.common.file_chunker import get_manifest_path, open_file_chunked
-    if not os.path.exists(model_pkl_path) and not os.path.exists(get_manifest_path(model_pkl_path)):
-      from openpilot.sunnypilot.models.bundled_model import BUNDLED_PKL_NAME, bundled_pkl_path
-      if artifact_filename == BUNDLED_PKL_NAME:
-        model_pkl_path = bundled_pkl_path()
-    try:
-      # Load the compiled Tinygrad model runner function
-      self.model_run = pickle.load(open_file_chunked(model_pkl_path))
-    except FileNotFoundError as e:
-      # Provide a helpful error message if the model was built for a different platform
-      assert "/dev/kgsl-3d0" not in str(e), "Model was built on C3 or C3X, but is being loaded on PC"
-      raise
+    with open(model_pkl_path, "rb") as f:
+      try:
+        # Load the compiled Tinygrad model runner function
+        self.model_run = pickle.load(f)
+      except FileNotFoundError as e:
+        # Provide a helpful error message if the model was built for a different platform
+        assert "/dev/kgsl-3d0" not in str(e), "Model was built on C3 or C3X, but is being loaded on PC"
+        raise
 
     # Map input names to their required dtype and device from the loaded model
     self.input_to_dtype = {}

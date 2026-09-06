@@ -250,13 +250,6 @@ class ModelManagerSP:
     """Main thread for model management"""
     rk = Ratekeeper(1, print_delay_threshold=None)
     drop_compiled_download_default = True
-    try:
-      from openpilot.sunnypilot.models.bundled_model import ensure_bundled_model
-      seeded = ensure_bundled_model()
-      if seeded:
-        cloudlog.warning(f"Seeded bundled PMV2 at {seeded}")
-    except Exception:
-      cloudlog.exception("failed to seed bundled PMV2")
 
     while True:
       try:
