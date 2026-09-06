@@ -6,14 +6,35 @@ See the LICENSE.md file in the root directory for more details.
 """
 
 import time
-
+import os
 import requests
 from requests.exceptions import (SSLError, RequestException, HTTPError)
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-from openpilot.sunnypilot.models.helpers import ensure_pmv2_lat_override, is_bundle_version_compatible
+from openpilot.system.hardware.hw import Paths
+from sunnypilot.models.helpers import ensure_pmv2_lat_override, is_bundle_version_compatible
 
 from cereal import custom
+
+# C++ ui is compiled against the old ModelManagerSP schema (no Chunk / chunked).
+# Keep chunk lists here so Python can still download v18 pkls without publishing
+# schema fields the native UI cannot decode.
+ARTIFACT_CHUNKS: dict[str, list[dict]] = {}
+_MANIFEST_MISMATCH_LOGGED: set[str] = set()
+
+_MODEL_TYPE_MAP = {
+  "supercombo": "supercombo",
+  "navigation": "navigation",
+  "vision": "vision",
+  "policy": "policy",
+  "chunked": "supercombo",
+  "offPolicy": "policy",
+  "onPolicy": "policy",
+}
+
+
+def get_artifact_chunks(file_name: str) -> list[dict]:
+  return ARTIFACT_CHUNKS.get(file_name) or []
 
 
 class ModelParser:
@@ -31,13 +52,35 @@ class ModelParser:
     artifact = custom.ModelManagerSP.Artifact()
     artifact.fileName = artifact_data.get("file_name")
     artifact.downloadUri = ModelParser._parse_download_uri(artifact_data.get("download_uri", {}))
+
+    chunks = artifact_data.get("chunks") or []
+    if artifact.fileName and chunks:
+      ARTIFACT_CHUNKS[artifact.fileName] = chunks
+      try:
+        model_dir = Paths.model_root()
+        os.makedirs(model_dir, exist_ok=True)
+        manifest_path = os.path.join(model_dir, f"{artifact.fileName}.chunkmanifest")
+        num_chunks = str(len(chunks))
+
+        if not os.path.exists(manifest_path):
+          with open(manifest_path, "w") as f:
+            f.write(num_chunks)
+          cloudlog.info(f"Wrote chunk manifest for {artifact.fileName}: {num_chunks} chunks")
+        elif open(manifest_path).read().strip() != num_chunks:
+          if artifact.fileName not in _MANIFEST_MISMATCH_LOGGED:
+            _MANIFEST_MISMATCH_LOGGED.add(artifact.fileName)
+            cloudlog.warning(f"Keeping existing chunk manifest for {artifact.fileName} (not overwriting with {num_chunks})")
+      except Exception as e:
+        cloudlog.warning(f"Failed to write chunk manifest for {artifact.fileName}: {e}")
+
     return artifact
 
   @staticmethod
   def _parse_model(model_data) -> custom.ModelManagerSP.Model:
     model = custom.ModelManagerSP.Model()
 
-    model.type = model_data.get("type")
+    raw_type = model_data.get("type")
+    model.type = _MODEL_TYPE_MAP.get(raw_type, "supercombo")
     model.artifact = ModelParser._parse_artifact(model_data.get("artifact", {}))
     if metadata := model_data.get("metadata"):
       model.metadata = ModelParser._parse_artifact(metadata)
@@ -66,8 +109,9 @@ class ModelParser:
     model_bundle.runner = bundle.get("runner", custom.ModelManagerSP.Runner.snpe)
     model_bundle.is20hz = bundle.get("is_20hz", False)
     model_bundle.minimumSelectorVersion = int(bundle["minimum_selector_version"])
-    overrides_data = ensure_pmv2_lat_override(dict(bundle.get("overrides", {})), bundle.get("short_name", ""))
-    model_bundle.overrides = ModelParser._parse_overrides(overrides_data)
+    model_bundle.overrides = ModelParser._parse_overrides(
+      ensure_pmv2_lat_override(dict(bundle.get("overrides", {})), bundle.get("short_name", ""))
+    )
     model_bundle.ref = bundle.get("ref")
 
     return model_bundle
@@ -117,7 +161,7 @@ class ModelCache:
 
 class ModelFetcher:
   """Handles fetching and caching of model data from remote source"""
-  MODEL_URL = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_v16.json"
+  MODEL_URL = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_v18.json"
 
   def __init__(self, params: Params):
     self.params = params
@@ -131,12 +175,10 @@ class ModelFetcher:
     try:
       response = requests.get(self.MODEL_URL, timeout=10)
 
-      # Explicitly handle 404 differently
       if response.status_code == 404:
         cloudlog.error(f"Models URL returned 404 Not Found: {self.MODEL_URL}")
         raise HTTPError(f"404 Not Found: {self.MODEL_URL}", response=response)
 
-      # Raise for any other 4xx/5xx
       response.raise_for_status()
 
       json_data = response.json()
@@ -160,8 +202,11 @@ class ModelFetcher:
     cached_data, is_expired = self.model_cache.get()
 
     if cached_data and not is_expired:
-      cloudlog.debug("Using valid cached models data")
-      return self.model_parser.parse_models(cached_data)
+      parsed = self.model_parser.parse_models(cached_data)
+      if parsed:
+        cloudlog.debug("Using valid cached models data")
+        return parsed
+      cloudlog.warning("Cached models are incompatible with selector v16; fetching v18 catalog")
 
     fetched_bundles = self._fetch_and_cache_models()
     if fetched_bundles is not None:
@@ -180,9 +225,8 @@ if __name__ == "__main__":
   for bundle in bundles:
     for model in bundle.models:
       model_overrides = {override.key: override.value for override in bundle.overrides}
-      # Print model details
       print(f"Bundle: {bundle.internalName}, Type: {model.type}, Status: {bundle.status}, Overrides: {model_overrides}")
-      # Print artifact details
       print(f"Artifact: {model.artifact.fileName}, Download URI: {model.artifact.downloadUri.uri}")
-      # Print metadata details
-      print(f"Metadata: {model.metadata.fileName}, Download URI: {model.metadata.downloadUri.uri}")
+      chunks = get_artifact_chunks(model.artifact.fileName)
+      if chunks:
+        print(f"Contains {len(chunks)} chunks.")
