@@ -54,6 +54,25 @@ IMG_QUEUE_SHAPE = (6*(ModelConstants.MODEL_RUN_FREQ//ModelConstants.MODEL_CONTEX
 assert IMG_QUEUE_SHAPE[0] == 30
 
 
+def _load_pkl(path, chunked: bool = True):
+  """Unpickle a compiled tinygrad JIT, turning enum-drift failures into a readable message.
+
+  tinygrad pickles store Ops as enum integers, so a pickle built against a different tinygrad
+  fails deep inside UOpMetaClass.__call__ with a bare assert about the wrong op.
+  """
+  try:
+    if chunked:
+      return pickle.loads(read_file_chunked(str(path)))
+    with open(path, "rb") as f:
+      return pickle.load(f)
+  except (AssertionError, AttributeError, ValueError) as e:
+    from openpilot.sunnypilot.models.tinygrad_ref import get_tinygrad_ref
+    raise RuntimeError(
+      f"{path} was compiled for a different tinygrad than the one vendored here "
+      f"(tinygrad_repo ref {get_tinygrad_ref()}); recompile the model artifacts. Original error: {e!r}"
+    ) from e
+
+
 def get_action_from_model(model_output: dict[str, np.ndarray], prev_action: log.ModelDataV2.Action,
                           lat_action_t: float, long_action_t: float, v_ego: float) -> log.ModelDataV2.Action:
     plan = model_output['plan'][0]
@@ -186,8 +205,8 @@ class ModelState(ModelStateBase):
     self.parser = Parser()
     self.frame_buf_params : dict[str, tuple[int, int, int, int]] = {}
     self.update_imgs = None
-    self.vision_run = pickle.loads(read_file_chunked(str(VISION_PKL_PATH)))
-    self.policy_run = pickle.loads(read_file_chunked(str(POLICY_PKL_PATH)))
+    self.vision_run = _load_pkl(VISION_PKL_PATH)
+    self.policy_run = _load_pkl(POLICY_PKL_PATH)
 
   def slice_outputs(self, model_outputs: np.ndarray, output_slices: dict[str, slice]) -> dict[str, np.ndarray]:
     parsed_model_outputs = {k: model_outputs[np.newaxis, v] for k,v in output_slices.items()}
@@ -203,9 +222,7 @@ class ModelState(ModelStateBase):
       for key in bufs.keys():
         w, h = bufs[key].width, bufs[key].height
         self.frame_buf_params[key] = get_nv12_info(w, h)
-      warp_path = MODELS_DIR / f'warp_{w}x{h}_tinygrad.pkl'
-      with open(warp_path, "rb") as f:
-        self.update_imgs = pickle.load(f)
+      self.update_imgs = _load_pkl(MODELS_DIR / f'warp_{w}x{h}_tinygrad.pkl', chunked=False)
 
     for key in bufs.keys():
       ptr = bufs[key].data.ctypes.data

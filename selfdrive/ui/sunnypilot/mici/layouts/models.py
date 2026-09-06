@@ -8,9 +8,11 @@ from collections.abc import Callable
 import pyray as rl
 
 from cereal import custom
+from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.models import ModelsLayout
 from openpilot.selfdrive.ui.ui_state import ui_state, device
+from openpilot.sunnypilot.models.bundled_model import BUNDLED_BUNDLE, BUNDLED_MODEL
 from openpilot.system.ui.lib.application import FontWeight, gui_app
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import Widget
@@ -98,7 +100,7 @@ class ModelsLayoutMici(NavScroller):
 
     folders = self._get_grouped_bundles(favorites)
     folder_buttons = []
-    default_btn = BigButton(tr("default model"))
+    default_btn = BigButton(f"{tr('default model')} ({BUNDLED_MODEL.lower()})")
     default_btn.set_click_callback(self._select_default)
     folder_buttons.append(default_btn)
 
@@ -117,7 +119,12 @@ class ModelsLayoutMici(NavScroller):
     self._reset_main_view()
 
   def _select_default(self):
-    ui_state.params.remove("ModelManager_ActiveBundle")
+    # clearing ModelManager_ActiveBundle here used to drop the runner to stock, whose in-tree
+    # pickles no longer load; select the bundled default by index instead
+    bundle = next((b for b in self.model_manager.availableBundles if b.internalName == BUNDLED_MODEL), None)
+    index = bundle.index if bundle is not None else BUNDLED_BUNDLE["index"]
+    cloudlog.warning(f"UI: default model selected, activating bundled {BUNDLED_MODEL} (index {index})")
+    ui_state.params.put("ModelManager_DownloadIndex", index)
     self._reset_main_view()
 
   def _select_folder(self, folder_name):

@@ -11,6 +11,7 @@ import pyray as rl
 
 from cereal import custom
 from openpilot.common.constants import CV
+from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.ui.ui_state import device, ui_state
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.application import gui_app
@@ -19,6 +20,7 @@ from openpilot.system.ui.widgets.confirm_dialog import alert_dialog, ConfirmDial
 from openpilot.system.ui.widgets.scroller_tici import Scroller
 from openpilot.system.ui.widgets.toggle import ON_COLOR
 
+from openpilot.sunnypilot.models.bundled_model import BUNDLED_BUNDLE, BUNDLED_MODEL
 from openpilot.sunnypilot.models.runners.constants import CUSTOM_MODEL_PATH
 from openpilot.system.ui.sunnypilot.lib.styles import style
 from openpilot.system.ui.sunnypilot.lib.utils import NoElideButtonAction
@@ -189,7 +191,12 @@ class ModelsLayout(Widget):
       return
     selected_ref = self.model_dialog.selection_ref
     if selected_ref == "Default":
-      ui_state.params.remove("ModelManager_ActiveBundle")
+      # clearing ModelManager_ActiveBundle here used to drop the runner to stock, whose in-tree
+      # pickles no longer load; select the bundled default by index instead
+      bundle = next((b for b in self.model_manager.availableBundles if b.internalName == BUNDLED_MODEL), None)
+      index = bundle.index if bundle is not None else BUNDLED_BUNDLE["index"]
+      cloudlog.warning(f"UI: default model selected, activating bundled {BUNDLED_MODEL} (index {index})")
+      ui_state.params.put("ModelManager_DownloadIndex", index)
       self._show_reset_params_dialog()
     elif selected_bundle := next((bundle for bundle in self.model_manager.availableBundles if bundle.ref == selected_ref), None):
       ui_state.params.put("ModelManager_DownloadIndex", selected_bundle.index)
