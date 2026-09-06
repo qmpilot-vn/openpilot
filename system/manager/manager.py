@@ -60,6 +60,10 @@ def manager_init() -> None:
     if default_value is not None and params.get(k) is None:
       params.put(k, default_value)
 
+  # Compiled params_pyx.so still defaults this to 0 (LAv2). Applying that on every
+  # boot makes models_manager re-download index 0 and overwrite ActiveBundle.
+  params.remove("ModelManager_DownloadIndex")
+
   # Create folders needed for msgq
   try:
     os.mkdir(Paths.shm_path())
