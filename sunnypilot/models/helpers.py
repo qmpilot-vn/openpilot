@@ -172,6 +172,14 @@ def get_active_bundle(params: Params = None, raw_bundle_dict: dict | bytes | Non
     return None
 
   try:
+    from openpilot.sunnypilot.models.bundled_model import ensure_bundled_model
+    ensure_bundled_model()
+  except Exception:
+    cloudlog.exception("failed to seed bundled PMV2 into model_root")
+
+  try:
+    if not params.get("ModelManager_ActiveBundle"):
+      params.put("ModelManager_ActiveBundle", BUNDLED_BUNDLE)
     return custom.ModelManagerSP.ModelBundle(**BUNDLED_BUNDLE)
   except Exception:
     cloudlog.exception("bundled fallback model bundle is malformed")

@@ -34,7 +34,15 @@ _MODEL_TYPE_MAP = {
 
 
 def get_artifact_chunks(file_name: str) -> list[dict]:
-  return ARTIFACT_CHUNKS.get(file_name) or []
+  chunks = ARTIFACT_CHUNKS.get(file_name) or []
+  if chunks:
+    return chunks
+  # catalog parse fills ARTIFACT_CHUNKS; the shipped PMV2 chunks must still
+  # hash-check before the first successful fetch
+  if file_name == "driving_pmv2_tinygrad.pkl":
+    from openpilot.sunnypilot.models.bundled_model import BUNDLED_CHUNKS
+    return BUNDLED_CHUNKS
+  return []
 
 
 class ModelParser:

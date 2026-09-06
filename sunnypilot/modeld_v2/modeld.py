@@ -69,6 +69,10 @@ def _find_driving_pkl(bundle):
   if _pkl_exists(pkl_path):
     return pkl_path
 
+  from openpilot.sunnypilot.models.bundled_model import BUNDLED_PKL_NAME, bundled_pkl_path
+  if pkl_name == BUNDLED_PKL_NAME and _pkl_exists(bundled_pkl_path()):
+    return bundled_pkl_path()
+
 
 class FrameMeta:
   frame_id: int = 0
@@ -101,7 +105,7 @@ class ModelState(ModelStateBase):
     self.PLANPLUS_CONTROL: float = 1.0
 
     pkl_path = _find_driving_pkl(model_bundle)
-    assert pkl_path is not None, "No driving pkl found — download a v18 combined model (RDF / Michael RL V2) first"
+    assert pkl_path is not None, "No driving pkl found — bundled PMV2 missing and nothing in model_root"
     self._init_combined(pkl_path, cam_w, cam_h, model_bundle)
 
   def _init_combined(self, pkl_path, cam_w, cam_h, bundle):
