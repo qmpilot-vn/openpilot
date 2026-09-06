@@ -3918,6 +3918,17 @@
     ],
     "package": "All"
   },
+  "VinFast VF8 Eco 2023-24": {
+    "platform": "VINFAST_VF8_ECO",
+    "make": "VinFast",
+    "brand": "vinfast",
+    "model": "VF8 Eco",
+    "year": [
+      "2023",
+      "2024"
+    ],
+    "package": "All"
+  },
   "VinFast VF9 2023-24": {
     "platform": "VINFAST_VF9",
     "make": "VinFast",

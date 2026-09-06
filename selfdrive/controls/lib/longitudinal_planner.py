@@ -15,7 +15,6 @@ from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import T_IDX
 from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_from_plan
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
 from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_min_follow_m
-from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlannerSP
@@ -36,7 +35,7 @@ _A_TOTAL_MAX_BP = [20., 40.]
 # Thresholds still need committed stop intent so green/coast approaches do not
 # brake early, but they must trigger during the approach: while this reads False
 # the softening below is what is applied instead.
-VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF9"}
+VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF8_ECO", "VINFAST_VF9"}
 VF_REDLIGHT_ACCEL_SCALE = 1.03
 VF_REDLIGHT_BRAKE_PROB = 0.60
 # The model path is "short" relative to where a free-driving prediction would end,
@@ -63,20 +62,15 @@ VF_MILD_DECEL_FLOOR = -1.6  # [m/s²] no softening at or beyond this decel
 
 # VinFast ACC standstill gap behind a stopped lead (camera-frame).
 # MPC STOP_DISTANCE is 6.0 m; personality matches the moving T_FOLLOW characteristic.
-# VF8/VF9: aggressive is the 4 m floor; relaxed is stock openpilot; standard in between.
-VF_STOP_LEAD_GAP_M = {
-  int(log.LongitudinalPersonality.aggressive): 4.0,
-  int(log.LongitudinalPersonality.standard): 5.0,
-  int(log.LongitudinalPersonality.relaxed): 6.0,
-}
-# VF6/VF7 InfoCAN: 4 m sits on the moto at a red light. Sit at stock 6 m even on
+# Shared VF6–VF9: 4 m sits on a moto at a red light. Sit at stock 6 m even on
 # aggressive, and give standard/relaxed extra room (negative MPC adjust).
-VF67_STOP_LEAD_GAP_M = {
+VF_STOP_LEAD_GAP_M = {
   int(log.LongitudinalPersonality.aggressive): 6.0,
   int(log.LongitudinalPersonality.standard): 7.0,
   int(log.LongitudinalPersonality.relaxed): 8.0,
 }
-VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7"}
+VF67_STOP_LEAD_GAP_M = VF_STOP_LEAD_GAP_M
+VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7", "VINFAST_VF8", "VINFAST_VF8_ECO", "VINFAST_VF9"}
 
 
 def vf_stop_lead_gap_m(personality, fingerprint=None) -> float:
@@ -91,10 +85,12 @@ def vf_stop_lead_gap_m(personality, fingerprint=None) -> float:
 def vf_stop_lead_adjust_m(personality, fingerprint=None) -> float:
   """How far to shift a stopped lead so the standstill gap matches personality.
 
-  Positive pulls the obstacle toward ego (tighter than STOP_DISTANCE). Negative
-  pushes it out (VF6/VF7 7–8 m).
+  The MPC subtracts this from the obstacle position and settles where
+  `obstacle - x_ego == STOP_DISTANCE`, so the gap it holds is
+  `STOP_DISTANCE + adjust`. The sign therefore follows the extra room wanted
+  beyond STOP_DISTANCE: 0 m on aggressive, +2 m on relaxed.
   """
-  return STOP_DISTANCE - vf_stop_lead_gap_m(personality, fingerprint)
+  return vf_stop_lead_gap_m(personality, fingerprint) - STOP_DISTANCE
 
 
 def get_max_accel(v_ego):
@@ -201,7 +197,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.CP = CP
     self.mpc = LongitudinalMpc(dt=dt)
     # VinFast: standstill gap behind a stopped lead (ACC / e2e-off).
-    # VF8/VF9: 4 / 5 / 6 m. VF6/VF7: 6 / 7 / 8 m. Recomputed from personality.
+    # VF6–VF9: 6 / 7 / 8 m. Recomputed from personality.
     # Tests can pin vf_stop_lead_adjust_override so ApproachSim keeps a fixed adjust.
     self.vf_stop_lead_adjust_override = None
     self.mpc.stop_lead_obstacle_adjust_m = (
@@ -220,9 +216,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.vf_redlight_count = 0
     self.vf_redlight_hold = 0
     self.vn_follow_m = None
-    self.params = Params()
-    self.vn_follow_enabled = self.CP.brand == "vinfast" and self.params.get_bool("VnLegalFollowDistance")
-    self._vn_follow_param_frame = 0
+    self.vn_follow_enabled = self.CP.brand == "vinfast"
 
     self.v_desired_trajectory = np.zeros(CONTROL_N)
     self.a_desired_trajectory = np.zeros(CONTROL_N)
@@ -324,9 +318,6 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       else:
         self.mpc.stop_lead_obstacle_adjust_m = vf_stop_lead_adjust_m(
           sm['selfdriveState'].personality, self.CP.carFingerprint)
-      if self._vn_follow_param_frame % max(1, int(1. / self.dt)) == 0:
-        self.vn_follow_enabled = self.params.get_bool("VnLegalFollowDistance")
-      self._vn_follow_param_frame += 1
       if self.vn_follow_enabled:
         # Highway floor: max(personality T_FOLLOW, legal 35/55/70/100 m). No-op below 60 km/h.
         self.vn_follow_m = vn_min_follow_m(v_ego, self.vn_follow_m)
