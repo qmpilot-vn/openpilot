@@ -16,6 +16,7 @@ from typing import Optional
 from cereal import custom
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
+from openpilot.sunnypilot.models.bundled_model import BUNDLED_BUNDLE, BUNDLED_MODEL
 from openpilot.sunnypilot.models.constants import Meta, MetaTombRaider, MetaSimPose
 from openpilot.system.hardware.hw import Paths
 
@@ -136,18 +137,27 @@ def validate_active_bundle(params: Params, available_bundles: list[custom.ModelM
   if raw_bundle == _LAST_VALIDATED_RAW:
     return
 
-  active_bundle = get_active_bundle(params, raw_bundle_dict=raw_bundle)
+  active_bundle = get_active_bundle(params, raw_bundle_dict=raw_bundle, fallback=False)
   if active_bundle is None or _bundle_needs_reset(active_bundle, available_bundles):
-    cloudlog.warning("Active model bundle invalid; resetting to default")
+    cloudlog.warning(f"Active model bundle invalid; falling back to bundled {BUNDLED_MODEL}")
     params.remove("ModelManager_ActiveBundle")
-    params.put("ModelRunnerTypeCache", int(custom.ModelManagerSP.Runner.stock))
+    # let the runner recompute from the bundled fallback instead of pinning stock, whose
+    # in-tree pickles no longer match the vendored tinygrad
+    params.remove("ModelRunnerTypeCache")
     _LAST_VALIDATED_RAW = None
   else:
     _LAST_VALIDATED_RAW = raw_bundle
 
 
-def get_active_bundle(params: Params = None, raw_bundle_dict: dict | bytes | None = None) -> custom.ModelManagerSP.ModelBundle:
-  """Gets the active model bundle from cache"""
+def get_active_bundle(params: Params = None, raw_bundle_dict: dict | bytes | None = None,
+                      fallback: bool = True) -> custom.ModelManagerSP.ModelBundle:
+  """Gets the active model bundle from cache
+
+  Falls back to BUNDLED_BUNDLE when nothing valid is selected. The stock driving pickles in-tree
+  were compiled against an older tinygrad and no longer unpickle, so returning None here would
+  route the runner to a modeld that cannot start. Pass fallback=False when the caller needs to
+  distinguish "nothing selected" from "bundled default".
+  """
   if params is None:
     params = Params()
 
@@ -158,7 +168,14 @@ def get_active_bundle(params: Params = None, raw_bundle_dict: dict | bytes | Non
   except Exception:
     pass
 
-  return None
+  if not fallback:
+    return None
+
+  try:
+    return custom.ModelManagerSP.ModelBundle(**BUNDLED_BUNDLE)
+  except Exception:
+    cloudlog.exception("bundled fallback model bundle is malformed")
+    return None
 
 
 def get_active_model_runner(params: Params = None, force_check=False) -> custom.ModelManagerSP.Runner:

@@ -124,7 +124,9 @@ procs = [
   #PythonProcess("micd", "system.micd", iscar),
   PythonProcess("timed", "system.timed", always_run, enabled=not PC),
 
-  PythonProcess("modeld", "selfdrive.modeld.modeld", and_(only_onroad, is_stock_model)),
+  # the in-tree stock driving pickles predate the vendored tinygrad and cannot be unpickled;
+  # keep this disabled until they are rebuilt so a stray param can never schedule a dead process
+  PythonProcess("modeld", "selfdrive.modeld.modeld", and_(only_onroad, is_stock_model), enabled=False),
   PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(WEBCAM or not PC)),
 
   PythonProcess("sensord", "system.sensord.sensord", only_onroad, enabled=not PC),
