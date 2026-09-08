@@ -336,7 +336,7 @@ class LongitudinalMpc:
     # VinFast: shift standstill gap behind a stopped lead (set from longitudinal_planner).
     # Shifting the obstacle back by `adjust` makes the solver settle where
     # `obstacle - x_ego == STOP_DISTANCE`, i.e. a gap of STOP_DISTANCE + adjust
-    # (VF8/VF9 4–6 m, VF6/VF7 6–8 m). Apply below crawl speed so red-light approaches settle there.
+    # (VF6–VF9 6–8 m). Apply below crawl speed so red-light approaches settle there.
     stop_adjust = float(getattr(self, "stop_lead_obstacle_adjust_m", 0.0))
     if stop_adjust != 0.0 and v_ego < 5.0:
       min_safe = STOP_LEAD_MIN_GAP

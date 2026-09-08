@@ -60,22 +60,15 @@ VF_MILD_DECEL_SCALE = 0.93
 VF_MILD_SOFTEN_START = 0.4  # [m/s²] full softening below this decel
 VF_MILD_DECEL_FLOOR = -1.6  # [m/s²] no softening at or beyond this decel
 
-# VF8/VF9 C4: standstill gap behind a stopped lead (camera-frame).
-# MPC STOP_DISTANCE is 6.0 m; personality matches the moving T_FOLLOW characteristic.
-# Aggressive is the 4 m floor; relaxed is stock openpilot; standard in between.
+# Shared VF6–VF9: 4 m sits on a moto at a red light. Sit at stock 6 m even on
+# aggressive, and give standard/relaxed extra room (positive MPC adjust).
 VF_STOP_LEAD_GAP_M = {
-  int(log.LongitudinalPersonality.aggressive): 4.0,
-  int(log.LongitudinalPersonality.standard): 5.0,
-  int(log.LongitudinalPersonality.relaxed): 6.0,
-}
-# VF6/VF7 InfoCAN: a 4 m gap sits on the moto at a red light. Sit at stock 6 m even
-# on aggressive, and give standard/relaxed extra room (positive MPC adjust).
-VF67_STOP_LEAD_GAP_M = {
   int(log.LongitudinalPersonality.aggressive): 6.0,
   int(log.LongitudinalPersonality.standard): 7.0,
   int(log.LongitudinalPersonality.relaxed): 8.0,
 }
-VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7"}
+VF67_STOP_LEAD_GAP_M = VF_STOP_LEAD_GAP_M
+VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7", "VINFAST_VF8", "VINFAST_VF8_ECO", "VINFAST_VF9"}
 
 # Set False to restore personality-only T_FOLLOW (no Thông tư 38/2024 floor).
 VN_LEGAL_FOLLOW = True
@@ -96,7 +89,7 @@ def vf_stop_lead_adjust_m(personality, fingerprint=None) -> float:
   The MPC subtracts this from the obstacle position and settles where
   `obstacle - x_ego == STOP_DISTANCE`, so the gap it holds is
   `STOP_DISTANCE + adjust`. The sign therefore follows the extra room wanted
-  beyond STOP_DISTANCE: VF8/VF9 4–6 m, VF6/VF7 6–8 m.
+  beyond STOP_DISTANCE: 0 m on aggressive, +2 m on relaxed (VF6–VF9 6/7/8 m).
   """
   return vf_stop_lead_gap_m(personality, fingerprint) - STOP_DISTANCE
 
@@ -204,7 +197,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
   def __init__(self, CP, CP_SP, init_v=0.0, init_a=0.0, dt=DT_MDL):
     self.CP = CP
     self.mpc = LongitudinalMpc(dt=dt)
-    # VinFast standstill: VF8/VF9 4/5/6 m from personality. VF6/VF7 6/7/8 m.
+    # VinFast standstill: VF6–VF9 6/7/8 m from personality.
     # Tests can pin vf_stop_lead_adjust_override.
     self.vf_stop_lead_adjust_override = None
     self.mpc.stop_lead_obstacle_adjust_m = (
