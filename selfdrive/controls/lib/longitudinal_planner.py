@@ -69,7 +69,7 @@ VF_STOP_LEAD_GAP_M = {
   int(log.LongitudinalPersonality.relaxed): 6.0,
 }
 # VF6/VF7 InfoCAN: a 4 m gap sits on the moto at a red light. Sit at stock 6 m even
-# on aggressive, and give standard/relaxed extra room (negative MPC adjust).
+# on aggressive, and give standard/relaxed extra room (positive MPC adjust).
 VF67_STOP_LEAD_GAP_M = {
   int(log.LongitudinalPersonality.aggressive): 6.0,
   int(log.LongitudinalPersonality.standard): 7.0,
@@ -93,10 +93,12 @@ def vf_stop_lead_gap_m(personality, fingerprint=None) -> float:
 def vf_stop_lead_adjust_m(personality, fingerprint=None) -> float:
   """How far to shift a stopped lead so the standstill gap matches the platform.
 
-  Positive pulls the obstacle toward ego (VF8/VF9 4–6 m). Negative pushes it
-  out (VF6/VF7 7–8 m). Zero leaves STOP_DISTANCE.
+  The MPC subtracts this from the obstacle position and settles where
+  `obstacle - x_ego == STOP_DISTANCE`, so the gap it holds is
+  `STOP_DISTANCE + adjust`. The sign therefore follows the extra room wanted
+  beyond STOP_DISTANCE: VF8/VF9 4–6 m, VF6/VF7 6–8 m.
   """
-  return STOP_DISTANCE - vf_stop_lead_gap_m(personality, fingerprint)
+  return vf_stop_lead_gap_m(personality, fingerprint) - STOP_DISTANCE
 
 
 def get_max_accel(v_ego):
