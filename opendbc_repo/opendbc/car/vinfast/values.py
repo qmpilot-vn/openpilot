@@ -36,7 +36,10 @@ _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
 
-# Driver-torque override detection: the packaged .so reads these at runtime (stock 2.5 / 1.25 Nm).
+# Plaintext carstate / steer_press.py (same latch as vf-dev-c3xl).
 _mod.CarControllerParams.STEER_DRIVER_PRESS_NM = 2.0
-# Release must stay below press so EPS noise (~1 Nm) can't latch a press off and on.
-_mod.CarControllerParams.STEER_DRIVER_RELEASE_NM = 1.0
+_mod.CarControllerParams.STEER_DRIVER_RELEASE_NM = 0.8
+_mod.CarControllerParams.STEER_PRESSED_MIN_COUNT = 5
+_mod.CarControllerParams.STEER_RELEASE_MIN_COUNT = 50
+_mod.CarControllerParams.STEER_PRESS_RATE_GAIN = 0.02
+_mod.CarControllerParams.STEER_PRESS_NM_MAX = 4.0
