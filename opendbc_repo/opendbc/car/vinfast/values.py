@@ -36,7 +36,10 @@ _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
 
-# tai: easier hand-torque lane-change / override detection (stock packaged .so is 2.5 Nm)
+# tai: same bump latch as vf-release-c4, lower press/release for easier hand override.
 _mod.CarControllerParams.STEER_DRIVER_PRESS_NM = 1.5
-# keep hysteresis below press (noise ~1 Nm); scaled from stock 2.5 / 1.25
 _mod.CarControllerParams.STEER_DRIVER_RELEASE_NM = 0.75
+_mod.CarControllerParams.STEER_PRESSED_MIN_COUNT = 5
+_mod.CarControllerParams.STEER_RELEASE_MIN_COUNT = 50
+_mod.CarControllerParams.STEER_PRESS_RATE_GAIN = 0.02
+_mod.CarControllerParams.STEER_PRESS_NM_MAX = 4.0
