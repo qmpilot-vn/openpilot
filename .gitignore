@@ -115,6 +115,7 @@ opendbc_repo/scripts/dump_vinfast_dbc_cache.py
 
 # Force-track VinFast car native extensions (shims load these; root *.so ignore)
 !opendbc_repo/opendbc/car/vinfast/*_impl*.so
+!opendbc_repo/opendbc/dbc/vinfast_dbc_impl*.so
 
 # Local-only VinFast packaging helpers (never ship on public tip)
 opendbc_repo/scripts/package_vinfast_*.sh

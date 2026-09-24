@@ -35,7 +35,7 @@ _A_TOTAL_MAX_BP = [20., 40.]
 # Thresholds still need committed stop intent so green/coast approaches do not
 # brake early, but they must trigger during the approach: while this reads False
 # the softening below is what is applied instead.
-VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF9"}
+VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF8_PLUS", "VINFAST_VF9"}
 VF_REDLIGHT_ACCEL_SCALE = 1.03
 VF_REDLIGHT_BRAKE_PROB = 0.60
 # The model path is "short" relative to where a free-driving prediction would end,
@@ -70,7 +70,7 @@ VF_STOP_LEAD_GAP_M = {
   int(log.LongitudinalPersonality.relaxed): 8.0,
 }
 VF67_STOP_LEAD_GAP_M = VF_STOP_LEAD_GAP_M
-VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7", "VINFAST_VF8", "VINFAST_VF8_ECO", "VINFAST_VF9"}
+VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7", "VINFAST_VF8", "VINFAST_VF8_PLUS", "VINFAST_VF8_ECO", "VINFAST_VF9"}
 
 # Set False to restore personality-only T_FOLLOW (no Thông tư 38/2024 floor).
 VN_LEGAL_FOLLOW = True

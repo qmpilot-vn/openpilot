@@ -75,6 +75,16 @@ VAL_RE = re.compile(r"^VAL_ (\w+) (\w+) (.*);")
 VAL_SPLIT_RE = re.compile(r'["]+')
 
 
+def _vinfast_dbc_blob(name: str) -> bytes | None:
+  if not name.startswith("vinfast_"):
+    return None
+  try:
+    from opendbc.dbc.vinfast_dbc import get
+  except ImportError:
+    return None
+  return get(name)
+
+
 @cache
 class DBC:
   def __init__(self, name: str):
@@ -86,9 +96,12 @@ class DBC:
       self._parse_file(name)
       return
 
+    packed = _vinfast_dbc_blob(name)
     plain_path = os.path.join(DBC_PATH, name + ".dbc")
     cache_path = os.path.join(DBC_PATH, name + ".dbc.cache")
-    if os.path.isfile(plain_path):
+    if packed is not None:
+      self._load_from_blob(packed, name)
+    elif os.path.isfile(plain_path):
       self._parse_file(plain_path)
     elif os.path.isfile(cache_path):
       self._load_from_cache(cache_path)
@@ -98,6 +111,17 @@ class DBC:
         self._parse_content(name, content)
       else:
         raise FileNotFoundError(f"DBC not found: {name}")
+
+  def _load_from_blob(self, blob: bytes, name: str) -> None:
+    cached = pickle.loads(blob)
+    if isinstance(cached, dict):
+      self.__dict__.update(cached)
+      self.name = cached.get("name", name)
+      return
+    if isinstance(cached, DBC):
+      self.__dict__.update(cached.__dict__)
+      return
+    raise ValueError(f"invalid packed DBC {name}")
 
   def _load_from_cache(self, path: str) -> None:
     with open(path, "rb") as f:
