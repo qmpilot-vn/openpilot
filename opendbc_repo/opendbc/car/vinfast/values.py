@@ -43,3 +43,53 @@ _mod.CarControllerParams.STEER_PRESSED_MIN_COUNT = 5
 _mod.CarControllerParams.STEER_RELEASE_MIN_COUNT = 50
 _mod.CarControllerParams.STEER_PRESS_RATE_GAIN = 0.02
 _mod.CarControllerParams.STEER_PRESS_NM_MAX = 4.0
+
+# VF8 Plus 2025-26: VF8 specs and chassis, VF6/VF7 steer limits, VF6 safety and InfoCAN.
+from opendbc.car import Bus
+from opendbc.car.lateral import AngleSteeringLimits
+
+_VF8_PLUS = "VINFAST_VF8_PLUS"
+_vf8_cfg = _mod.CAR.VINFAST_VF8.config
+_plus_dbc = dict(_vf8_cfg.dbc_dict)
+_plus_dbc[Bus.body] = "vinfast_vf6_info_can"
+_plus_cfg = _vf8_cfg.override(
+  car_docs=[_mod.VinFastCarDocs("VinFast VF8 Plus 2025-26", "All", car_parts=_vf8_cfg.car_docs[0].car_parts)],
+  dbc_dict=_plus_dbc,
+)
+_plus_cfg.platform_str = _VF8_PLUS
+_plus_cfg.freeze()
+_plus = str.__new__(_mod.CAR, _VF8_PLUS)
+_plus._name_ = _VF8_PLUS
+_plus._value_ = _VF8_PLUS
+_plus.config = _plus_cfg
+_plus._sort_order_ = len(_mod.CAR._member_names_)
+setattr(_mod.CAR, _VF8_PLUS, _plus)
+_mod.CAR._member_map_[_VF8_PLUS] = _plus
+_mod.CAR._value2member_map_[_VF8_PLUS] = _plus
+_mod.CAR._member_names_.append(_VF8_PLUS)
+_mod.DBC[_plus] = _plus_cfg.dbc_dict
+
+_orig_is_vf6 = _mod.is_vf6_safety_platform
+
+def _is_vf6_safety_platform(candidate) -> bool:
+  name = candidate if isinstance(candidate, str) else getattr(candidate, "name", None)
+  if name == _VF8_PLUS or candidate is _plus:
+    return True
+  return _orig_is_vf6(candidate)
+
+_mod.is_vf6_safety_platform = _is_vf6_safety_platform
+
+_orig_params_init = _mod.CarControllerParams.__init__
+
+def _params_init(self, CP):
+  _orig_params_init(self, CP)
+  name = CP.carFingerprint if isinstance(CP.carFingerprint, str) else getattr(CP.carFingerprint, "name", None)
+  if name != _VF8_PLUS:
+    return
+  steer_max = 180.0
+  bp, rate = _mod.VF6_STEER_SPEED_BP_MS, _mod.VF6_STEER_RATE_V_DEG_PER_STEP
+  self.STEER_MAX = int(steer_max)
+  self.ANGLE_LIMITS = AngleSteeringLimits(steer_max, (bp, rate), (bp, rate))
+  self.ANGLE_MAX_LOOKUP = (bp, _mod.VF6_STEER_ANGLE_MAX_V_DEG)
+
+_mod.CarControllerParams.__init__ = _params_init

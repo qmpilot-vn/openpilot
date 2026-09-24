@@ -25,6 +25,7 @@ opendbc/safety/modes/vinfast_vf6.h
 __pycache__/
 # VinFast car native extensions (shipped alongside shims for pull-and-run)
 !opendbc/car/vinfast/*_impl*.so
+!opendbc/dbc/vinfast_dbc_impl*.so
 *.profraw
 opendbc/can/build/
 opendbc/can/obj/

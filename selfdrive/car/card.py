@@ -32,9 +32,9 @@ REPLAY = "REPLAY" in os.environ
 
 EventName = log.OnroadEvent.EventName
 
-# The car port allows the EPS's full authority (VF8 ±470°, VF9 ±180°), far more angle
-# than the planner should ever ask for on the road. Tightening the packaged limits here
-# works because the controller re-reads ANGLE_LIMITS on every cycle.
+# The car port allows the EPS's full authority (VF8 ±470° non-production, VF9 ±90°),
+# far more angle than the planner should ever ask for on the road. VF8 Plus uses the
+# VF6/VF7 speed-dependent angle (180° @0 → 40° @100+ km/h), so it is not capped here.
 VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 100.0, "VINFAST_VF9": 100.0}
 
 # VF9 is packaged with a 7/5/3 deg-per-step slew (~700 deg/s at standstill), which chases
@@ -45,11 +45,11 @@ VINFAST_STEER_ANGLE_RATE = {"VINFAST_VF9": ([0., 20., 40.], [1.5, 1.0, 0.6])}
 # same last-meter ramp as VF8/VF9 so VF6/VF7 do not get a second brake poke.
 VINFAST_STOP_ACCEL = {
   "VINFAST_VF6": -1.4, "VINFAST_VF7": -1.4,
-  "VINFAST_VF8": -1.4, "VINFAST_VF9": -1.4,
+  "VINFAST_VF8": -1.4, "VINFAST_VF8_PLUS": -1.4, "VINFAST_VF9": -1.4,
 }
 VINFAST_STOPPING_DECEL_RATE = {
   "VINFAST_VF6": 0.56, "VINFAST_VF7": 0.56,
-  "VINFAST_VF8": 0.56, "VINFAST_VF9": 0.56,
+  "VINFAST_VF8": 0.56, "VINFAST_VF8_PLUS": 0.56, "VINFAST_VF9": 0.56,
 }
 
 # Wheel-speed vEgo reads low vs MHU at highway speed. Add this offset so
@@ -181,7 +181,7 @@ class Car:
         fixed_fingerprint = VINFAST_CAR.VINFAST_VF9.name
         cloudlog.warning(f"No CarPlatformBundle.platform; using default fixed fingerprint {fixed_fingerprint}")
       # VF9: default alpha longitudinal so Experimental mode and OP long are available without dev settings.
-      if fixed_fingerprint in (VINFAST_CAR.VINFAST_VF8.name, VINFAST_CAR.VINFAST_VF9.name) and self.params.get("AlphaLongitudinalEnabled") is None:
+      if fixed_fingerprint in (VINFAST_CAR.VINFAST_VF8.name, VINFAST_CAR.VINFAST_VF8_PLUS.name, VINFAST_CAR.VINFAST_VF9.name) and self.params.get("AlphaLongitudinalEnabled") is None:
         self.params.put_bool("AlphaLongitudinalEnabled", True)
       alpha_long_allowed = self.params.get_bool("AlphaLongitudinalEnabled")
 

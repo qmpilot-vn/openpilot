@@ -35,3 +35,7 @@ _mod.__file__ = str(_so)
 _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
+
+from opendbc.car.vinfast.values import CAR
+_mod.FINGERPRINTS[CAR.VINFAST_VF8_PLUS] = list(_mod.FINGERPRINTS[CAR.VINFAST_VF8])
+_mod.FW_VERSIONS[CAR.VINFAST_VF8_PLUS] = {}
