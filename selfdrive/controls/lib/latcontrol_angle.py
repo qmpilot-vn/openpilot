@@ -15,3 +15,13 @@ assert _spec and _spec.loader
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 sys.modules[__name__] = _mod
+
+# VF8 Plus uses VF6 safety, but the angle PID stays on the VF8 tune.
+_orig_is_vf6 = getattr(_mod, "is_vf6_safety_platform", None)
+if _orig_is_vf6 is not None:
+  def _is_vf6_safety_platform(candidate):
+    name = candidate if isinstance(candidate, str) else getattr(candidate, "name", None)
+    if name == "VINFAST_VF8_PLUS":
+      return False
+    return _orig_is_vf6(candidate)
+  _mod.is_vf6_safety_platform = _is_vf6_safety_platform
