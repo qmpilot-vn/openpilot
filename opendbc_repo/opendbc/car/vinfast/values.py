@@ -44,14 +44,12 @@ _mod.CarControllerParams.STEER_RELEASE_MIN_COUNT = 50
 _mod.CarControllerParams.STEER_PRESS_RATE_GAIN = 0.02
 _mod.CarControllerParams.STEER_PRESS_NM_MAX = 4.0
 
-# VF8 Plus 2025-26: VF8 specs and chassis, VF6/VF7 steer limits, VF6 safety and InfoCAN.
-from opendbc.car import Bus
+# VF8 Plus 2025-26: VF8 specs, VF6/VF7 DBC and steer limits, VF6 safety and InfoCAN.
 from opendbc.car.lateral import AngleSteeringLimits
 
 _VF8_PLUS = "VINFAST_VF8_PLUS"
 _vf8_cfg = _mod.CAR.VINFAST_VF8.config
-_plus_dbc = dict(_vf8_cfg.dbc_dict)
-_plus_dbc[Bus.body] = "vinfast_vf6_info_can"
+_plus_dbc = dict(_mod.CAR.VINFAST_VF6.config.dbc_dict)
 _plus_cfg = _vf8_cfg.override(
   car_docs=[_mod.VinFastCarDocs("VinFast VF8 Plus 2025-26", "All", car_parts=_vf8_cfg.car_docs[0].car_parts)],
   dbc_dict=_plus_dbc,
