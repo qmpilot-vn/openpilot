@@ -19,12 +19,15 @@ from openpilot.sunnypilot.models.constants import Meta, MetaSimPose, MetaTombRai
 from openpilot.system.hardware.hw import Paths
 
 # SET ME TO THE EXACT JSON VERSION WE SET IN SUNNYPILOT_MODELS REPO
-REQUIRED_JSON_VERSION = 15
+REQUIRED_JSON_VERSION = 19
 
 CUSTOM_MODEL_PATH = Paths.model_root()
 METADATA_PATH = Path(__file__).parent / '../models/supercombo_metadata.pkl'
 ModelManager = custom.ModelManagerSP
-_LAST_VALIDATED_RAW = None
+_LAST_VALIDATED_RAW: dict[str, dict | bytes | None] = {}
+
+ACTIVE_BUNDLE_QCOM = "ModelManager_ActiveBundle"
+ACTIVE_BUNDLE_CHESTNUT = "ModelManager_ActiveBundleChestnut"
 
 PMV2_MIN_LAT_SMOOTH = 0.15
 
@@ -119,30 +122,34 @@ def _bundle_needs_reset(active_bundle: custom.ModelManagerSP.ModelBundle, availa
   return not _bundle_is_valid_locally(active_bundle)
 
 
-def validate_active_bundle(params: Params, available_bundles: list[custom.ModelManagerSP.ModelBundle] | None = None) -> None:
+def validate_active_bundle(params: Params, available_bundles: list[custom.ModelManagerSP.ModelBundle] | None = None,
+                           key: str = ACTIVE_BUNDLE_QCOM) -> None:
   global _LAST_VALIDATED_RAW
 
-  raw_bundle = params.get("ModelManager_ActiveBundle")
+  raw_bundle = params.get(key)
   if not raw_bundle:
     return
 
-  if raw_bundle == _LAST_VALIDATED_RAW:
+  if raw_bundle == _LAST_VALIDATED_RAW.get(key):
     return
 
-  active_bundle = get_active_bundle(params, raw_bundle_dict=raw_bundle)
+  active_bundle = get_active_bundle(params, raw_bundle_dict=raw_bundle, chestnut=(key == ACTIVE_BUNDLE_CHESTNUT))
   if active_bundle is None or _bundle_needs_reset(active_bundle, available_bundles):
     cloudlog.warning("Active model bundle invalid; resetting to default")
-    params.remove("ModelManager_ActiveBundle")
-    params.put("ModelRunnerTypeCache", int(custom.ModelManagerSP.Runner.stock), block=True)
-    _LAST_VALIDATED_RAW = None
+    params.remove(key)
+    if key == ACTIVE_BUNDLE_QCOM:
+      params.put("ModelRunnerTypeCache", int(custom.ModelManagerSP.Runner.stock), block=True)
+    _LAST_VALIDATED_RAW.pop(key, None)
   else:
-    _LAST_VALIDATED_RAW = raw_bundle
+    _LAST_VALIDATED_RAW[key] = raw_bundle
 
 
-def get_active_bundle(params: Params | None = None, raw_bundle_dict: dict | bytes | None = None) -> "custom.ModelManagerSP.ModelBundle | None":
+def get_active_bundle(params: Params | None = None, raw_bundle_dict: dict | bytes | None = None,
+                      chestnut: bool = False) -> "custom.ModelManagerSP.ModelBundle | None":
   params = params or Params()
+  key = ACTIVE_BUNDLE_CHESTNUT if chestnut else ACTIVE_BUNDLE_QCOM
   try:
-    active_bundle_dict = raw_bundle_dict if raw_bundle_dict is not None else (params.get("ModelManager_ActiveBundle") or {})
+    active_bundle_dict = raw_bundle_dict if raw_bundle_dict is not None else (params.get(key) or {})
     if active_bundle_dict and is_bundle_version_compatible(active_bundle_dict):
       return custom.ModelManagerSP.ModelBundle(**active_bundle_dict)
   except Exception:

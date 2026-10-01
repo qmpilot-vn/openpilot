@@ -4,7 +4,7 @@
 
 from typing import Any
 import unittest, onnx, tempfile
-from tinygrad import dtypes, Tensor
+from tinygrad import dtypes, Tensor, Context
 from tinygrad.nn.onnx import OnnxRunner
 import numpy as np
 from extra.onnx_helpers import validate
@@ -53,6 +53,12 @@ class TestMainOnnxOps(TestOnnxOps):
     attributes = {}
     outputs = ["squeezed"]
     self.helper_test_single_op("Squeeze", inputs, attributes, outputs)
+
+  def test_mean_variance_normalization_axes(self):
+    inputs = {"x": np.random.randn(2, 3, 4, 5).astype(np.float32)}
+    attributes = {"axes": [2, 3]}
+    outputs = ["out"]
+    self.helper_test_single_op("MeanVarianceNormalization", inputs, attributes, outputs)
 
   def test_conv(self):
     # test VALID auto_pad
@@ -235,6 +241,15 @@ class TestMainOnnxOps(TestOnnxOps):
     outputs = ["y"]
     self.helper_test_single_op("MaxUnpool", inputs, attributes, outputs)
 
+  def test_maxunpool_pads(self):
+    # per-axis pads shrink the output: spatial dim is (i-1)*stride + kernel - pad_begin - pad_end -> (2, 4), and indices index into that output
+    # NOTE: indices must be in bounds of that output; ORT aborts the process on out-of-bounds indices
+    xT = np.array([[[[5, 6], [7, 8]]]], dtype=np.float32)
+    xI = np.array([[[[0, 3], [4, 7]]]], dtype=np.int64)
+    inputs = {"x": xT, "indices": xI}
+    attributes = {"kernel_shape": [2, 2], "strides": [2, 2], "pads": [1, 0, 1, 0]}
+    self.helper_test_single_op("MaxUnpool", inputs, attributes, ["y"])
+
   def test_averagepool_3d_dilations_large_count_include_pad_is_1_ceil_mode_is_True(self):
     # https://github.com/onnx/onnx/blob/main/docs/Operators.md#examples-13
     inputs = {"x": np.random.randn(1, 1, 32, 32, 32).astype(np.float32)}
@@ -284,26 +299,27 @@ class TestMainOnnxOps(TestOnnxOps):
   def test_qlinear_conv(self):
     for dtype, zero_point in [(np.uint8, 128), (np.int8, 0)]:
       for b in (np.ones([32], dtype=np.int32), np.zeros([32], dtype=np.int32)):
-        with self.subTest(dtype=dtype, zero_point=zero_point):
-          dtype_min, dtype_max = np.iinfo(dtype).min, np.iinfo(dtype).max
-          inputs = {
-            "x": np.random.randint(dtype_min, dtype_max + 1, [1, 3, 224, 224], dtype=dtype),
-            "x_scale": np.array(np.random.uniform(0.01, 0.1), dtype=np.float32),
-            "x_zero_point": np.array(zero_point, dtype=dtype),
-            "w": np.random.randint(dtype_min, dtype_max + 1, [32, 3, 3, 3], dtype=dtype),
-            "w_scale": np.array(np.random.uniform(0.01, 0.1), dtype=np.float32),
-            "w_zero_point": np.array(zero_point, dtype=dtype),
-            "y_scale": np.array(np.random.uniform(0.01, 0.1), dtype=np.float32),
-            "y_zero_point": np.array(zero_point, dtype=dtype),
-            "b": b
-          }
-          attributes = {'auto_pad': 'NOTSET', 'dilations': (1, 1), 'group': 1, 'kernel_shape': (3, 3), 'pads': (1, 1, 1, 1), 'strides': (2, 2)}
-          outputs = ["out"]
-          self.helper_test_single_op("QLinearConv", inputs, attributes, outputs, atol=1) # occasionally inaccurate
+        for channel_shape in [(), (32,)]:
+          with self.subTest(dtype=dtype.__name__, zero_point=zero_point, channel_shape=channel_shape):
+            dtype_min, dtype_max = np.iinfo(dtype).min, np.iinfo(dtype).max
+            inputs = {
+              "x": np.random.randint(dtype_min, dtype_max + 1, [1, 3, 224, 224], dtype=dtype),
+              "x_scale": np.array(np.random.uniform(0.01, 0.1), dtype=np.float32),
+              "x_zero_point": np.array(zero_point, dtype=dtype),
+              "w": np.random.randint(dtype_min, dtype_max + 1, [32, 3, 3, 3], dtype=dtype),
+              "w_scale": np.random.uniform(0.01, 0.1, channel_shape).astype(np.float32),
+              "w_zero_point": np.full(channel_shape, zero_point, dtype=dtype),
+              "y_scale": np.array(np.random.uniform(0.01, 0.1), dtype=np.float32),
+              "y_zero_point": np.array(zero_point, dtype=dtype),
+              "b": b
+            }
+            attributes = {'auto_pad': 'NOTSET', 'dilations': (1, 1), 'group': 1, 'kernel_shape': (3, 3), 'pads': (1, 1, 1, 1), 'strides': (2, 2)}
+            outputs = ["out"]
+            self.helper_test_single_op("QLinearConv", inputs, attributes, outputs, atol=1) # occasionally inaccurate
 
   def test_qlinear_matmul(self):
     for dtype, zero_point in [(np.uint8, 128), (np.int8, 0)]:
-      with self.subTest(dtype=dtype, zero_point=zero_point):
+      with self.subTest(dtype=dtype.__name__, zero_point=zero_point):
         dtype_min, dtype_max = np.iinfo(dtype).min, np.iinfo(dtype).max
         inputs = {
           "A": np.random.randint(dtype_min, dtype_max + 1, [10, 10], dtype=dtype),
@@ -363,6 +379,19 @@ class TestMainOnnxOps(TestOnnxOps):
   def test_reduce_l2_half(self):
     inputs = {"data": np.random.randn(1, 1, 32, 32, 32).astype(np.half)*100}
     self.helper_test_single_op("ReduceL2", inputs, {}, ["reduced"])
+
+  def test_same_device_as_input(self):
+    from tinygrad.nn.onnx import onnx_ops
+    EyeLike = onnx_ops["EyeLike"]
+    Shape = onnx_ops["Shape"]
+    Compress = onnx_ops["Compress"]
+    with Context(DEV="CPU"):
+      x = Tensor.arange(4).clone("PYTHON").reshape(2,2)
+      self.assertIsNone(EyeLike(x).device)
+      self.assertEqual(Shape(x).device, x.device)
+      out = Compress(x, [True, False, True, False])
+      self.assertEqual(out.device, x.device)
+      self.assertEqual(out.tolist(), [0, 2])
 
 class TestTrainingOnnxOps(TestOnnxOps):
   # NOTE: ORT doesn't actually support training ops on cpu so we test using functions provided by onnx
@@ -498,7 +527,7 @@ class TestContribOnnxOps(TestOnnxOps):
 
   def test_qlinear_add(self):
     for dtype, zero_point in [(np.uint8, 128), (np.int8, 0)]:
-      with self.subTest(dtype=dtype, zero_point=zero_point):
+      with self.subTest(dtype=dtype.__name__, zero_point=zero_point):
         dtype_min, dtype_max = np.iinfo(dtype).min, np.iinfo(dtype).max
         inputs = {
           "A": np.random.randint(dtype_min, dtype_max + 1, [10, 10], dtype=dtype),
@@ -532,7 +561,7 @@ class TestContribOnnxOps(TestOnnxOps):
 
   def test_qlinear_mul(self):
     for dtype, zero_point in [(np.uint8, 128), (np.int8, 0)]:
-      with self.subTest(dtype=dtype, zero_point=zero_point):
+      with self.subTest(dtype=dtype.__name__, zero_point=zero_point):
         dtype_min, dtype_max = np.iinfo(dtype).min, np.iinfo(dtype).max
         inputs = {
           "A": np.random.randint(dtype_min, dtype_max + 1, [10, 10], dtype=dtype),
@@ -566,7 +595,7 @@ class TestContribOnnxOps(TestOnnxOps):
   def test_qlinear_global_average_pool(self):
     for dtype, zero_point in [(np.uint8, 128), (np.int8, 0)]:
       for channels_last in [0, 1]:
-        with self.subTest(dtype=dtype, zero_point=zero_point, channels_last=channels_last):
+        with self.subTest(dtype=dtype.__name__, zero_point=zero_point, channels_last=channels_last):
           dtype_min, dtype_max = np.iinfo(dtype).min, np.iinfo(dtype).max
           # NCHW for channels_last=0, NHWC for channels_last=1
           shape = [1, 3, 32, 32] if channels_last == 0 else [1, 32, 32, 3]
@@ -580,6 +609,29 @@ class TestContribOnnxOps(TestOnnxOps):
           attributes = {"channels_last": channels_last}
           outputs = ["C"]
           self.helper_test_single_op("QLinearGlobalAveragePool", inputs, attributes, outputs)
+
+  def test_same_device_as_input(self):
+    from tinygrad.nn.onnx import onnx_ops, OpSetId, Domain
+    EmbedLayerNormalization = onnx_ops["EmbedLayerNormalization"]
+    Attention = onnx_ops["Attention"]
+    with Context(DEV="CPU"):
+      input_ids = Tensor([[1, 2]], device="PYTHON", dtype=dtypes.int32)
+      segment_ids = Tensor([[0, 0]], device="PYTHON", dtype=dtypes.int32)
+      word = Tensor.ones(4, 3, device="PYTHON")
+      pos = Tensor.ones(5, 3, device="PYTHON")
+      seg = Tensor.ones(1, 3, device="PYTHON")
+      gamma, beta = Tensor.ones(3, device="PYTHON"), Tensor.zeros(3, device="PYTHON")
+      out, _, _ = EmbedLayerNormalization(input_ids, segment_ids, word, pos, seg, gamma, beta)
+      self.assertEqual(out.device, input_ids.device)
+      out.realize()
+
+      attn = Attention[OpSetId(Domain.MICROSOFT_CONTRIB_OPS, 1)]
+      x = Tensor.ones(1, 2, 4, device="PYTHON")
+      w = Tensor.ones(4, 12, device="PYTHON")
+      mask = Tensor([2, 0], device="PYTHON", dtype=dtypes.int32)
+      out, _ = attn(x, w, mask_index=mask, num_heads=1, unidirectional=1)
+      self.assertEqual(out.device, x.device)
+      out.realize()
 
 if __name__ == "__main__":
   unittest.main()

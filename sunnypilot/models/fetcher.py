@@ -37,7 +37,10 @@ class ModelParser:
   def _parse_model(model_data) -> custom.ModelManagerSP.Model:
     model = custom.ModelManagerSP.Model()
 
-    model.type = model_data.get("type")
+    raw_type = model_data.get("type")
+    # Catalogs mark combined driving models as "chunked". The cereal enum
+    # still calls that slot supercombo, which is the driving model modeld loads.
+    model.type = "supercombo" if raw_type == "chunked" else raw_type
     model.artifact = ModelParser._parse_artifact(model_data.get("artifact", {}))
     if metadata := model_data.get("metadata"):
       model.metadata = ModelParser._parse_artifact(metadata)
@@ -81,11 +84,12 @@ class ModelParser:
 class ModelCache:
   """Handles caching of model data to avoid frequent remote fetches"""
 
-  def __init__(self, params: Params, cache_timeout: int = int(3600 * 1e9)):
+  def __init__(self, params: Params, cache_timeout: int = int(3600 * 1e9),
+               cache_key: str = "ModelManager_ModelsCache", sync_key: str = "ModelManager_LastSyncTime"):
     self.params = params
     self.cache_timeout = cache_timeout
-    self._LAST_SYNC_KEY = "ModelManager_LastSyncTime"
-    self._CACHE_KEY = "ModelManager_ModelsCache"
+    self._LAST_SYNC_KEY = sync_key
+    self._CACHE_KEY = cache_key
 
   def _is_expired(self) -> bool:
     """Checks if the cache has expired"""
@@ -117,30 +121,35 @@ class ModelCache:
 
 class ModelFetcher:
   """Handles fetching and caching of model data from remote source"""
-  MODEL_URL = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_v17.json"
+  MODEL_URL = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_v22.json"
+  MODEL_URL_CHESTNUT = "https://raw.githubusercontent.com/sunnypilot/sunnypilot-models/refs/heads/gh-pages/docs/driving_models_chestnut_v25.json"
+  CHESTNUT_INDEX_OFFSET = 10000
 
   def __init__(self, params: Params):
     self.params = params
     self.model_cache = ModelCache(params)
+    self.chestnut_cache = ModelCache(params, cache_key="ModelManager_ModelsCacheChestnut", sync_key="ModelManager_LastSyncTimeChestnut")
     self.model_parser = ModelParser()
 
-  def _fetch_and_cache_models(self) -> list[custom.ModelManagerSP.ModelBundle] | None:
+  def _fetch_and_cache_models(self, url: str | None = None, cache: ModelCache | None = None) -> list[custom.ModelManagerSP.ModelBundle] | None:
     """Fetches fresh model data from remote and updates cache.
     Returns None on transport errors. Raises on 404 and other fatal HTTP errors.
     """
+    url = url or self.MODEL_URL
+    cache = cache or self.model_cache
     try:
-      response = requests.get(self.MODEL_URL, timeout=10)
+      response = requests.get(url, timeout=10)
 
       # Explicitly handle 404 differently
       if response.status_code == 404:
-        cloudlog.error(f"Models URL returned 404 Not Found: {self.MODEL_URL}")
-        raise HTTPError(f"404 Not Found: {self.MODEL_URL}", response=response)
+        cloudlog.error(f"Models URL returned 404 Not Found: {url}")
+        raise HTTPError(f"404 Not Found: {url}", response=response)
 
       # Raise for any other 4xx/5xx
       response.raise_for_status()
 
       json_data = response.json()
-      self.model_cache.set(json_data)
+      cache.set(json_data)
       cloudlog.debug("Successfully updated models cache")
       return self.model_parser.parse_models(json_data)
 
@@ -155,23 +164,37 @@ class ModelFetcher:
 
     return None
 
-  def get_available_bundles(self) -> list[custom.ModelManagerSP.ModelBundle]:
-    """Gets the list of available models, with smart cache handling"""
-    cached_data, is_expired = self.model_cache.get()
+  def _bundles(self, cache: ModelCache, url: str, index_offset: int = 0) -> list[custom.ModelManagerSP.ModelBundle]:
+    cached_data, is_expired = cache.get()
 
+    bundles = None
     if cached_data and not is_expired:
       cloudlog.debug("Using valid cached models data")
-      return self.model_parser.parse_models(cached_data)
+      bundles = self.model_parser.parse_models(cached_data)
 
-    fetched_bundles = self._fetch_and_cache_models()
-    if fetched_bundles is not None:
-      return fetched_bundles
+    if not bundles:
+      fetched_bundles = self._fetch_and_cache_models(url, cache)
+      if fetched_bundles is not None:
+        bundles = fetched_bundles
+      elif not cached_data:
+        cloudlog.warning("Failed to fetch fresh data and no cache available")
+        bundles = []
+      else:
+        cloudlog.warning("Failed to fetch fresh data. Using expired cache as fallback")
+        bundles = self.model_parser.parse_models(cached_data)
 
-    if not cached_data:
-      cloudlog.warning("Failed to fetch fresh data and no cache available")
+    if index_offset:
+      for bundle in bundles:
+        bundle.index = int(bundle.index) + index_offset
+    return bundles
 
-    cloudlog.warning("Failed to fetch fresh data. Using expired cache as fallback")
-    return self.model_parser.parse_models(cached_data)
+  def get_available_bundles(self) -> list[custom.ModelManagerSP.ModelBundle]:
+    """Small (on-device) driving models."""
+    return self._bundles(self.model_cache, self.MODEL_URL)
+
+  def get_chestnut_bundles(self) -> list[custom.ModelManagerSP.ModelBundle]:
+    """Big driving models compiled for the chestnut eGPU."""
+    return self._bundles(self.chestnut_cache, self.MODEL_URL_CHESTNUT, self.CHESTNUT_INDEX_OFFSET)
 
 if __name__ == "__main__":
   params = Params()

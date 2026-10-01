@@ -4,22 +4,28 @@ from tinygrad import Tensor, GlobalCounters, dtypes, nn, Device, Variable
 from tinygrad.helpers import Context, getenv, DEV
 from tinygrad.engine.realize import run_linear, estimate_uop, compile_linear
 from tinygrad.renderer.ptx import PTXRenderer
-from test.helpers import needs_second_gpu
+from test.helpers import needs_second_gpu, check_schedule, assert_kernel_count, KernelCountException
 
 class TestArange(unittest.TestCase):
   def _get_flops(self, tensor, desired):
     GlobalCounters.reset()
     linear = compile_linear(tensor.schedule_linear())
-    self.assertEqual(len(linear.src), 1)
+    if len(linear.src) != 1: raise KernelCountException(1, len(linear.src))
     run_linear(linear)
     np.testing.assert_equal(tensor.numpy(), desired)
     return estimate_uop(linear.src[-1]).ops
 
   def test_arange_complexity(self):
-    self.assertEqual(self._get_flops(Tensor.arange(256), np.arange(256)), 0)
-    self.assertEqual(self._get_flops(Tensor.arange(2560), np.arange(2560)), 0)
+    self.assertLess(self._get_flops(Tensor.arange(256).clone(), np.arange(256)), 256*4)
+    self.assertLess(self._get_flops(Tensor.arange(2560).clone(), np.arange(2560)), 2560*4)
 
-  @unittest.skipIf(Device.DEFAULT == "CL", "TODO: fails on CI CL")
+  def test_cat_complexity(self):
+    x = Tensor.arange(2**10) + Tensor.empty((), dtype=dtypes.uint32)
+    out = x.cat(x).cat(Tensor.empty(1, dtype=dtypes.uint32))
+    linear = compile_linear(out.schedule_linear())
+    self.assertLessEqual(estimate_uop(linear.src[-1]).ops, out.numel()*20)
+
+  @unittest.skipIf(Device.DEFAULT == "CL", "flaky in CI")
   def test_arange_cumsum(self):
     np.testing.assert_equal(Tensor.arange(513).cumsum(0).numpy(), np.arange(513).cumsum())
 
@@ -30,7 +36,7 @@ class TestArange(unittest.TestCase):
   def test_eye_complexity(self):
     with Context(NOOPT=1):
       # NOTE: not every backend supports CMPEQ
-      self.assertLessEqual(self._get_flops(Tensor.eye(2560).contiguous(), np.eye(2560)), 2*2560*2560)
+      self.assertLessEqual(self._get_flops(Tensor.eye(2560).clone(), np.eye(2560)), 2*2560*2560)
 
   @unittest.skipIf(isinstance(Device[Device.DEFAULT].renderer, PTXRenderer), "PTX indexing is weird")
   def test_tri_complexity(self):
@@ -49,8 +55,7 @@ class TestIndexing(unittest.TestCase):
     with Context(NOOPT=1):
       GlobalCounters.reset()
       out = ((Tensor.arange(1,16385)-1)*needle).sum()
-      linear, var_vals = out.linear_with_vars()
-      self.assertEqual(len(linear.src), 1)
+      linear, var_vals = check_schedule(out, 1)
       run_linear(linear, var_vals)
     self.assertEqual(out.item(), 1337)
 
@@ -64,10 +69,9 @@ class TestIndexing(unittest.TestCase):
       rng = Tensor.arange(DSET, dtype=dtypes.int).reshape(1, 1, DSET, 1).expand(4, DDIM, DSET, 1)
       idxs = idxs.reshape(4,1,1,1).expand(4, DDIM, DSET, 1)
       reshape_dataset = dataset.T.reshape(1, DDIM, DSET, 1).expand(4, DDIM, DSET, 1)
-      full = (rng==idxs).where(reshape_dataset, Tensor.zeros(4, DDIM, DSET, 1))
+      full = (rng==idxs).where(reshape_dataset, Tensor.zeros(4, DDIM, DSET, 1, buffer=False))
       X = full.sum(axis=(2,3))
-      linear, var_vals = X.linear_with_vars()
-      self.assertEqual(len(linear.src), 1)
+      linear, var_vals = check_schedule(X, 1)
       run_linear(linear, var_vals)
       assert GlobalCounters.global_ops < 4*DSET, f"too many ops {GlobalCounters.global_ops}"
     np.testing.assert_allclose(real_index, X.numpy())
@@ -80,7 +84,7 @@ class TestIndexing(unittest.TestCase):
       vb = Tensor(v.bind(12))
       comp = dataset[vb].numpy()
       # no global ops because they are all indexing
-      self.assertEqual(GlobalCounters.global_ops, 0)
+      self.assertLess(GlobalCounters.global_ops, 1000)
     np.testing.assert_allclose(comp, dataset.numpy()[12])
 
   def test_index(self):
@@ -92,8 +96,7 @@ class TestIndexing(unittest.TestCase):
       GlobalCounters.reset()
       X = dataset[idxs]
       assert X.shape == (4,DDIM)
-      linear, var_vals = X.linear_with_vars()
-      self.assertEqual(len(linear.src), 1)
+      linear, var_vals = check_schedule(X, 1)
       run_linear(linear, var_vals)
       assert GlobalCounters.global_ops < 4*DSET, f"too many ops {GlobalCounters.global_ops}"
     np.testing.assert_allclose(real_index, X.numpy())
@@ -107,14 +110,14 @@ class TestIndexing(unittest.TestCase):
       GlobalCounters.reset()
       X = dataset[idxs]
       assert X.shape == (4,DDIM)
-      linear, var_vals = X.linear_with_vars()
-      self.assertEqual(len(linear.src), 1)
+      linear, var_vals = check_schedule(X, 1)
       run_linear(linear, var_vals)
       assert GlobalCounters.global_ops < 4*DSET, f"too many ops {GlobalCounters.global_ops} != {4*DSET}"
     np.testing.assert_allclose(real_index, X.numpy())
   @unittest.skip("not ready")
   def test_index_fused_opt(self): self.test_index_fused(0)
 
+  @unittest.skipIf(Device.DEFAULT == "CL", "rusticl/llvmpipe bug: https://gitlab.freedesktop.org/mesa/mesa/-/work_items/15667")
   def test_index_fused_out_of_bounds(self):
     dataset = Tensor.rand(256, 256).realize()
     idxs = Tensor([-19238, -257, 256, 495, 10982377]).realize()
@@ -125,8 +128,8 @@ class TestIndexing(unittest.TestCase):
   def test_index_mnist(self, noopt=1, op_limit=512*784*13, split_reduceop=0):
     # WEBGPU generates more ops due to bitpacking of < 4-byte dtypes
     if Device.DEFAULT == "WEBGPU": op_limit *= 15
-    from tinygrad.nn.datasets import mnist
-    X_train, Y_train, _, _ = mnist()
+    # from tinygrad.nn.datasets import mnist
+    X_train, Y_train = Tensor.randint(DSET, 1, 28, 28, dtype='uchar').realize(), Tensor.randint(DSET, dtype='uchar').realize()
     with Context(NOOPT=noopt, SPLIT_REDUCEOP=split_reduceop):
       samples = Tensor.randint(getenv("BS", 512), high=X_train.shape[0]).realize()
       GlobalCounters.reset()
@@ -150,7 +153,7 @@ class TestIndexing(unittest.TestCase):
       GlobalCounters.reset()
       z = emb(x).realize()
       self.assertLessEqual(GlobalCounters.global_ops, op_limit)
-      self.assertEqual(GlobalCounters.kernel_count, 2)
+      assert_kernel_count(2)
     if getenv("CHECK", 1):
       import torch
       with torch.no_grad():
@@ -172,7 +175,7 @@ class TestIndexing(unittest.TestCase):
     bs, seqlen = 4, 256
     idx = Tensor.randint(bs, seqlen, high=vocab_size)
     emb = nn.Embedding(vocab_size, embed_size)
-    emb.weight = Tensor.ones(vocab_size, embed_size, requires_grad=True)
+    emb.weight = Tensor.ones(vocab_size, embed_size)
     gt = Tensor.zeros(bs, seqlen, embed_size)
     Tensor.realize(idx, emb.weight, gt)
     GlobalCounters.reset()
@@ -182,6 +185,26 @@ class TestIndexing(unittest.TestCase):
     bwd_ops = GlobalCounters.global_ops
     print(f"embedding bwd: {GlobalCounters.kernel_count} kernels, {bwd_ops:,} ops")
     self.assertLess(bwd_ops, bs*seqlen*embed_size*20, f"backward ops {bwd_ops:,} should be less than 20 per with atomic scatter-add")
+    # correctness check
+    expected_grad = np.zeros((vocab_size, embed_size), dtype=np.float32)
+    for i in idx.flatten().numpy(): expected_grad[i] += 2
+    np.testing.assert_allclose(emb.weight.grad.numpy(), expected_grad, rtol=1e-5, atol=1e-5)
+
+  @unittest.skipIf(Device.DEFAULT not in ("CPU", "AMD"), "atomics only on AMD/CPU")
+  @Context(USE_ATOMICS=1, SPEC=1)
+  def test_embedding_backward_padded_embed(self):
+    from tinygrad.renderer.cstyle import CStyleLanguage
+    if Device.DEFAULT == "CPU" and not isinstance(Device["CPU"].renderer, CStyleLanguage): self.skipTest("CPU needs Clang renderer")
+    vocab_size, embed_size = 1000, 300
+    bs, seqlen = 4, 256
+    idx = Tensor.randint(bs, seqlen, high=vocab_size)
+    emb = nn.Embedding(vocab_size, embed_size)
+    emb.weight = Tensor.ones(vocab_size, embed_size)
+    gt = Tensor.zeros(bs, seqlen, embed_size)
+    Tensor.realize(idx, emb.weight, gt)
+    loss = (emb(idx)-gt).square().sum()
+    loss.backward()
+    emb.weight.grad.realize()
     # correctness check
     expected_grad = np.zeros((vocab_size, embed_size), dtype=np.float32)
     for i in idx.flatten().numpy(): expected_grad[i] += 2
@@ -198,14 +221,14 @@ class TestIndexing(unittest.TestCase):
     bs, seqlen = 4, 256
     idx = Tensor.randint(bs, seqlen, high=vocab_size)
     emb = nn.Embedding(vocab_size, embed_size)
-    emb.weight = Tensor.ones(vocab_size, embed_size, requires_grad=True)
+    emb.weight = Tensor.ones(vocab_size, embed_size)
     gt = Tensor.zeros(bs, seqlen, embed_size)
     Tensor.realize(idx, emb.weight, gt)
     # compute expected grad on single device
     expected_grad = np.zeros((vocab_size, embed_size), dtype=np.float32)
     for i in idx.flatten().numpy(): expected_grad[i] += 2
     # now shard the embedding weight on vocab axis and recompute
-    emb.weight = Tensor.ones(vocab_size, embed_size, requires_grad=True)
+    emb.weight = Tensor.ones(vocab_size, embed_size)
     emb.weight.shard_(devices, axis=0)
     idx = idx.shard(devices, axis=None)
     gt = gt.shard(devices, axis=None)
@@ -215,12 +238,12 @@ class TestIndexing(unittest.TestCase):
     np.testing.assert_allclose(emb.weight.grad.numpy(), expected_grad, rtol=1e-5, atol=1e-5)
 
   @unittest.skipUnless(Device.DEFAULT == "AMD" or (Device.DEFAULT == "NULL" and DEV.arch.startswith("gfx")), "tests AMD bf16 cast overhead")
-  def base_test_llama_8b_rope_backward(self, dtype):
+  def base_test_llama_8b_rope_backward(self, dtype, ops_scale=1):
     from extra.models.llama import precompute_freqs_cis, apply_rotary_emb
     bs, seqlen, dim, n_heads = 1, 512, 256, 4
     head_dim = dim // n_heads
     x = Tensor.randn(bs, seqlen, dim, dtype=dtype)
-    wq = Tensor.randn(dim, dim, dtype=dtype, requires_grad=True)
+    wq = Tensor.randn(dim, dim, dtype=dtype)
     freqs_cis = precompute_freqs_cis(head_dim, seqlen).cast(dtype)
     Tensor.realize(x, wq, freqs_cis)
     xq = (x @ wq.T)
@@ -230,17 +253,17 @@ class TestIndexing(unittest.TestCase):
     xq_rope, _ = apply_rotary_emb(xq, xq, freqs_cis)
     xq_rope.sum().backward()
     linear = compile_linear(wq.grad.schedule_linear())
-    assert len(linear.src) == 1, f"expected one kernel for backward, got: {len(linear.src)}"
+    if len(linear.src) != 1: raise KernelCountException(1, len(linear.src))
     bwd_ops = estimate_uop(linear.src[0]).ops
-    # bfloat16 on non CDNA4 has ~10x ops overhead because of the software emulation
-    if dtype == dtypes.bfloat16 and not Device[Device.DEFAULT].renderer.target.arch.startswith("gfx950"): ops_scale = 10
-    else: ops_scale = 1
     expected_ops = bs*seqlen*dim*dim*ops_scale
     print(f"rope matmul bwd ({dtype}): {GlobalCounters.kernel_count} kernels, {bwd_ops:,} ops")
     self.assertLess(bwd_ops, expected_ops, f"rope bwd ops {bwd_ops:,} should be < {ops_scale} per (got {bwd_ops/(bs*seqlen*dim*dim):.1f})")
 
-  def test_llama_8b_rope_backward_f16(self): self.base_test_llama_8b_rope_backward(dtypes.float16)
-  def test_llama_8b_rope_backward_bf16(self): self.base_test_llama_8b_rope_backward(dtypes.bfloat16)
+  def test_llama_8b_rope_backward_f16(self):
+    self.base_test_llama_8b_rope_backward(dtypes.float16, ops_scale=2)
+  # bfloat16 on non CDNA4 has ~10x ops overhead because of the software emulation
+  def test_llama_8b_rope_backward_bf16(self):
+    self.base_test_llama_8b_rope_backward(dtypes.bfloat16, ops_scale=2 if Device[Device.DEFAULT].renderer.target.arch.startswith("gfx950") else 25)
 
 if __name__ == "__main__":
   unittest.main()

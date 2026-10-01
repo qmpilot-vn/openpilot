@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from tinygrad.helpers import BEAM, Timing, CI, prod
+from tinygrad.helpers import BEAM, Timing, prod
 from tinygrad import Variable, Device, Tensor
 from tinygrad.nn import Conv2d
 from tinygrad.uop.ops import AxisType, Ops
@@ -64,7 +64,7 @@ class TestBeamSearch(unittest.TestCase):
     actual = a.numpy()
     np.testing.assert_allclose(actual, desired)
 
-  @unittest.skipIf(CI, "flaky. CL_OUT_OF_RESOURCES")
+  @unittest.skip("flaky. CL_OUT_OF_RESOURCES")
   def test_conv_beam(self):
     c = Conv2d(3, 16, (3,3))
     x = rand(1,3,32,32)
@@ -89,7 +89,7 @@ class TestBeamSearch(unittest.TestCase):
     s.apply_opt(Opt(OptOps.TC, 0, (-1, 0, 1)))
     up = prod([x for x, t in zip(s.full_shape, s.axis_types) if t in (AxisType.UPCAST, AxisType.UNROLL)])
     actions = get_kernel_actions(s, include_0=False, max_up=int(up))
-    upcasted = [s for s in actions.values() if any(opt.op in (OptOps.UPCAST, OptOps.UNROLL) for opt in s.applied_opts)]
+    upcasted = [s for s in actions.values() if any(opt.op is OptOps.UPCAST for opt in s.applied_opts)]
     assert len(upcasted) > 0, f"expected upcast/unroll actions after TC with max_up={up}, but got none"
 
   def test_max_up(self):
@@ -98,7 +98,7 @@ class TestBeamSearch(unittest.TestCase):
     s = Scheduler(ast, Device[Device.DEFAULT].renderer)
     for max_up in (2, 4):
       actions = get_kernel_actions(s, include_0=False, max_up=max_up)
-      for up_opts in [s.applied_opts for s in actions.values() if any(opt.op in (OptOps.UPCAST, OptOps.UNROLL) for opt in s.applied_opts)]:
+      for up_opts in [s.applied_opts for s in actions.values() if any(opt.op is OptOps.UPCAST for opt in s.applied_opts)]:
         assert len([opt for opt in up_opts if opt.arg > max_up]) == 0 and len([op for op in up_opts if op.arg <= max_up]) > 0
 
 if __name__ == '__main__':

@@ -24,7 +24,7 @@ from openpilot.selfdrive.modeld.compile_modeld import make_input_queues, WARP_IN
 from openpilot.selfdrive.modeld.fill_model_msg import fill_model_msg, fill_pose_msg, PublishState
 from openpilot.common.file_chunker import read_file_chunked, get_manifest_path
 from openpilot.selfdrive.modeld.constants import ModelConstants, Plan
-from openpilot.selfdrive.modeld.helpers import usbgpu_present, modeld_pkl_path, get_tg_input_devices
+from openpilot.selfdrive.modeld.helpers import chestnut_present, modeld_pkl_path, get_tg_input_devices
 
 from openpilot.sunnypilot.livedelay.helpers import get_lat_delay
 from openpilot.sunnypilot.modeld_v2.modeld_base import ModelStateBase
@@ -78,12 +78,12 @@ class FrameMeta:
 class ModelState(ModelStateBase):
   prev_desire: np.ndarray  # for tracking the rising edge of the pulse
 
-  def __init__(self, cam_w: int, cam_h: int, usbgpu: bool):
+  def __init__(self, cam_w: int, cam_h: int, chestnut: bool):
     ModelStateBase.__init__(self)
     self.LAT_SMOOTH_SECONDS = LAT_SMOOTH_SECONDS
-    input_devices = get_tg_input_devices(PROCESS_NAME, usbgpu)
+    input_devices = get_tg_input_devices(PROCESS_NAME, chestnut=chestnut)
     self.WARP_DEV, self.QUEUE_DEV = input_devices['WARP_DEV'], input_devices['QUEUE_DEV']
-    jits = pickle.loads(read_file_chunked(modeld_pkl_path(usbgpu)))
+    jits = pickle.loads(read_file_chunked(modeld_pkl_path(chestnut=chestnut)))
     vision_metadata = jits['metadata']['vision']
     self.vision_input_shapes = vision_metadata['input_shapes']
     self.vision_input_names = list(self.vision_input_shapes.keys())
@@ -151,14 +151,14 @@ class ModelState(ModelStateBase):
 def main(demo=False):
   cloudlog.warning("modeld init")
 
-  _present = usbgpu_present()
-  _compiled = os.path.isfile(get_manifest_path(modeld_pkl_path(usbgpu=True)))
-  USBGPU = _present and _compiled
+  _present = chestnut_present()
+  _compiled = os.path.isfile(get_manifest_path(modeld_pkl_path(chestnut=True)))
+  CHESTNUT = _present and _compiled
   params = Params()
   params.put_bool("UsbGpuPresent", _present)
   params.put_bool("UsbGpuCompiled", _compiled)
 
-  if not USBGPU:
+  if not CHESTNUT:
     # USB GPU currently saturates a core so can't do this yet,
     # also need to move the aux USB interrupts for good timings
     config_realtime_process(7, 54)
@@ -188,7 +188,7 @@ def main(demo=False):
 
   st = time.monotonic()
   cloudlog.warning("loading model")
-  model = ModelState(vipc_client_main.width, vipc_client_main.height, USBGPU)
+  model = ModelState(vipc_client_main.width, vipc_client_main.height, CHESTNUT)
   cloudlog.warning(f"models loaded in {time.monotonic() - st:.1f}s, modeld starting")
 
   # messaging
