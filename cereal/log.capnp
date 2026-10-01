@@ -927,6 +927,7 @@ struct DrivingModelData {
   frameIdExtra @1 :UInt32;
   frameDropPerc @6 :Float32;
   modelExecutionTime @7 :Float32;
+  big @8 :Bool;
 
   action @2 :ModelDataV2.Action;
 
@@ -997,6 +998,7 @@ struct ModelDataV2 {
 
   # e2e lateral planner
   action @26: Action;
+  big @27 :Bool;
 
   lateralPlannerSolutionDEPRECATED @25: Deprecated.LateralPlannerSolution;
 
