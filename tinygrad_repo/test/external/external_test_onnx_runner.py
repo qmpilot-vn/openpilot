@@ -2,7 +2,6 @@ import unittest, onnx, tempfile, pathlib
 import numpy as np
 from tinygrad import Tensor
 from tinygrad.uop.ops import Ops
-from tinygrad.device import is_dtype_supported
 from typing import Any
 from tinygrad.nn.onnx import OnnxRunner, OnnxPBParser, OnnxDataType
 from hypothesis import given, strategies as st
@@ -14,10 +13,10 @@ def _check_ast_count(desired_count:int, t:Tensor):
   asts = [call for call in linear.src if call.src[0].op is Ops.SINK]
   assert len(asts) == desired_count, f"{len(asts)} != {desired_count}"
 
-def build_onnx(nodes, from_disk:bool=True, **kwargs):
+def build_onnx(nodes, from_disk:bool=True, opset_imports=None, **kwargs):
   """Helper to build and return an OnnxRunner from ONNX nodes."""
   graph = onnx.helper.make_graph(nodes, 'test', kwargs.get('inputs', []), kwargs.get('outputs', []), kwargs.get('initializers', []))
-  model = onnx.helper.make_model(graph)
+  model = onnx.helper.make_model(graph) if opset_imports is None else onnx.helper.make_model(graph, opset_imports=opset_imports)
   if from_disk:
     with tempfile.TemporaryDirectory() as tmpdir:
       tmp_path = pathlib.Path(tmpdir)
@@ -30,6 +29,23 @@ def build_onnx(nodes, from_disk:bool=True, **kwargs):
   return runner
 
 class TestOnnxRunner(unittest.TestCase):
+  def test_tinygrad_contiguous(self):
+    runner = build_onnx(
+        nodes=[
+          onnx.helper.make_node('Add', ['inp', 'one'], ['added']),
+          onnx.helper.make_node('Contiguous', ['added'], ['materialized'], domain='org.tinygrad'),
+          onnx.helper.make_node('Mul', ['materialized', 'two'], ['output'])
+        ],
+        inputs=[onnx.helper.make_tensor_value_info('inp', onnx.TensorProto.FLOAT, (4,))],
+        outputs=[onnx.helper.make_tensor_value_info('output', onnx.TensorProto.FLOAT, (4,))],
+        initializers=[
+          onnx.helper.make_tensor('one', onnx.TensorProto.FLOAT, (), [1.0]),
+          onnx.helper.make_tensor('two', onnx.TensorProto.FLOAT, (), [2.0])
+        ],
+        opset_imports=[onnx.helper.make_opsetid('', 13), onnx.helper.make_opsetid('org.tinygrad', 1)],
+        from_disk=False).to('PYTHON')
+    _check_ast_count(2, runner({'inp': Tensor.empty(4, device='PYTHON')})['output'])
+
   def _test_const_fold_unary_op(self, from_disk:bool):
     runner = build_onnx(
         nodes=[
@@ -89,7 +105,6 @@ class TestOnnxRunner(unittest.TestCase):
       np.testing.assert_equal(output.numpy(), weights + 1)
 
 all_dtypes = list(OnnxDataType)
-device_supported_dtypes = {odt for odt in OnnxDataType if is_dtype_supported(odt.to_dtype())}
 
 class TestOnnxRunnerDtypes(unittest.TestCase):
   """
