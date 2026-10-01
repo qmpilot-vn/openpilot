@@ -16,8 +16,10 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.system.hardware.hw import Paths
 
 from cereal import messaging, custom
+from openpilot.selfdrive.modeld.helpers import chestnut_present
 from openpilot.sunnypilot.models.fetcher import ModelFetcher
-from openpilot.sunnypilot.models.helpers import get_active_bundle, validate_active_bundle, verify_file
+from openpilot.sunnypilot.models.helpers import ACTIVE_BUNDLE_CHESTNUT, ACTIVE_BUNDLE_QCOM, get_active_bundle, validate_active_bundle, verify_file
+from openpilot.sunnypilot.models.model_name import DEFAULT_BIG_MODEL_REF, DEFAULT_MODEL_REF
 
 
 class ModelManagerSP:
@@ -216,9 +218,11 @@ class ModelManagerSP:
             seen_artifacts.add(artifact.fileName)
             await self._process_artifact(artifact, destination_path)
 
-      self.active_bundle = self.selected_bundle
-      self.active_bundle.status = custom.ModelManagerSP.DownloadStatus.downloaded
-      self.params.put("ModelManager_ActiveBundle", self.active_bundle.to_dict(), block=True)
+      self.selected_bundle.status = custom.ModelManagerSP.DownloadStatus.downloaded
+      slot = ACTIVE_BUNDLE_CHESTNUT if self.selected_bundle.index >= ModelFetcher.CHESTNUT_INDEX_OFFSET else ACTIVE_BUNDLE_QCOM
+      self.params.put(slot, self.selected_bundle.to_dict(), block=True)
+      if slot == ACTIVE_BUNDLE_QCOM:
+        self.active_bundle = self.selected_bundle
       self.selected_bundle = None
 
     except Exception:
@@ -238,9 +242,22 @@ class ModelManagerSP:
 
     while True:
       try:
-        self.available_models = self.model_fetcher.get_available_bundles()
-        validate_active_bundle(self.params, self.available_models)
+        small_models = self.model_fetcher.get_available_bundles()
+        big_models = self.model_fetcher.get_chestnut_bundles()
+        self.available_models = small_models + big_models
+        validate_active_bundle(self.params, small_models, key=ACTIVE_BUNDLE_QCOM)
+        validate_active_bundle(self.params, big_models, key=ACTIVE_BUNDLE_CHESTNUT)
         self.active_bundle = get_active_bundle(self.params)
+
+        if self.params.get("ModelManager_DownloadIndex") is None:
+          if self.active_bundle is None:
+            match = next((bundle for bundle in small_models if bundle.ref == DEFAULT_MODEL_REF), None)
+            if match is not None:
+              self.params.put("ModelManager_DownloadIndex", int(match.index))
+          elif chestnut_present() and get_active_bundle(self.params, chestnut=True) is None:
+            match = next((bundle for bundle in big_models if bundle.ref == DEFAULT_BIG_MODEL_REF), None)
+            if match is not None:
+              self.params.put("ModelManager_DownloadIndex", int(match.index))
 
         if (index_to_download := self.params.get("ModelManager_DownloadIndex")) is not None:
           if model_to_download := next((model for model in self.available_models if model.index == index_to_download), None):
@@ -268,10 +285,12 @@ class ModelManagerSP:
     Clears the model cache directory of all files except those in the active model bundle.
     """
 
-    # Get list of files used by active model bundle
+    # Keep files for both the on-device model and the chestnut big model.
     active_files = []
-    if self.active_bundle is not None: # When the default model is active
-      for model in self.active_bundle.models:
+    for bundle in (self.active_bundle, get_active_bundle(self.params, chestnut=True)):
+      if bundle is None:
+        continue
+      for model in bundle.models:
         if hasattr(model, 'artifact') and model.artifact.fileName:
           active_files.append(model.artifact.fileName)
         if hasattr(model, 'metadata') and model.metadata.fileName:
