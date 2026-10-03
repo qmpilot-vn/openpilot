@@ -70,3 +70,24 @@ def get_usb_state() -> list[dict]:
       "usb3Lane": {1: "a", 2: "b"}.get(typec_orientation, "unknown") if ctrl is not None and ctrl.name == PRIMARY_USB_CONTROLLER else "unknown",
     })
   return devices
+
+
+def set_usb_state(device_state, devices: list[dict]) -> None:
+  entries = device_state.usbState.init('devices', len(devices))
+
+  chestnut_present = False
+  for entry, device in zip(entries, devices, strict=True):
+    entry.busnum = device["busnum"]
+    entry.devnum = device["devnum"]
+    entry.vendorId = device["vendorId"]
+    entry.productId = device["productId"]
+    entry.speedMbps = device["speedMbps"]
+    entry.manufacturer = device["manufacturer"]
+    entry.product = device["product"]
+    entry.linkErrorCount = device["linkErrorCount"]
+    entry.usb3Lane = device.get("usb3Lane", "unknown")
+
+    if is_chestnut_usb_id(entry.vendorId, entry.productId):
+      chestnut_present = True
+
+  device_state.chestnutPresent = chestnut_present

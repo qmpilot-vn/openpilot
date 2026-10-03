@@ -37,6 +37,7 @@ PLURAL_SELECTORS = {
   'zh-CHS': lambda n: 0,
   'ko': lambda n: 0,
   'ja': lambda n: 0,
+  'vi': lambda n: 0,
 }
 
 
@@ -146,6 +147,17 @@ def load_translations(path) -> tuple[dict[str, str], dict[str, list[str]]]:
   return translations, plurals
 
 
+NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
+NUMBER_UNIT_RE = re.compile(r"\d+(?:[.,]\d+)? (?:km/h|mph)")
+
+
+def _fill(template: str, values: list[str]) -> str | None:
+  parts = template.split("{}")
+  if len(parts) - 1 != len(values):
+    return None
+  return "".join(p + v for p, v in zip(parts, values + [""], strict=True))
+
+
 class Multilang:
   def __init__(self):
     self._params = Params() if Params is not None else None
@@ -184,6 +196,16 @@ class Multilang:
   def tr(self, text: str) -> str:
     return self._translations.get(text, text) or text
 
+  def tr_dynamic(self, text: str) -> str:
+    """Translate text built at runtime; numbers are matched against "{}" placeholders in the msgid."""
+    if not text or text in self._translations:
+      return self.tr(text)
+    for pattern in (NUMBER_UNIT_RE, NUMBER_RE):
+      values = pattern.findall(text)
+      if values and (template := self._translations.get(pattern.sub("{}", text))):
+        return _fill(template, values) or text
+    return text
+
   def trn(self, singular: str, plural: str, n: int) -> str:
     if singular in self._plurals:
       idx = self._plural_selector(n)
@@ -206,7 +228,7 @@ class Multilang:
 multilang = Multilang()
 multilang.setup()
 
-tr, trn = multilang.tr, multilang.trn
+tr, trn, tr_dynamic = multilang.tr, multilang.trn, multilang.tr_dynamic
 
 
 # no-op marker for static strings translated later

@@ -1,8 +1,10 @@
 from cereal import log
 
 from openpilot.system.ui.widgets.scroller import NavScroller
-from openpilot.selfdrive.ui.mici.widgets.button import BigParamControl, BigMultiParamToggle
-from openpilot.system.ui.lib.application import gui_app
+from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigParamControl, BigMultiParamToggle
+from openpilot.selfdrive.ui.mici.layouts.settings.language import LanguageLayoutMici, current_language_name
+from openpilot.system.ui.lib.application import gui_app, FontWeight
+from openpilot.system.ui.lib.multilang import UNIFONT_LANGUAGES, multilang, tr
 from openpilot.selfdrive.ui.layouts.settings.common import restart_needed_callback
 from openpilot.selfdrive.ui.ui_state import ui_state
 
@@ -13,16 +15,22 @@ class TogglesLayoutMici(NavScroller):
   def __init__(self):
     super().__init__()
 
-    self._personality_toggle = BigMultiParamToggle("driving personality", "LongitudinalPersonality", ["aggressive", "standard", "relaxed"])
-    self._experimental_btn = BigParamControl("experimental mode", "ExperimentalMode")
-    is_metric_toggle = BigParamControl("use metric units", "IsMetric")
-    ldw_toggle = BigParamControl("lane departure warnings", "IsLdwEnabled")
-    always_on_dm_toggle = BigParamControl("always-on driver monitor", "AlwaysOnDM")
-    record_front = BigParamControl("record & upload driver camera", "RecordFront", toggle_callback=restart_needed_callback)
-    record_mic = BigParamControl("record & upload mic audio", "RecordAudio", toggle_callback=restart_needed_callback)
-    enable_openpilot = BigParamControl("enable sunnypilot", "OpenpilotEnabledToggle", toggle_callback=restart_needed_callback)
+    self._personality_toggle = BigMultiParamToggle(tr("driving personality"), "LongitudinalPersonality", [tr("aggressive"), tr("standard"), tr("relaxed")])
+    self._experimental_btn = BigParamControl(tr("experimental mode"), "ExperimentalMode")
+    is_metric_toggle = BigParamControl(tr("use metric units"), "IsMetric")
+    ldw_toggle = BigParamControl(tr("lane departure warnings"), "IsLdwEnabled")
+    always_on_dm_toggle = BigParamControl(tr("always-on driver monitor"), "AlwaysOnDM")
+    record_front = BigParamControl(tr("record & upload driver camera"), "RecordFront", toggle_callback=restart_needed_callback)
+    record_mic = BigParamControl(tr("record & upload mic audio"), "RecordAudio", toggle_callback=restart_needed_callback)
+    enable_openpilot = BigParamControl(tr("enable sunnypilot"), "OpenpilotEnabledToggle", toggle_callback=restart_needed_callback)
+
+    self._language_btn = BigButton(tr("language"))
+    self._language_panel = LanguageLayoutMici(on_change=self._update_language_btn)
+    self._language_btn.set_click_callback(lambda: gui_app.push_widget(self._language_panel))
+    self._update_language_btn()
 
     self._scroller.add_widgets([
+      self._language_btn,
       self._personality_toggle,
       self._experimental_btn,
       is_metric_toggle,
@@ -66,6 +74,11 @@ class TogglesLayoutMici(NavScroller):
   def show_event(self):
     super().show_event()
     self._update_toggles()
+    self._update_language_btn()
+
+  def _update_language_btn(self):
+    self._language_btn.set_value(current_language_name())
+    self._language_btn._sub_label.set_font_weight(FontWeight.UNIFONT if multilang.language in UNIFONT_LANGUAGES else FontWeight.ROMAN)
 
   def _update_toggles(self):
     ui_state.update_params()

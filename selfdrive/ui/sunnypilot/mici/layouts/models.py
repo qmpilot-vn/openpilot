@@ -14,9 +14,30 @@ from openpilot.selfdrive.ui.sunnypilot.layouts.settings.models import ModelsLayo
 from openpilot.selfdrive.ui.ui_state import ui_state, device
 from openpilot.system.ui.lib.application import FontWeight, gui_app
 from openpilot.system.ui.lib.multilang import tr
+from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.label import UnifiedLabel
 from openpilot.system.ui.widgets.scroller import NavScroller
+
+
+class FitLabel(UnifiedLabel):
+  """Single-line label that shrinks its font so translated headers stay within max_width."""
+  def __init__(self, text: str, font_size: int, min_font_size: int = 28, **kwargs):
+    self._base_font_size = font_size
+    self._min_font_size = min_font_size
+    self._fitted_text: str | None = None
+    super().__init__(text, font_size, wrap_text=False, **kwargs)
+    self.set_text(text)
+
+  def set_text(self, text):
+    if text != self._fitted_text:
+      self._fitted_text = text
+      size = self._base_font_size
+      while size > self._min_font_size and self._max_width and \
+            measure_text_cached(self._font, text, size, size * self._letter_spacing).x > self._max_width:
+        size -= 2
+      self.set_font_size(size)
+    super().set_text(text)
 
 class CurrentModelInfo(Widget):
   def __init__(self):
@@ -27,11 +48,11 @@ class CurrentModelInfo(Widget):
     header_color = rl.Color(255, 255, 255, int(255 * 0.9))
     subheader_color = rl.Color(255, 255, 255, int(255 * 0.9 * 0.65))
     max_width = int(self._rect.width - 20)
-    self.current_model_header = UnifiedLabel(tr("active model"), 48, max_width=max_width, text_color=header_color, font_weight=FontWeight.DISPLAY)
+    self.current_model_header = FitLabel(tr("active model"), 48, max_width=max_width, text_color=header_color, font_weight=FontWeight.DISPLAY)
     default_text = f"{DEFAULT_MODEL} (Default)".lower()
     self.current_model_text = UnifiedLabel(default_text, 32, max_width=max_width, text_color=subheader_color, font_weight=FontWeight.ROMAN, scroll=True)
 
-    self.info_header = UnifiedLabel("cache size", 48, max_width=max_width, text_color=header_color, font_weight=FontWeight.DISPLAY)
+    self.info_header = FitLabel(tr("cache size"), 48, max_width=max_width, text_color=header_color, font_weight=FontWeight.DISPLAY)
     self.info_text = UnifiedLabel("0 mb", 32, max_width=max_width, text_color=subheader_color, font_weight=FontWeight.ROMAN)
 
   def _render(self, _):
