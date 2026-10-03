@@ -16,6 +16,7 @@ from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import DialogResult, Widget
 from openpilot.system.ui.widgets.button import Button, ButtonStyle
 from openpilot.system.ui.widgets.confirm_dialog import ConfirmDialog
+from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 
 from openpilot.system.ui.sunnypilot.lib.styles import style
 from openpilot.system.ui.sunnypilot.widgets.tree_dialog import TreeOptionDialog, TreeNode, TreeFolder
@@ -119,6 +120,31 @@ class PlatformSelector(Button):
     )
     callback = partial(self._on_platform_selected, dialog)
     dialog.on_exit = callback
+    gui_app.push_widget(dialog)
+
+  def vinfast_names(self) -> list[str]:
+    return sorted(name for name, data in self._platforms.items() if data.get("brand") == "vinfast")
+
+  def vinfast_button_text(self) -> str:
+    bundle = ui_state.params.get("CarPlatformBundle") or {}
+    if bundle.get("brand") == "vinfast":
+      return str(bundle.get("model") or bundle.get("name") or tr("SET"))
+    return tr("SET")
+
+  def _on_vinfast_selected(self, dialog, result):
+    if result == DialogResult.CONFIRM and dialog.selection:
+      self._set_platform(dialog.selection)
+
+  def _show_vinfast_dialog(self):
+    names = self.vinfast_names()
+    if not names:
+      return
+    current = ""
+    bundle = ui_state.params.get("CarPlatformBundle") or {}
+    if bundle.get("brand") == "vinfast":
+      current = str(bundle.get("name", ""))
+    dialog = MultiOptionDialog(tr("Select VinFast"), names, current=current)
+    dialog._callback = partial(self._on_vinfast_selected, dialog)
     gui_app.push_widget(dialog)
 
   def refresh(self):

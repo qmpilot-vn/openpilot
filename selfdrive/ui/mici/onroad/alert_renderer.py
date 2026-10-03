@@ -14,6 +14,7 @@ from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.label import UnifiedLabel
 
 from openpilot.selfdrive.ui.sunnypilot.onroad.speed_limit import SpeedLimitAlertRenderer
+from openpilot.system.ui.lib.multilang import tr, tr_dynamic
 
 AlertSize = log.SelfdriveState.AlertSize
 AlertStatus = log.SelfdriveState.AlertStatus
@@ -68,22 +69,22 @@ class Alert:
 
 # Pre-defined alert instances
 ALERT_STARTUP_PENDING = Alert(
-  text1="sunnypilot Unavailable",
-  text2="Waiting to start",
+  text1=tr("sunnypilot Unavailable"),
+  text2=tr("Waiting to start"),
   size=AlertSize.mid,
   status=AlertStatus.normal,
 )
 
 ALERT_CRITICAL_TIMEOUT = Alert(
-  text1="TAKE CONTROL IMMEDIATELY",
-  text2="System Unresponsive",
+  text1=tr("TAKE CONTROL IMMEDIATELY"),
+  text2=tr("System Unresponsive"),
   size=AlertSize.full,
   status=AlertStatus.critical,
 )
 
 ALERT_CRITICAL_REBOOT = Alert(
-  text1="System Unresponsive",
-  text2="Reboot Device",
+  text1=tr("System Unresponsive"),
+  text2=tr("Reboot Device"),
   size=AlertSize.full,
   status=AlertStatus.critical,
 )
@@ -147,7 +148,7 @@ class AlertRenderer(Widget, SpeedLimitAlertRenderer):
       return None
 
     # Return current alert
-    ret = Alert(text1=ss.alertText1, text2=ss.alertText2, size=ss.alertSize.raw, status=ss.alertStatus.raw,
+    ret = Alert(text1=tr_dynamic(ss.alertText1), text2=tr_dynamic(ss.alertText2), size=ss.alertSize.raw, status=ss.alertStatus.raw,
                 visual_alert=ss.alertHudVisual, alert_type=ss.alertType)
     self._prev_alert = ret
     return ret
@@ -308,7 +309,7 @@ class AlertRenderer(Widget, SpeedLimitAlertRenderer):
     icon_side = alert_layout.icon.side if alert_layout.icon is not None else None
 
     # TODO: hack
-    alert_text1 = alert.text1.lower().replace('calibrating: ', 'calibrating:\n')
+    alert_text1 = alert.text1.lower().replace('calibrating: ', 'calibrating:\n').replace('đang hiệu chỉnh: ', 'đang hiệu chỉnh:\n')
     can_draw_second_line = False
     # TODO: there should be a common way to determine font size based on text length to maximize rect
     if len(alert_text1) <= 12:

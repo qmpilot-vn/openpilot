@@ -1,4 +1,5 @@
 import datetime
+import math
 import time
 
 from cereal import log
@@ -9,7 +10,8 @@ from openpilot.system.ui.widgets.layouts import HBoxLayout
 from openpilot.system.ui.widgets.icon_widget import IconWidget
 from openpilot.system.ui.widgets.label import UnifiedLabel, gui_label
 from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos
-from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.selfdrive.ui.ui_state import ui_state, ChestnutState
+from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.version import RELEASE_BRANCHES
 
 HEAD_BUTTON_FONT_SIZE = 40
@@ -139,8 +141,10 @@ class MiciHomeLayout(Widget):
     self._version_text = self._get_version_text()
 
     self._experimental_icon = IconWidget("icons_mici/experimental_mode.png", (48, 48))
-    self._egpu_icon = IconWidget("icons_mici/egpu.png", (50, 37))
-    self._egpu_icon_gray = IconWidget("icons_mici/egpu_gray.png", (50, 37))
+    self._usb_icon = IconWidget("icons_mici/usb.png", (62, 40))
+    self._chestnut_icon = IconWidget("icons_mici/chestnut_green.png", (68, 40))
+    self._chestnut_loading_icon = IconWidget("icons_mici/chestnut.png", (68, 40))
+    self._chestnut_failed_icon = IconWidget("icons_mici/chestnut_orange.png", (68, 40))
     self._mic_icon = IconWidget("icons_mici/microphone.png", (32, 46))
     self._body_icon = IconWidget("icons_mici/body.png", (54, 37))
 
@@ -150,13 +154,15 @@ class MiciHomeLayout(Widget):
       IconWidget("icons_mici/settings.png", (48, 48), opacity=0.9),
       NetworkIcon(),
       self._experimental_icon,
-      self._egpu_icon,
-      self._egpu_icon_gray,
+      self._usb_icon,
+      self._chestnut_icon,
+      self._chestnut_loading_icon,
+      self._chestnut_failed_icon,
       self._body_icon,
       self._mic_icon,
     ], spacing=18)
 
-    self._openpilot_label = UnifiedLabel("sunnypilot", font_size=96, font_weight=FontWeight.DISPLAY, max_width=480, wrap_text=False)
+    self._openpilot_label = UnifiedLabel("qmpilot", font_size=88, font_weight=FontWeight.AUDIOWIDE, max_width=480, wrap_text=False)
     self._version_label = UnifiedLabel("", font_size=36, font_weight=FontWeight.ROMAN, max_width=480, wrap_text=False)
     self._large_version_label = UnifiedLabel("", font_size=64, text_color=rl.GRAY, font_weight=FontWeight.ROMAN, max_width=480, wrap_text=False)
     self._date_label = UnifiedLabel("", font_size=36, text_color=rl.GRAY, font_weight=FontWeight.ROMAN, max_width=480, wrap_text=False)
@@ -236,7 +242,7 @@ class MiciHomeLayout(Widget):
       self._date_label.render()
 
       self._branch_label.set_max_width(gui_app.width - self._version_label.text_width - self._date_label.text_width - 32)
-      self._branch_label.set_text(" " + ("release" if release_branch else self._version_text[1]))
+      self._branch_label.set_text(" " + (tr("release") if release_branch else self._version_text[1]))
       self._branch_label.set_position(version_pos.x + self._version_label.text_width + self._date_label.text_width + 20, version_pos.y)
       self._branch_label.render()
 
@@ -248,8 +254,16 @@ class MiciHomeLayout(Widget):
 
     # ***** Center-aligned bottom section icons *****
     self._experimental_icon.set_visible(ui_state.experimental_mode)
-    self._egpu_icon.set_visible(ui_state.usbgpu and ui_state.usbgpu_compiled)
-    self._egpu_icon_gray.set_visible(ui_state.usbgpu and not ui_state.usbgpu_compiled)
+    usb_connected = ui_state.usb_connected
+    usb_unknown = ui_state.usb_unknown
+    chestnut_state = ui_state.chestnut_state
+    self._usb_icon.set_visible(usb_connected and usb_unknown)
+    self._chestnut_icon.set_visible(not usb_unknown and chestnut_state not in
+                                    (ChestnutState.LOADING, ChestnutState.UNCOMPILED, ChestnutState.FAILED) and
+                                    (usb_connected or chestnut_state in (ChestnutState.READY, ChestnutState.ACTIVE)))
+    self._chestnut_loading_icon.set_visible(not usb_unknown and chestnut_state == ChestnutState.LOADING)
+    self._chestnut_loading_icon.set_opacity(0.35 + 0.65 * (0.5 - 0.5 * math.cos(rl.get_time() * 6.0)))
+    self._chestnut_failed_icon.set_visible(not usb_unknown and chestnut_state in (ChestnutState.UNCOMPILED, ChestnutState.FAILED))
     self._mic_icon.set_visible(ui_state.recording_audio)
     self._body_icon.set_visible(ui_state.is_body)
 

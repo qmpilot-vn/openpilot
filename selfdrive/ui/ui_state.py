@@ -12,6 +12,9 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.ui.lib.prime_state import PrimeState
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.hardware import HARDWARE, PC
+from openpilot.common.hardware.usb import TYPEC_CC_ORIENTATION_PATH, get_usb_state, is_chestnut_usb_id, read_int
+from openpilot.selfdrive.modeld.helpers import chestnut_compiled
+from openpilot.sunnypilot.models.helpers import chestnut_model_available
 
 from openpilot.selfdrive.ui.sunnypilot.ui_state import UIStateSP, DeviceSP
 
@@ -25,6 +28,19 @@ class UIStatus(Enum):
   OVERRIDE = "override"
   LAT_ONLY = "lat_only"
   LONG_ONLY = "long_only"
+
+
+class ChestnutState(Enum):
+  DISCONNECTED = "disconnected"
+  UNCOMPILED = "uncompiled"
+  READY = "ready"
+  LOADING = "loading"
+  ACTIVE = "active"
+  FAILED = "failed"
+
+
+def big_model_available() -> bool:
+  return chestnut_compiled() or chestnut_model_available()
 
 
 class UIState(UIStateSP):
@@ -80,8 +96,15 @@ class UIState(UIStateSP):
     self.is_release = False  # self.params.get_bool("IsReleaseBranch")
     self.always_on_dm: bool = self.params.get_bool("AlwaysOnDM")
     self.experimental_mode: bool = self.params.get_bool("ExperimentalMode")
-    self.usbgpu: bool = self.params.get_bool("UsbGpuPresent")
-    self.usbgpu_compiled: bool = self.params.get_bool("UsbGpuCompiled")
+    self.chestnut_present: bool = False
+    self.chestnut_compiled: bool = big_model_available()
+    self.chestnut_active: bool | None = None
+    self.chestnut_loading: bool = False
+    self.usb_connected: bool = False
+    self.usb_connected_ts: float | None = None
+    self.usb_disconnected_ts: float | None = None
+    self.usb_unknown: bool = False
+    self.chestnut_state = ChestnutState.DISCONNECTED
     self.started: bool = False
     self.ignition: bool = False
     self.recording_audio: bool = False
@@ -127,6 +150,7 @@ class UIState(UIStateSP):
     self.sm.update(0)
     self._update_state()
     self._update_status()
+    self._update_chestnut_state()
     device.update()
     UIStateSP.update(self)
 
@@ -190,11 +214,34 @@ class UIState(UIStateSP):
         self.status = UIStatus.DISENGAGED
         self.started_frame = self.sm.frame
         self.started_time = time.monotonic()
+        self.chestnut_present = self.sm["deviceState"].chestnutPresent
 
       for callback in self._offroad_transition_callbacks:
         callback()
 
       self._started_prev = self.started
+
+  def _update_chestnut_state(self) -> None:
+    detected = self.sm["deviceState"].chestnutPresent
+    if not self.started:
+      self.chestnut_present = detected
+      self.chestnut_state = (ChestnutState.READY if detected and self.chestnut_compiled else
+                             ChestnutState.UNCOMPILED if detected else ChestnutState.DISCONNECTED)
+      return
+
+    model_seen = self.sm.recv_frame["modelV2"] > self.started_frame
+    if not self.chestnut_present:
+      self.chestnut_state = ChestnutState.DISCONNECTED
+    elif not self.chestnut_compiled:
+      self.chestnut_state = ChestnutState.UNCOMPILED
+    elif self.chestnut_state == ChestnutState.FAILED or not detected or (model_seen and (not self.sm.alive["modelV2"] or not self.sm["modelV2"].big)):
+      self.chestnut_state = ChestnutState.FAILED
+    elif self.chestnut_loading or not model_seen:
+      self.chestnut_state = ChestnutState.LOADING
+    elif self.chestnut_active is False:
+      self.chestnut_state = ChestnutState.FAILED
+    else:
+      self.chestnut_state = ChestnutState.ACTIVE
 
   def update_params(self) -> None:
     # For slower operations
@@ -211,8 +258,27 @@ class UIState(UIStateSP):
     self.is_metric = self.params.get_bool("IsMetric")
     self.always_on_dm = self.params.get_bool("AlwaysOnDM")
     self.experimental_mode = self.params.get_bool("ExperimentalMode")
-    self.usbgpu = self.params.get_bool("UsbGpuPresent")
-    self.usbgpu_compiled = self.params.get_bool("UsbGpuCompiled")
+    if not self.chestnut_compiled:
+      self.chestnut_compiled = big_model_available()
+    self.chestnut_active = self.params.get("ChestnutActive")
+    self.chestnut_loading = self.params.get_bool("ChestnutLoading")
+    now = time.monotonic()
+    if read_int(TYPEC_CC_ORIENTATION_PATH) != 0:
+      self.usb_disconnected_ts = None
+      if not self.usb_connected:
+        self.usb_connected = True
+        self.usb_connected_ts = now
+        self.usb_unknown = False
+      elif self.usb_connected_ts is not None and now - self.usb_connected_ts > 10.:
+        self.usb_unknown = not any(is_chestnut_usb_id(d["vendorId"], d["productId"], True) for d in get_usb_state())
+        self.usb_connected_ts = None
+    elif self.usb_connected:
+      if self.usb_disconnected_ts is None:
+        self.usb_disconnected_ts = now
+      elif now - self.usb_disconnected_ts > PARAM_UPDATE_TIME:
+        self.usb_connected = False
+        self.usb_connected_ts = None
+        self.usb_unknown = False
 
     UIStateSP.update_params(self)
 

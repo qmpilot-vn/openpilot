@@ -18,6 +18,7 @@ from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.rivian im
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.subaru import SubaruSettings
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.tesla import TeslaSettings
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.toyota import ToyotaSettings
+from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.vinfast import VinFastSettings
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.volkswagen import VolkswagenSettings
 
 
@@ -36,6 +37,7 @@ class BrandSettingsFactory:
     "subaru": SubaruSettings,
     "tesla": TeslaSettings,
     "toyota": ToyotaSettings,
+    "vinfast": VinFastSettings,
     "volkswagen": VolkswagenSettings,
   }
 
