@@ -13,6 +13,7 @@ from typing import Optional
 import numpy as np
 
 from cereal import custom
+from openpilot.common.file_chunker import get_manifest_path
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.sunnypilot.models.constants import Meta, MetaSimPose, MetaTombRaider
@@ -155,6 +156,14 @@ def get_active_bundle(params: Params | None = None, raw_bundle_dict: dict | byte
   except Exception:
     pass
   return None
+
+
+def chestnut_model_available(params: Params | None = None) -> bool:
+  bundle = get_active_bundle(params, chestnut=True)
+  if bundle is None or not bundle.models:
+    return False
+  pkl_path = os.path.join(Paths.model_root(), bundle.models[0].artifact.fileName)
+  return os.path.exists(pkl_path) or os.path.exists(get_manifest_path(pkl_path))
 
 
 def get_active_model_runner(params: Params | None = None, force_check: bool = False) -> int:

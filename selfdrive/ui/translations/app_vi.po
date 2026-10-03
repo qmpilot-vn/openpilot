@@ -1,0 +1,3623 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: vi\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid " (Default)"
+msgstr " (Mặc định)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/driver_camera_dialog.py
+msgid " - level {}"
+msgstr " - mức {}"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid " Steering torque response calibration is complete."
+msgstr " Hiệu chỉnh phản hồi mô-men lái đã hoàn tất."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid " Steering torque response calibration is {}% complete."
+msgstr " Hiệu chỉnh phản hồi mô-men lái đã hoàn tất {}%."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid " Your device is pointed {:.1f}° {} and {:.1f}° {}."
+msgstr " Thiết bị đang nghiêng {:.1f}° {} và {:.1f}° {}."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "%"
+msgstr "%"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "(Only for highest tiers, and does NOT bring ANY benefit to you yet. We are just testing data volume.)"
+msgstr "(Chỉ dành cho các gói cao nhất, và CHƯA mang lại BẤT KỲ lợi ích nào cho bạn. Chúng tôi chỉ đang thử nghiệm dung lượng dữ liệu.)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid ", but we'll be here when you're ready to come back."
+msgstr ", nhưng chúng tôi luôn ở đây khi bạn sẵn sàng quay lại."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "--"
+msgstr "--"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/prime.py
+msgid "1 year of drive storage"
+msgstr "Lưu dữ liệu lái 1 năm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "1. sunnypilot is a driver assistance system."
+msgstr "1. sunnypilot là hệ thống hỗ trợ người lái."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "2. You must pay attention at all times."
+msgstr "2. Bạn phải luôn chú ý."
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/prime.py
+msgid "24/7 LTE connectivity"
+msgstr "Kết nối LTE 24/7"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "2G"
+msgstr "2G"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "3. You must be ready to take over at any time."
+msgstr "3. Bạn phải sẵn sàng tiếp quản bất cứ lúc nào."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "3G"
+msgstr "3G"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "4. You are fully responsible for driving the car."
+msgstr "4. Bạn hoàn toàn chịu trách nhiệm lái xe."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "5G"
+msgstr "5G"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "<b>Unsupported branch detected</b> - The current version of <b><u>%1</u></b> branch is no longer supported on the comma three. Please go to <b>[Device > Software]</b> and install a supported branch with <b><u>-tici</u></b> in the branch name for the comma three."
+msgstr "<b>Phát hiện nhánh không được hỗ trợ</b> - Phiên bản hiện tại của nhánh <b><u>%1</u></b> không còn được hỗ trợ trên comma three. Vui lòng vào <b>[Thiết bị > Phần mềm]</b> và cài đặt nhánh được hỗ trợ có <b><u>-tici</u></b> trong tên nhánh cho comma three."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "<br><br>Steering lag calibration is complete."
+msgstr "<br><br>Hiệu chỉnh độ trễ lái đã hoàn tất."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "<br><br>Steering lag calibration is {}% complete."
+msgstr "<br><br>Hiệu chỉnh độ trễ lái đã hoàn tất {}%."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "ACTIVE"
+msgstr "ĐANG BẬT"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "ADD"
+msgstr "THÊM"
+
+#: selfdrive/selfdrived/events.py
+msgid "AEB: Risk of Collision"
+msgstr "AEB: Nguy cơ va chạm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/speed_limit.py
+msgid "AHEAD"
+msgstr "PHÍA TRƯỚC"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/trips.py
+msgid "ALL TIME"
+msgstr "TẤT CẢ"
+
+#: system/ui/widgets/network.py
+msgid "APN Setting"
+msgstr "Cài đặt APN"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "Acknowledge Excessive Actuation"
+msgstr "Xác nhận tác động quá mức"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Actuator Delay:"
+msgstr "Độ trễ cơ cấu chấp hành:"
+
+#: selfdrive/selfdrived/events.py
+msgid "Adaptive Cruise Disabled"
+msgstr "Ga tự động thích ứng đã tắt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Adjust Lane Turn Speed"
+msgstr "Điều chỉnh tốc độ rẽ theo làn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Adjust Software Delay"
+msgstr "Điều chỉnh độ trễ phần mềm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Adjust the software delay when Live Learning Steer Delay is toggled off. The default software delay value is 0.2"
+msgstr "Điều chỉnh độ trễ phần mềm khi tắt Tự học độ trễ lái. Giá trị độ trễ phần mềm mặc định là 0,2"
+
+#: system/ui/widgets/network.py
+msgid "Advanced"
+msgstr "Nâng cao"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Aggressive"
+msgstr "Mạnh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "Agree"
+msgstr "Đồng ý"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "All"
+msgstr "Tất cả"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "All states (~6.0 GB)"
+msgstr "Tất cả các bang (~6,0 GB)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/tesla.py
+msgid "Allows the driver to provide limited steering input while openpilot is engaged."
+msgstr "Cho phép người lái đánh lái nhẹ trong khi openpilot đang hoạt động."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Always On"
+msgstr "Luôn bật"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Always-On Driver Monitoring"
+msgstr "Giám sát tài xế luôn bật"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "An update to your device's operating system is downloading in the background. You will be prompted to update when it's ready to install."
+msgstr "Bản cập nhật hệ điều hành của thiết bị đang được tải về ở chế độ nền. Bạn sẽ được nhắc cập nhật khi sẵn sàng cài đặt."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "Any fast phone or laptop charger should be fine."
+msgstr "Bất kỳ bộ sạc nhanh điện thoại hoặc laptop nào cũng được."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Are you sure you want to backup your current sunnypilot settings?"
+msgstr "Bạn có chắc muốn sao lưu cài đặt sunnypilot hiện tại?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Are you sure you want to enter Always Offroad mode?"
+msgstr "Bạn có chắc muốn vào chế độ Luôn ngoại tuyến?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Are you sure you want to exit Always Offroad mode?"
+msgstr "Bạn có chắc muốn thoát chế độ Luôn ngoại tuyến?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Are you sure you want to power off?"
+msgstr "Bạn có chắc muốn tắt nguồn?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Are you sure you want to reboot?"
+msgstr "Bạn có chắc muốn khởi động lại?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Are you sure you want to reset all sunnypilot settings to default? Once the settings are reset, there is no going back."
+msgstr "Bạn có chắc muốn đặt lại tất cả cài đặt sunnypilot về mặc định? Sau khi đặt lại sẽ không thể hoàn tác."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Are you sure you want to reset calibration?"
+msgstr "Bạn có chắc muốn đặt lại hiệu chỉnh?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Are you sure you want to restore the last backed up sunnypilot settings?"
+msgstr "Bạn có chắc muốn khôi phục bản sao lưu cài đặt sunnypilot gần nhất?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Are you sure you want to uninstall?"
+msgstr "Bạn có chắc muốn gỡ cài đặt?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Assist"
+msgstr "Hỗ trợ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Assist: Adjusts the vehicle's cruise speed based on the current road's speed limit when operating the +/- buttons."
+msgstr "Hỗ trợ: Điều chỉnh tốc độ hành trình theo giới hạn tốc độ của đường hiện tại khi bấm nút +/-."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/display.py
+msgid "Auto (Dark)"
+msgstr "Tự động (Tối)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/display.py
+msgid "Auto (Default)"
+msgstr "Tự động (Mặc định)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_change_settings.py
+msgid "Auto Lane Change by Blinker"
+msgstr "Tự chuyển làn bằng xi-nhan"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_change_settings.py
+msgid "Auto Lane Change: Delay with Blind Spot"
+msgstr "Tự chuyển làn: Trì hoãn khi có xe ở điểm mù"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Auto adjusting to last speed limit"
+msgstr "Tự điều chỉnh theo giới hạn tốc độ trước đó"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Auto adjusting to speed limit"
+msgstr "Tự điều chỉnh theo giới hạn tốc độ"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Automatic Lane Centering is OFF"
+msgstr "Giữ làn tự động đang TẮT"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/vinfast.py
+msgid "Automatically resume after a full stop in traffic when the car ahead starts moving. Turn this off if you want to press Resume / ACC yourself. The car will stay stopped at a light until you resume."
+msgstr "Tự động chạy tiếp sau khi dừng hẳn trong kẹt xe, khi xe phía trước bắt đầu đi. Tắt nếu bạn muốn tự bấm Resume / ACC. Xe sẽ đứng yên ở đèn đỏ cho đến khi bạn resume."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/driver_camera_dialog.py
+msgid "Awareness: {}%"
+msgstr "Mức tập trung: {}%"
+
+#: selfdrive/selfdrived/events.py
+msgid "BRAKE!"
+msgstr "PHANH!"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/onboarding.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/onboarding.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_change_settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+#: system/ui/widgets/network.py
+msgid "Back"
+msgstr "Quay lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Backup Failed"
+msgstr "Sao lưu thất bại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Backup Settings"
+msgstr "Sao lưu cài đặt"
+
+#: selfdrive/selfdrived/events.py
+msgid "Be ready to take over at any time"
+msgstr "Hãy sẵn sàng tiếp quản bất cứ lúc nào"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/prime.py
+msgid "Become a comma prime member at connect.comma.ai"
+msgstr "Đăng ký comma prime tại connect.comma.ai"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Become a sponsor of sunnypilot to get early access to sunnylink features when they become available."
+msgstr "Trở thành nhà tài trợ của sunnypilot để được dùng sớm các tính năng sunnylink khi chúng ra mắt."
+
+#: selfdrive/selfdrived/events.py
+msgid "Big Model Failed"
+msgstr "Mô hình lớn bị lỗi"
+
+#: selfdrive/selfdrived/events.py
+msgid "Big Model Loading"
+msgstr "Đang tải mô hình lớn"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Big Model Ready"
+msgstr "Mô hình lớn đã sẵn sàng"
+
+#: selfdrive/selfdrived/events.py
+msgid "Bookmark Saved"
+msgstr "Đã lưu đánh dấu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "Bookmark connect.comma.ai to your home screen to use it like an app"
+msgstr "Ghim connect.comma.ai ra màn hình chính để dùng như ứng dụng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Bottom"
+msgstr "Dưới"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Brake Hold Active"
+msgstr "Đang giữ phanh"
+
+#: selfdrive/selfdrived/events.py
+msgid "CAN Bus Disconnected"
+msgstr "Mất kết nối CAN Bus"
+
+#: selfdrive/selfdrived/events.py
+msgid "CAN Bus Disconnected: Check Connections"
+msgstr "Mất kết nối CAN Bus: Kiểm tra dây kết nối"
+
+#: selfdrive/selfdrived/events.py
+msgid "CAN Bus Disconnected: Likely Faulty Cable"
+msgstr "Mất kết nối CAN Bus: Có thể do cáp hỏng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "CHANGE"
+msgstr "ĐỔI"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "CHECK"
+msgstr "KIỂM TRA"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/exp_mode_button.py
+msgid "CHILL MODE ON"
+msgstr "NHẸ ĐANG BẬT"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "CLEAR"
+msgstr "XÓA"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+#: system/ui/widgets/network.py
+msgid "CONNECT"
+msgstr "KẾT NỐI"
+
+#: system/ui/widgets/network.py
+msgid "CONNECTING..."
+msgstr "ĐANG KẾT NỐI..."
+
+#: selfdrive/selfdrived/events.py
+msgid "Calibrating"
+msgstr "Đang hiệu chỉnh"
+
+#: selfdrive/selfdrived/events.py
+msgid "Calibration Invalid"
+msgstr "Hiệu chỉnh không hợp lệ"
+
+#: selfdrive/selfdrived/events.py
+msgid "Calibration Invalid: Remount Device & Recalibrate"
+msgstr "Hiệu chỉnh không hợp lệ: Gắn lại thiết bị và hiệu chỉnh lại"
+
+#: selfdrive/selfdrived/events.py
+msgid "Calibration in Progress"
+msgstr "Đang hiệu chỉnh"
+
+#: selfdrive/selfdrived/events.py
+msgid "Camera Frame Rate Low"
+msgstr "Tốc độ khung hình camera thấp"
+
+#: selfdrive/selfdrived/events.py
+msgid "Camera Frame Rate Low: Reboot Your Device"
+msgstr "Tốc độ khung hình camera thấp: Khởi động lại thiết bị"
+
+#: selfdrive/selfdrived/events.py
+msgid "Camera Malfunction"
+msgstr "Camera bị lỗi"
+
+#: selfdrive/selfdrived/events.py
+msgid "Camera Malfunction: Reboot Your Device"
+msgstr "Camera bị lỗi: Khởi động lại thiết bị"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+#: system/ui/widgets/confirm_dialog.py
+#: system/ui/widgets/keyboard.py
+#: system/ui/widgets/network.py
+#: system/ui/widgets/option_dialog.py
+msgid "Cancel"
+msgstr "Hủy"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Cancel Download"
+msgstr "Hủy tải về"
+
+#: selfdrive/selfdrived/events.py
+msgid "Cancel Pressed"
+msgstr "Đã bấm Hủy"
+
+#: selfdrive/selfdrived/events.py
+msgid "Car Detected in Blindspot"
+msgstr "Có xe ở điểm mù"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Car First"
+msgstr "Ưu tiên xe"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Car First: Use Speed Limit data from Car if available, else use from OpenStreetMaps"
+msgstr "Ưu tiên xe: Dùng dữ liệu giới hạn tốc độ từ xe nếu có, nếu không thì dùng OpenStreetMaps"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Car Only"
+msgstr "Chỉ xe"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Car Only: Use Speed Limit data only from Car"
+msgstr "Chỉ xe: Chỉ dùng dữ liệu giới hạn tốc độ từ xe"
+
+#: selfdrive/selfdrived/events.py
+msgid "Car Unrecognized"
+msgstr "Không nhận diện được xe"
+
+#: selfdrive/selfdrived/events.py
+msgid "Car in Blindspot"
+msgstr "Có xe ở điểm mù"
+
+#: system/ui/widgets/network.py
+msgid "Cellular Metered"
+msgstr "Di động tính cước"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Change Language"
+msgstr "Đổi ngôn ngữ"
+
+#: selfdrive/selfdrived/events.py
+msgid "Changing Lanes"
+msgstr "Đang chuyển làn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "Changing this setting will restart openpilot if the car is powered on."
+msgstr "Thay đổi cài đặt này sẽ khởi động lại openpilot nếu xe đang bật."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Changing this setting will restart sunnypilot if the car is powered on."
+msgstr "Đổi cài đặt này sẽ khởi động lại sunnypilot nếu xe đang bật nguồn."
+
+#: selfdrive/selfdrived/events.py
+msgid "Check Hardware"
+msgstr "Kiểm tra phần cứng"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Chestnut USB link is slow. Check the USB cable. The current speed is %1."
+msgstr "Kết nối USB của Chestnut chậm. Kiểm tra cáp USB. Tốc độ hiện tại là %1."
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Chestnut firmware is out of date and must be flashed manually. The big model stays off until then."
+msgstr "Firmware Chestnut đã cũ và phải được nạp thủ công. Mô hình lớn sẽ tắt cho đến khi đó."
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Chestnut model not downloaded yet. Keep the comma connected to the internet until the big model finishes downloading."
+msgstr "Mô hình Chestnut chưa được tải về. Hãy giữ comma kết nối internet cho đến khi mô hình lớn tải xong."
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Chestnut not detected. Check USB and 12V connections."
+msgstr "Không phát hiện Chestnut. Kiểm tra kết nối USB và nguồn 12V."
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Chestnut overheated. Ensure good airflow. Current GPU temperature is %1."
+msgstr "Chestnut quá nóng. Đảm bảo thông gió tốt. Nhiệt độ GPU hiện tại là %1."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Choose how Automatic Lane Centering (ALC) behaves after the brake pedal is manually pressed in sunnypilot."
+msgstr "Chọn cách Giữ làn tự động (ALC) hoạt động sau khi đạp phanh thủ công trong sunnypilot."
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Choose your sponsorship tier and confirm your support"
+msgstr "Chọn gói tài trợ và xác nhận hỗ trợ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Clear Cache"
+msgstr "Xóa bộ nhớ đệm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Clear Model Cache"
+msgstr "Xóa bộ nhớ đệm mô hình"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "Click \"add new device\" and scan the QR code on the right"
+msgstr "Nhấn \"add new device\" rồi quét mã QR bên phải"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Click the Sponsor button for more details"
+msgstr "Bấm nút Tài trợ để biết thêm chi tiết"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "Close"
+msgstr "Đóng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Colors represent vehicle fingerprint status:"
+msgstr "Màu sắc thể hiện trạng thái nhận diện xe:"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Combined"
+msgstr "Kết hợp"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Combined: Use combined Speed Limit data from Car & OpenStreetMaps"
+msgstr "Kết hợp: Dùng dữ liệu giới hạn tốc độ kết hợp từ xe và OpenStreetMaps"
+
+#: selfdrive/selfdrived/events.py
+msgid "Communication Issue Between Processes"
+msgstr "Lỗi giao tiếp giữa các tiến trình"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Confirm"
+msgstr "Xác nhận"
+
+#: selfdrive/selfdrived/events.py
+msgid "Confirm Lane Change"
+msgstr "Xác nhận chuyển làn"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Connect to internet to check for updates. sunnypilot won't automatically start until it connects to internet to check for updates."
+msgstr "Hãy kết nối internet để kiểm tra cập nhật. sunnypilot sẽ không tự khởi động cho đến khi kết nối internet để kiểm tra cập nhật."
+
+#: selfdrive/selfdrived/events.py
+msgid "Controls Mismatch"
+msgstr "Điều khiển không khớp"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Controls Mismatch: Lateral"
+msgstr "Điều khiển không khớp: Ngang"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Controls state of the device after boot/sleep."
+msgstr "Điều khiển trạng thái của thiết bị sau khi khởi động/ngủ."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/tesla.py
+msgid "Cooperative Steering (Beta)"
+msgstr "Lái phối hợp (Beta)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Country"
+msgstr "Quốc gia"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Cruise"
+msgstr "Hành trình"
+
+#: selfdrive/selfdrived/events.py
+msgid "Cruise Fault: Restart the Car"
+msgstr "Lỗi hành trình: Khởi động lại xe"
+
+#: selfdrive/selfdrived/events.py
+msgid "Cruise Fault: Restart the car to engage"
+msgstr "Lỗi hành trình: Khởi động lại xe để kích hoạt"
+
+#: selfdrive/selfdrived/events.py
+msgid "Cruise Is Off"
+msgstr "Hành trình đang tắt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Current Model"
+msgstr "Mô hình hiện tại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Current Version"
+msgstr "Phiên bản hiện tại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Custom ACC Speed Increments"
+msgstr "Bước tăng tốc độ ACC tùy chỉnh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py
+msgid "Custom Longitudinal Tuning"
+msgstr "Tinh chỉnh dọc tùy chỉnh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Customize Lane Change"
+msgstr "Tùy chỉnh chuyển làn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Customize MADS"
+msgstr "Tùy chỉnh MADS"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Customize Source"
+msgstr "Tùy chỉnh nguồn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Customize Torque Params"
+msgstr "Tùy chỉnh thông số mô-men"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "DELETE"
+msgstr "XÓA"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/sidebar.py
+msgid "DISABLED"
+msgstr "ĐÃ TẮT"
+
+#: selfdrive/selfdrived/events.py
+msgid "DISENGAGE IMMEDIATELY"
+msgstr "NGẮT NGAY LẬP TỨC"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "DOWNLOAD"
+msgstr "TẢI"
+
+#: selfdrive/selfdrived/events.py
+msgid "Dashcam Mode"
+msgstr "Chế độ Dashcam"
+
+#: selfdrive/selfdrived/events.py
+msgid "Dashcam mode"
+msgstr "Chế độ dashcam"
+
+#: selfdrive/selfdrived/events.py
+msgid "Dashcam mode for unsupported car"
+msgstr "Chế độ dashcam cho xe không được hỗ trợ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Database Update"
+msgstr "Cập nhật cơ sở dữ liệu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "Decline"
+msgstr "Từ chối"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "Decline, uninstall sunnypilot"
+msgstr "Từ chối, gỡ cài đặt sunnypilot"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/display.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Default"
+msgstr "Mặc định"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Default: Device will boot/wake-up normally & will be ready to engage."
+msgstr "Mặc định: Thiết bị sẽ khởi động/thức dậy bình thường và sẵn sàng kích hoạt."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Delay before lateral control resumes after the turn signal ends."
+msgstr "Độ trễ trước khi điều khiển ngang hoạt động lại sau khi tắt xi-nhan."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Developer"
+msgstr "Nhà phát triển"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Developer UI"
+msgstr "Giao diện nhà phát triển"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Device"
+msgstr "Thiết bị"
+
+#: selfdrive/selfdrived/events.py
+msgid "Device Fell Off Mount"
+msgstr "Thiết bị rơi khỏi giá đỡ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "Device must be registered with the comma.ai backend to pair."
+msgstr "Thiết bị phải được đăng ký với máy chủ comma.ai để ghép nối."
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Device temperature too high. System cooling down before starting. Current internal component temperature: %1"
+msgstr "Nhiệt độ thiết bị quá cao. Hệ thống đang làm mát trước khi khởi động. Nhiệt độ linh kiện bên trong hiện tại: %1"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid ""
+"Device will automatically shutdown after set time once the engine is turned off.\n"
+"(30h is the default)"
+msgstr ""
+"Thiết bị sẽ tự tắt sau thời gian đã đặt khi tắt máy xe.\n"
+"(Mặc định là 30 giờ)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/onboarding.py
+msgid "Disable"
+msgstr "Tắt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/software.py
+msgid "Disable Updates"
+msgstr "Tắt cập nhật"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Disable the sunnypilot Longitudinal Control (alpha) toggle to allow Intelligent Cruise Button Management."
+msgstr "Tắt tùy chọn Điều khiển dọc sunnypilot (alpha) để cho phép Quản lý nút hành trình thông minh."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Disengage"
+msgstr "Ngắt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Disengage on Accelerator Pedal"
+msgstr "Ngắt khi đạp ga"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "Disengage to"
+msgstr "Ngắt để"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Disengage to Enter Always Offroad Mode"
+msgstr "Ngắt để vào chế độ Luôn ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Disengage to Power Off"
+msgstr "Ngắt hệ thống để tắt nguồn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Disengage to Reboot"
+msgstr "Ngắt hệ thống để khởi động lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Disengage to Reset Calibration"
+msgstr "Ngắt hệ thống để đặt lại hiệu chỉnh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Disengage: ALC will disengage when the brake pedal is pressed."
+msgstr "Ngắt: ALC sẽ ngắt khi đạp phanh."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Display"
+msgstr "Màn hình"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Display Metrics Below Chevron"
+msgstr "Hiển thị thông số dưới mũi tên"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Display Road Name"
+msgstr "Hiển thị tên đường"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Display Turn Signals"
+msgstr "Hiển thị xi-nhan"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Display real-time parameters and metrics from various sources."
+msgstr "Hiển thị thông số và số liệu thời gian thực từ nhiều nguồn."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Display speed in km/h instead of mph."
+msgstr "Hiển thị tốc độ bằng km/h thay vì mph."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Display steering arc on the driving screen when lateral control is enabled."
+msgstr "Hiển thị vòng cung lái trên màn hình lái khi bật điều khiển ngang."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Distance"
+msgstr "Khoảng cách"
+
+#: selfdrive/selfdrived/events.py
+msgid "Distraction Level Too High"
+msgstr "Mức mất tập trung quá cao"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "Do all of my segments get pulled in Firehose Mode?"
+msgstr "Chế độ Firehose có lấy tất cả các đoạn của tôi không?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "Does it matter how or where I drive?"
+msgstr "Cách lái hoặc nơi lái có ảnh hưởng không?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "Does it matter which software I run?"
+msgstr "Phần mềm tôi dùng có ảnh hưởng không?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Dongle ID"
+msgstr "Dongle ID"
+
+#: selfdrive/selfdrived/events.py
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Door Open"
+msgstr "Cửa đang mở"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Download"
+msgstr "Tải xuống"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Downloaded Maps"
+msgstr "Bản đồ đã tải"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Downloading Map"
+msgstr "Đang tải bản đồ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Downloading Maps..."
+msgstr "Đang tải bản đồ..."
+
+#: selfdrive/selfdrived/events.py
+msgid "Drive Above {}"
+msgstr "Chạy trên {}"
+
+#: selfdrive/selfdrived/events.py
+msgid "Drive above {} to engage"
+msgstr "Chạy trên {} để kích hoạt"
+
+#: selfdrive/selfdrived/events.py
+msgid "Drive to Calibrate"
+msgstr "Lái xe để hiệu chỉnh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Driver Camera"
+msgstr "Camera tài xế"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Driver Camera Preview"
+msgstr "Xem trước camera người lái"
+
+#: selfdrive/selfdrived/events.py
+msgid "Driver Distracted"
+msgstr "Người lái mất tập trung"
+
+#: selfdrive/selfdrived/events.py
+msgid "Driver Unresponsive"
+msgstr "Người lái không phản hồi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/trips.py
+msgid "Drives"
+msgstr "Chuyến đi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Driving Model"
+msgstr "Mô hình lái"
+
+#: selfdrive/selfdrived/events.py
+msgid "Driving Model Lagging"
+msgstr "Mô hình lái bị trễ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Driving Personality"
+msgstr "Phong cách lái"
+
+#: selfdrive/selfdrived/events.py
+msgid "Driving Personality: Aggressive"
+msgstr "Phong cách lái: Mạnh mẽ"
+
+#: selfdrive/selfdrived/events.py
+msgid "Driving Personality: Relaxed"
+msgstr "Phong cách lái: Thư thái"
+
+#: selfdrive/selfdrived/events.py
+msgid "Driving Personality: Standard"
+msgstr "Phong cách lái: Tiêu chuẩn"
+
+#: selfdrive/selfdrived/events.py
+msgid "Driving Personality: {}"
+msgstr "Phong cách lái: {}"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py
+msgid "Dynamic"
+msgstr "Động"
+
+#: system/ui/widgets/network.py
+msgid "EDIT"
+msgstr "SỬA"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/sidebar.py
+msgid "ERROR"
+msgstr "LỖI"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "ETH"
+msgstr "ETH"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/exp_mode_button.py
+msgid "EXPERIMENTAL MODE ON"
+msgstr "THỬ NGHIỆM ĐANG BẬT"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Early Access: Become a sunnypilot Sponsor"
+msgstr "Truy cập sớm: Trở thành nhà tài trợ sunnypilot"
+
+#: selfdrive/selfdrived/events.py
+msgid "Electronic Stability Control Active"
+msgstr "Hệ thống cân bằng điện tử đang hoạt động"
+
+#: selfdrive/selfdrived/events.py
+msgid "Electronic Stability Control Disabled"
+msgstr "Hệ thống cân bằng điện tử đã tắt"
+
+#: selfdrive/selfdrived/events.py
+msgid "Emergency Braking: Risk of Collision"
+msgstr "Phanh khẩn cấp: Nguy cơ va chạm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/developer.py
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/onboarding.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/toyota.py
+msgid "Enable"
+msgstr "Bật"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/subaru.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/tesla.py
+msgid "Enable \"Always Offroad\" in Device panel, or turn vehicle off to toggle."
+msgstr "Bật \"Luôn ngoại tuyến\" trong mục Thiết bị, hoặc tắt máy xe để chuyển."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Enable ADB"
+msgstr "Bật ADB"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Enable Always Offroad"
+msgstr "Bật Luôn ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Enable Custom Tuning"
+msgstr "Bật tinh chỉnh tùy chỉnh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Enable Dynamic Experimental Control"
+msgstr "Bật Điều khiển thử nghiệm động"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Enable Lane Departure Warnings"
+msgstr "Bật cảnh báo lệch làn"
+
+#: system/ui/widgets/network.py
+msgid "Enable Roaming"
+msgstr "Bật roaming"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Enable SSH"
+msgstr "Bật SSH"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Enable Standstill Timer"
+msgstr "Bật bộ đếm thời gian dừng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Enable Tesla Rainbow Mode"
+msgstr "Bật chế độ Cầu vồng Tesla"
+
+#: system/ui/widgets/network.py
+msgid "Enable Tethering"
+msgstr "Bật phát Wi-Fi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Enable custom Short & Long press increments for cruise speed increase/decrease."
+msgstr "Bật bước tăng/giảm tốc độ hành trình tùy chỉnh khi bấm nhanh và bấm giữ."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Enable driver monitoring even when sunnypilot is not engaged."
+msgstr "Giám sát tài xế ngay cả khi sunnypilot chưa kích hoạt."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Enable sunnylink"
+msgstr "Bật sunnylink"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Enable sunnylink uploader (infrastructure test)"
+msgstr "Bật trình tải lên sunnylink (thử nghiệm hạ tầng)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Enable sunnylink uploader to allow sunnypilot to upload your driving data to sunnypilot servers. "
+msgstr "Bật trình tải lên sunnylink để cho phép sunnypilot tải dữ liệu lái xe của bạn lên máy chủ sunnypilot. "
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Enable sunnypilot"
+msgstr "Bật sunnypilot"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Enable the sunnypilot longitudinal control (alpha) toggle to allow Experimental mode."
+msgstr "Bật điều khiển dọc sunnypilot (alpha) để dùng chế độ thử nghiệm."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Enable this to enforce sunnypilot to steer with Torque lateral control."
+msgstr "Bật để buộc sunnypilot đánh lái bằng điều khiển ngang Torque."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Enable toggle to allow the model to determine when to use sunnypilot ACC or sunnypilot End to End Longitudinal."
+msgstr "Bật để mô hình tự quyết định khi nào dùng ACC sunnypilot hoặc điều khiển dọc End to End của sunnypilot."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "Enables or disables the GitHub runner service."
+msgstr "Bật hoặc tắt dịch vụ GitHub runner."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "Enabling this will switch to openpilot longitudinal control."
+msgstr "Bật tùy chọn này sẽ chuyển sang điều khiển dọc của openpilot."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/toyota.py
+msgid "Enforce Factory Longitudinal Control"
+msgstr "Buộc dùng điều khiển dọc của nhà sản xuất"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Enforce Torque Lateral Control"
+msgstr "Buộc dùng điều khiển ngang Torque"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Engage lateral and longitudinal control with cruise control engagement."
+msgstr "Kích hoạt điều khiển ngang và dọc cùng lúc với ga tự động."
+
+#: selfdrive/selfdrived/events.py
+msgid "Ensure road ahead is clear"
+msgstr "Đảm bảo đường phía trước thông thoáng"
+
+#: system/ui/widgets/network.py
+msgid "Enter APN"
+msgstr "Nhập APN"
+
+#: system/ui/widgets/network.py
+msgid "Enter SSID"
+msgstr "Nhập SSID"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Enter model year (e.g., 2021) and model (Toyota Corolla):"
+msgstr "Nhập năm sản xuất (vd: 2021) và mẫu xe (Toyota Corolla):"
+
+#: system/ui/widgets/network.py
+msgid "Enter new tethering password"
+msgstr "Nhập mật khẩu phát Wi-Fi mới"
+
+#: system/ui/widgets/network.py
+msgid "Enter password"
+msgstr "Nhập mật khẩu"
+
+#: system/ui/sunnypilot/widgets/tree_dialog.py
+msgid "Enter search query"
+msgstr "Nhập từ khóa tìm kiếm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "Enter your GitHub username"
+msgstr "Nhập tên người dùng GitHub"
+
+#: system/ui/widgets/list_view.py
+msgid "Error"
+msgstr "Lỗi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "Error Log"
+msgstr "Nhật ký lỗi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Error: Invalid download. Retry."
+msgstr "Lỗi: Tải về không hợp lệ. Thử lại."
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Excessive %1 actuation detected on your last drive. Please contact support at https://comma.ai/support and share your device's Dongle ID for troubleshooting."
+msgstr "Phát hiện %1 tác động quá mức trong lần lái gần nhất. Vui lòng liên hệ hỗ trợ tại https://comma.ai/support và cung cấp Dongle ID của thiết bị để được khắc phục."
+
+#: selfdrive/selfdrived/events.py
+msgid "Excessive Actuation"
+msgstr "Tác động quá mức"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Exit Always Offroad"
+msgstr "Thoát Luôn ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Experimental Mode"
+msgstr "Chế độ thử nghiệm"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Experimental Mode Switched"
+msgstr "Đã chuyển chế độ thử nghiệm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/subaru.py
+msgid "Experimental feature to enable auto-resume during stop-and-go for certain supported Subaru platforms."
+msgstr "Tính năng thử nghiệm cho phép tự chạy lại khi dừng-đi trên một số dòng Subaru được hỗ trợ."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Experimental mode is currently unavailable on this car since the car's stock ACC is used for longitudinal control."
+msgstr "Chế độ thử nghiệm chưa dùng được trên xe này vì đang dùng ACC gốc để điều khiển dọc."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/sidebar.py
+msgid "FAULT"
+msgstr "LỖI"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "FETCHING..."
+msgstr "ĐANG TẢI..."
+
+#: system/ui/widgets/network.py
+msgid "FORGETTING..."
+msgstr "ĐANG QUÊN..."
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Failed to register with comma.ai backend. It will not connect or upload to comma.ai servers, and receives no support from comma.ai. If this is a device purchased at comma.ai/shop, open a ticket at https://comma.ai/support."
+msgstr "Không thể đăng ký với máy chủ comma.ai. Thiết bị sẽ không kết nối hoặc tải lên máy chủ comma.ai và không được comma.ai hỗ trợ. Nếu thiết bị được mua tại comma.ai/shop, hãy mở yêu cầu hỗ trợ tại https://comma.ai/support."
+
+#: selfdrive/selfdrived/events.py
+msgid "Fan Malfunction"
+msgstr "Quạt bị lỗi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Fetching Latest Models"
+msgstr "Đang tải danh sách mô hình mới nhất"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Fingerprinted automatically"
+msgstr "Tự động nhận diện"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/setup.py
+msgid "Finish Setup"
+msgstr "Hoàn tất cài đặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Firehose"
+msgstr "Firehose"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/firehose.py
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "Firehose Mode"
+msgstr "Chế độ Firehose"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Fixed"
+msgstr "Cố định"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Fixed: Adds a fixed offset [Speed Limit + Offset]"
+msgstr "Cố định: Cộng thêm một mức bù cố định [Giới hạn tốc độ + Mức bù]"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Follow the prompts to complete the pairing process"
+msgstr "Làm theo hướng dẫn để hoàn tất ghép nối"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "For applicable vehicles, always display the true vehicle current speed from wheel speed sensors."
+msgstr "Với các xe phù hợp, luôn hiển thị tốc độ thực của xe từ cảm biến tốc độ bánh xe."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "For secure backup, restore, and remote configuration"
+msgstr "Để sao lưu, khôi phục và cấu hình từ xa an toàn"
+
+#: system/ui/widgets/network.py
+msgid "Forget"
+msgstr "Quên"
+
+#: system/ui/widgets/network.py
+msgid "Forget Wi-Fi Network \"{}\"?"
+msgstr "Quên mạng Wi-Fi \"{}\"?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "Frequently Asked Questions"
+msgstr "Câu hỏi thường gặp"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Friction"
+msgstr "Ma sát"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "GOOD"
+msgstr "TỐT"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/circular_alerts.py
+msgid ""
+"GREEN\n"
+"LIGHT"
+msgstr ""
+"ĐÈN\n"
+"XANH"
+
+#: selfdrive/selfdrived/events.py
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Gear not D"
+msgstr "Chưa vào số D"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "GitHub Runner Service"
+msgstr "Dịch vụ GitHub Runner"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "Go to https://connect.comma.ai on your phone"
+msgstr "Mở https://connect.comma.ai trên điện thoại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Green Traffic Light Alert (Beta)"
+msgstr "Cảnh báo đèn xanh (Beta)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "HIGH"
+msgstr "CAO"
+
+#: selfdrive/selfdrived/events.py
+msgid "Harness Relay Malfunction"
+msgstr "Rơ-le dây nối bị lỗi"
+
+#: system/ui/widgets/network.py
+msgid "Hidden Network"
+msgstr "Mạng ẩn"
+
+#: selfdrive/selfdrived/events.py
+msgid "High CPU Usage"
+msgstr "CPU sử dụng cao"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/trips.py
+msgid "Hours"
+msgstr "Giờ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "INACTIVE: connect to an unmetered network"
+msgstr "CHƯA HOẠT ĐỘNG: hãy kết nối mạng không giới hạn dung lượng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "INSTALL"
+msgstr "CÀI"
+
+#: system/ui/widgets/network.py
+msgid "IP Address"
+msgstr "Địa chỉ IP"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "If it does not have a clear view of the driver, unplug and remount before continuing."
+msgstr "Nếu camera không nhìn rõ người lái, hãy rút ra và gắn lại trước khi tiếp tục."
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "If sponsorship status was not updated, please contact a moderator on the community forum at https://community.sunnypilot.ai"
+msgstr "Nếu trạng thái tài trợ chưa cập nhật, hãy liên hệ quản trị viên tại https://community.sunnypilot.ai"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Immediately connect to the internet to check for updates. If you do not connect to the internet, sunnypilot won't engage in %1"
+msgstr "Hãy kết nối internet ngay để kiểm tra cập nhật. Nếu không kết nối internet, sunnypilot sẽ không kích hoạt sau %1"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Info"
+msgstr "Thông tin"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Information: Displays the current road's speed limit."
+msgstr "Thông tin: Hiển thị giới hạn tốc độ của đường hiện tại."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Install Update"
+msgstr "Cài bản cập nhật"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Intelligent Cruise Button Management (ICBM) (Alpha)"
+msgstr "Quản lý nút hành trình thông minh (ICBM) (Alpha)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Intelligent Cruise Button Management is currently unavailable on this platform."
+msgstr "Quản lý nút hành trình thông minh hiện chưa hỗ trợ trên dòng xe này."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/display.py
+msgid "Interactivity Timeout"
+msgstr "Hết thời gian tương tác"
+
+#: selfdrive/selfdrived/events.py
+msgid "Invalid LKAS setting"
+msgstr "Cài đặt LKAS không hợp lệ"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Join our Community Forum at https://community.sunnypilot.ai and reach out to a moderator if you have issues"
+msgstr "Tham gia diễn đàn https://community.sunnypilot.ai và liên hệ quản trị viên nếu gặp vấn đề"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Joystick Debug Mode"
+msgstr "Chế độ debug joystick"
+
+#: selfdrive/selfdrived/events.py
+msgid "Joystick Mode"
+msgstr "Chế độ Joystick"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/trips.py
+msgid "KM"
+msgstr "KM"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/circular_alerts.py
+msgid ""
+"LEAD VEHICLE\n"
+"DEPARTING"
+msgstr ""
+"XE PHÍA TRƯỚC\n"
+"ĐANG CHẠY"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/speed_limit.py
+msgid "LIMIT"
+msgstr "TỐI ĐA"
+
+#: selfdrive/selfdrived/events.py
+msgid "LKAS Fault: Restart the Car"
+msgstr "Lỗi LKAS: Khởi động lại xe"
+
+#: selfdrive/selfdrived/events.py
+msgid "LKAS Fault: Restart the car to engage"
+msgstr "Lỗi LKAS: Khởi động lại xe để kích hoạt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "LOADING"
+msgstr "ĐANG TẢI"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "LTE"
+msgstr "LTE"
+
+#: selfdrive/selfdrived/events.py
+msgid "Lane Departure Detected"
+msgstr "Phát hiện lệch làn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Last checked {}"
+msgstr "Kiểm tra lần cuối {}"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Lateral Acceleration Factor"
+msgstr "Hệ số gia tốc ngang"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Lateral Maneuver Mode"
+msgstr "Chế độ thao tác ngang"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Lead Departure Alert (Beta)"
+msgstr "Cảnh báo xe phía trước chạy (Beta)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Less Restrict Settings for Self-Tune (Beta)"
+msgstr "Nới lỏng giới hạn cho Tự tinh chỉnh (Beta)"
+
+#: selfdrive/selfdrived/events.py
+msgid "Likely Hardware Issue"
+msgstr "Có thể do lỗi phần cứng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Live Learning Steer Delay"
+msgstr "Tự học độ trễ lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Live Steer Delay:"
+msgstr "Độ trễ lái tự học:"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "Loading..."
+msgstr "Đang tải..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Long Press Increment"
+msgstr "Bước tăng khi bấm giữ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Longitudinal Maneuver Mode"
+msgstr "Chế độ thao tác dọc"
+
+#: selfdrive/selfdrived/events.py
+msgid "Low Battery"
+msgstr "Pin yếu"
+
+#: selfdrive/selfdrived/events.py
+msgid "Low Communication Rate Between Processes"
+msgstr "Tốc độ giao tiếp giữa các tiến trình thấp"
+
+#: selfdrive/selfdrived/events.py
+msgid "Low Memory"
+msgstr "Bộ nhớ thấp"
+
+#: selfdrive/selfdrived/events.py
+msgid "Low Memory: Reboot Your Device"
+msgstr "Bộ nhớ thấp: Khởi động lại thiết bị"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/hud_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/onroad/hud_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/hud_renderer.py
+msgid "MAX"
+msgstr "MAX"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Manual Real-Time Tuning"
+msgstr "Tinh chỉnh thủ công thời gian thực"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Manual Speed Control Required"
+msgstr "Cần điều khiển tốc độ thủ công"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Manual Steering Required"
+msgstr "Cần đánh lái thủ công"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Manually selected fingerprint"
+msgstr "Mẫu xe chọn thủ công"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Map First"
+msgstr "Ưu tiên bản đồ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Map First: Use Speed Limit data from OpenStreetMaps if available, else use from Car"
+msgstr "Ưu tiên bản đồ: Dùng dữ liệu giới hạn tốc độ từ OpenStreetMaps nếu có, nếu không thì dùng từ xe"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Map Only"
+msgstr "Chỉ bản đồ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Map Only: Use Speed Limit data only from OpenStreetMaps"
+msgstr "Chỉ bản đồ: Chỉ dùng dữ liệu giới hạn tốc độ từ OpenStreetMaps"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Mapd Version"
+msgstr "Phiên bản Mapd"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Max Time Offroad"
+msgstr "Thời gian ngoại tuyến tối đa"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/setup.py
+msgid "Maximize your training data uploads to improve openpilot's driving models."
+msgstr "Tải lên nhiều dữ liệu huấn luyện hơn để cải thiện mô hình lái của openpilot."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/trips.py
+msgid "Miles"
+msgstr "Dặm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Minimum Speed to Pause Lateral Control"
+msgstr "Tốc độ tối thiểu để tạm dừng điều khiển ngang"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Model download has started in the background. We suggest resetting calibration. Would you like to do that now?"
+msgstr "Mô hình đang được tải về ở chế độ nền. Chúng tôi khuyên bạn nên đặt lại hiệu chỉnh. Bạn có muốn làm ngay không?"
+
+#: selfdrive/selfdrived/events.py
+msgid "Model uncertain at this speed"
+msgstr "Mô hình không chắc chắn ở tốc độ này"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Models"
+msgstr "Mô hình"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Modular Assistive Driving System (MADS)"
+msgstr "Hệ thống hỗ trợ lái mô-đun (MADS)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "N/A"
+msgstr "N/A"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "NO"
+msgstr "KHÔNG"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/speed_limit.py
+msgid "Near"
+msgstr "Gần"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Network"
+msgstr "Mạng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Neural Network Lateral Control (NNLC)"
+msgstr "Điều khiển ngang bằng mạng nơ-ron (NNLC)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "Next, we'll check if comma four can detect the driver properly."
+msgstr "Tiếp theo, chúng tôi sẽ kiểm tra xem comma four có nhận diện đúng người lái không."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "No"
+msgstr "Không"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "No SSH keys found for user '{}'"
+msgstr "Không tìm thấy khóa SSH cho người dùng '{}'"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "No release notes available."
+msgstr "Không có ghi chú phát hành."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "No vehicle selected"
+msgstr "Chưa chọn xe"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "No, we selectively pull a subset of your segments."
+msgstr "Không, chúng tôi chỉ chọn lấy một phần các đoạn của bạn."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "None"
+msgstr "Không có"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "None: No Offset"
+msgstr "Không có: Không bù"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "Nope, just drive as you normally would."
+msgstr "Không, cứ lái như bình thường."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Not Paired"
+msgstr "Chưa ghép nối"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Not Sponsor"
+msgstr "Chưa tài trợ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Not fingerprinted or manually selected"
+msgstr "Chưa nhận diện hoặc chọn thủ công"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Not going to lie, it's sad to see you disabled sunnylink"
+msgstr "Thật lòng mà nói, thật buồn khi thấy bạn tắt sunnylink"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "Not set"
+msgstr "Chưa đặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Note: For vehicles without LFA/LKAS button, disabling this will prevent lateral control engagement."
+msgstr "Lưu ý: Với xe không có nút LFA/LKAS, tắt tùy chọn này sẽ không thể kích hoạt điều khiển ngang."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Note: Once lateral control is engaged via UEM, it will remain engaged until it is manually disabled via the MADS button or car shut off."
+msgstr "Lưu ý: Khi điều khiển ngang được kích hoạt qua UEM, nó sẽ duy trì cho đến khi tắt thủ công bằng nút MADS hoặc tắt máy xe."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_change_settings.py
+msgid "Nudge"
+msgstr "Đẩy nhẹ vô lăng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_change_settings.py
+msgid "Nudgeless"
+msgstr "Không cần đẩy vô lăng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/sidebar.py
+msgid "OFFLINE"
+msgstr "NGOẠI TUYẾN"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+#: system/ui/widgets/confirm_dialog.py
+#: system/ui/widgets/html_render.py
+msgid "OK"
+msgstr "OK"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/sidebar.py
+msgid "ONLINE"
+msgstr "TRỰC TUYẾN"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "OSM"
+msgstr "OSM"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_change_settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Off"
+msgstr "Tắt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Off-Policy Model"
+msgstr "Mô hình Off-Policy"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Off: Disables the Speed Limit functions."
+msgstr "Tắt: Tắt các chức năng giới hạn tốc độ."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Offline Only"
+msgstr "Chỉ ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Offroad"
+msgstr "Ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Offroad: Device will be in Always Offroad mode after boot/wake-up."
+msgstr "Ngoại tuyến: Thiết bị sẽ ở chế độ Luôn ngoại tuyến sau khi khởi động/thức dậy."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "On this car, openpilot defaults to the stock system's built-in ACC."
+msgstr "Trên xe này, openpilot mặc định dùng ACC có sẵn của xe."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "On-Policy Model"
+msgstr "Mô hình On-Policy"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Only available when vehicle is off, or always offroad mode is on"
+msgstr "Chỉ khả dụng khi xe đã tắt máy hoặc đang bật chế độ Luôn ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/display.py
+msgid "Onroad Brightness"
+msgstr "Độ sáng khi lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/display.py
+msgid "Onroad Brightness Delay"
+msgstr "Độ trễ độ sáng khi lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Onroad Uploads"
+msgstr "Tải lên khi lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/setup.py
+msgid "Open"
+msgstr "Mở"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid ""
+"OpenStreetMap database is out of date. New maps must be downloaded if you wish to continue using OpenStreetMap data for Enhanced Speed Control and road name display.\n"
+"\n"
+"%1"
+msgstr ""
+"Cơ sở dữ liệu OpenStreetMap đã cũ. Cần tải bản đồ mới nếu bạn muốn tiếp tục dùng dữ liệu OpenStreetMap cho Kiểm soát tốc độ nâng cao và hiển thị tên đường.\n"
+"\n"
+"%1"
+
+#: selfdrive/selfdrived/events.py
+msgid "Out of Storage"
+msgstr "Hết dung lượng lưu trữ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "PAIR"
+msgstr "GHÉP"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "PANDA"
+msgstr "PANDA"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/trips.py
+msgid "PAST WEEK"
+msgstr "TUẦN QUA"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "PREVIEW"
+msgstr "XEM"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/prime.py
+msgid "PRIME FEATURES:"
+msgstr "TÍNH NĂNG PRIME:"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Pair Device"
+msgstr "Ghép thiết bị"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Pair GitHub Account"
+msgstr "Ghép nối tài khoản GitHub"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/setup.py
+msgid "Pair device"
+msgstr "Ghép thiết bị"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Pair your GitHub account"
+msgstr "Ghép tài khoản GitHub"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Pair your GitHub account to grant your device sponsor benefits, including API access on sunnylink."
+msgstr "Ghép nối tài khoản GitHub để thiết bị nhận quyền lợi nhà tài trợ, bao gồm truy cập API trên sunnylink."
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "Pair your device to your comma account"
+msgstr "Ghép thiết bị với tài khoản comma"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/setup.py
+msgid "Pair your device with comma connect (connect.comma.ai) and claim your comma prime offer."
+msgstr "Ghép thiết bị với comma connect (connect.comma.ai) và nhận ưu đãi comma prime."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Paired"
+msgstr "Đã ghép nối"
+
+#: selfdrive/selfdrived/events.py
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Parking Brake Engaged"
+msgstr "Phanh tay đang kéo"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Pause"
+msgstr "Tạm dừng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Pause Lateral Control with Blinker"
+msgstr "Tạm dừng điều khiển ngang khi bật xi-nhan"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Pause lateral control with blinker when traveling below the desired speed selected."
+msgstr "Tạm dừng điều khiển ngang khi bật xi-nhan lúc chạy dưới tốc độ đã chọn."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Pause: ALC will pause when the brake pedal is pressed."
+msgstr "Tạm dừng: ALC sẽ tạm dừng khi đạp phanh."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/driver_camera_dialog.py
+msgid "Pay Attention"
+msgstr "Hãy chú ý"
+
+#: selfdrive/selfdrived/events.py
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Pedal Pressed"
+msgstr "Đang đạp bàn đạp"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Percent: Adds a percent offset [Speed Limit + (Offset % Speed Limit)]"
+msgstr "Phần trăm: Cộng thêm mức bù phần trăm [Giới hạn tốc độ + (Mức bù % Giới hạn tốc độ)]"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/setup.py
+msgid "Please connect to Wi-Fi to complete initial pairing"
+msgstr "Hãy kết nối Wi-Fi để hoàn tất ghép nối ban đầu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "Please connect to Wi-Fi to complete initial pairing."
+msgstr "Vui lòng kết nối Wi-Fi để hoàn tất ghép nối ban đầu."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "Please connect to Wi-Fi to fetch your key."
+msgstr "Vui lòng kết nối Wi-Fi để lấy khóa của bạn."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "Please connect to Wi-Fi to update."
+msgstr "Vui lòng kết nối Wi-Fi để cập nhật."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/software.py
+msgid "Please enable \"Always Offroad\" mode or turn off the vehicle to adjust these toggles."
+msgstr "Vui lòng bật chế độ \"Luôn ngoại tuyến\" hoặc tắt máy xe để điều chỉnh các tùy chọn này."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Please reboot and try again."
+msgstr "Vui lòng khởi động lại và thử lại."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Policy Model"
+msgstr "Mô hình chính sách"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Poor visibility detected for driver monitoring. Ensure the device has a clear view of the driver. This can be checked in the device settings. Extreme lighting conditions and/or unconventional mounting positions may also trigger this alert."
+msgstr "Tầm nhìn kém cho giám sát người lái. Đảm bảo thiết bị nhìn rõ người lái. Có thể kiểm tra trong cài đặt thiết bị. Ánh sáng quá mạnh/yếu hoặc vị trí gắn bất thường cũng có thể gây ra cảnh báo này."
+
+#: selfdrive/selfdrived/events.py
+msgid "Posenet Speed Invalid"
+msgstr "Tốc độ Posenet không hợp lệ"
+
+#: selfdrive/selfdrived/events.py
+msgid "Possible Hardware Issue"
+msgstr "Có thể do lỗi phần cứng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "Post-Blinker Delay"
+msgstr "Độ trễ sau xi-nhan"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Power Off"
+msgstr "Tắt nguồn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py
+msgid "Predictive"
+msgstr "Dự đoán"
+
+#: selfdrive/selfdrived/events.py
+msgid "Press Resume"
+msgstr "Bấm Resume"
+
+#: selfdrive/selfdrived/events.py
+msgid "Press Resume to Exit Brake Hold"
+msgstr "Bấm Resume để thoát giữ phanh"
+
+#: selfdrive/selfdrived/events.py
+msgid "Press Resume to Exit Standstill"
+msgstr "Bấm Resume để thoát trạng thái dừng"
+
+#: selfdrive/selfdrived/events.py
+msgid "Press Set to Engage"
+msgstr "Bấm Set để kích hoạt"
+
+#: system/ui/widgets/network.py
+msgid "Prevent large data uploads when on a metered Wi-Fi connection"
+msgstr "Không tải dữ liệu lớn khi Wi-Fi tính cước"
+
+#: system/ui/widgets/network.py
+msgid "Prevent large data uploads when on a metered cellular connection"
+msgstr "Không tải dữ liệu lớn khi dùng mạng di động tính cước"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Preview the driver facing camera to ensure that driver monitoring has good visibility. (vehicle must be off)"
+msgstr "Xem trước camera hướng tài xế để đảm bảo giám sát nhìn rõ. (xe phải tắt máy)"
+
+#: selfdrive/selfdrived/events.py
+msgid "Process Not Running"
+msgstr "Tiến trình không chạy"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/widgets/pairing_dialog.py
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "QR Code Error"
+msgstr "Lỗi mã QR"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "Quickboot Mode"
+msgstr "Chế độ khởi động nhanh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "Quickboot mode requires updates to be disabled.<br>Enable 'Disable Updates' in the Software panel first."
+msgstr "Chế độ khởi động nhanh yêu cầu tắt cập nhật.<br>Hãy bật 'Tắt cập nhật' trong mục Phần mềm trước."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Quiet Mode"
+msgstr "Chế độ yên lặng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "REFRESH"
+msgstr "LÀM MỚI"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/sidebar.py
+msgid "REGIST..."
+msgstr "ĐANG ĐĂNG KÝ..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/__init__.py
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "REMOVE"
+msgstr "XÓA"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "RESET"
+msgstr "ĐẶT LẠI"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "REVIEW"
+msgstr "XEM"
+
+#: selfdrive/selfdrived/events.py
+msgid "Radar Error: Restart the Car"
+msgstr "Lỗi radar: Khởi động lại xe"
+
+#: selfdrive/selfdrived/events.py
+msgid "Radar Temporarily Unavailable"
+msgstr "Radar tạm thời không khả dụng"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Re-enter the \"sunnylink\" panel to verify sponsorship status"
+msgstr "Vào lại mục \"sunnylink\" để kiểm tra trạng thái tài trợ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Real-Time & Offline"
+msgstr "Thời gian thực và ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Real-time Acceleration Bar"
+msgstr "Thanh gia tốc thời gian thực"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/software.py
+msgid "Reboot"
+msgstr "Khởi động lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/alert_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "Reboot Device"
+msgstr "Khởi động lại thiết bị"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "Reboot and Update"
+msgstr "Khởi động lại và cập nhật"
+
+#: selfdrive/selfdrived/events.py
+msgid "Reboot your Device"
+msgstr "Khởi động lại thiết bị"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Record and Upload Driver Camera"
+msgstr "Ghi và tải camera tài xế"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Record and Upload Microphone Audio"
+msgstr "Ghi và tải âm thanh micro"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Record and store microphone audio while driving. The audio will be included in the dashcam video in comma connect."
+msgstr "Ghi âm micro khi lái xe. Âm thanh sẽ nằm trong video dashcam trên comma connect."
+
+#: selfdrive/selfdrived/events.py
+msgid "Recording Audio Feedback"
+msgstr "Đang ghi âm phản hồi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Refresh Model List"
+msgstr "Làm mới danh sách mô hình"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Regulatory"
+msgstr "Quy định"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Relaxed"
+msgstr "Nhẹ"
+
+#: selfdrive/selfdrived/events.py
+msgid "Release Brake to Engage"
+msgstr "Nhả phanh để kích hoạt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Remain Active"
+msgstr "Duy trì hoạt động"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Remain Active: ALC will remain active when the brake pedal is pressed."
+msgstr "Duy trì hoạt động: ALC sẽ vẫn hoạt động khi đạp phanh."
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/prime.py
+msgid "Remote access"
+msgstr "Truy cập từ xa"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/prime.py
+msgid "Remote snapshots"
+msgstr "Ảnh chụp từ xa"
+
+#: selfdrive/selfdrived/events.py
+msgid "Remount Detected: Recalibrating"
+msgstr "Phát hiện gắn lại: Đang hiệu chỉnh lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "Remount if your face is blocked, or driver monitoring has difficulty tracking your face."
+msgstr "Gắn lại nếu khuôn mặt bị che, hoặc giám sát người lái khó theo dõi khuôn mặt của bạn."
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "Request timed out"
+msgstr "Hết thời gian yêu cầu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Reset"
+msgstr "Đặt lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Reset Calibration"
+msgstr "Đặt lại hiệu chỉnh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Reset Settings"
+msgstr "Đặt lại cài đặt"
+
+#: selfdrive/selfdrived/events.py
+msgid ""
+"Restart the car to retry,\n"
+"small model is still available"
+msgstr ""
+"Khởi động lại xe để thử lại,\n"
+"mô hình nhỏ vẫn khả dụng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Restore Failed"
+msgstr "Khôi phục thất bại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Restore Settings"
+msgstr "Khôi phục cài đặt"
+
+#: selfdrive/selfdrived/events.py
+msgid "Resume Driving Manually"
+msgstr "Tự lái xe tiếp"
+
+#: selfdrive/selfdrived/events.py
+msgid "Reverse"
+msgstr "Số lùi"
+
+#: selfdrive/selfdrived/events.py
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid ""
+"Reverse\n"
+"Gear"
+msgstr ""
+"Số\n"
+"lùi"
+
+#: selfdrive/selfdrived/events.py
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Reverse Gear"
+msgstr "Số lùi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Review Training Guide"
+msgstr "Xem hướng dẫn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Review the rules, features, and limitations of sunnypilot"
+msgstr "Xem quy tắc, tính năng và giới hạn của sunnypilot"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Right"
+msgstr "Phải"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Right & Bottom"
+msgstr "Phải và Dưới"
+
+#: selfdrive/selfdrived/events.py
+msgid "Risk of Collision"
+msgstr "Nguy cơ va chạm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/__init__.py
+msgid "SELECT"
+msgstr "CHỌN"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "SET"
+msgstr "CHỌN"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/speed_limit.py
+msgid "SPEED"
+msgstr "TỐC ĐỘ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "SPONSOR"
+msgstr "TÀI TRỢ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "SSH Keys"
+msgstr "Khóa SSH"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "SSH keys"
+msgstr "Khóa SSH"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/circular_alerts.py
+msgid "STOPPED"
+msgstr "ĐANG DỪNG"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/sidebar.py
+msgid "SUNNYLINK"
+msgstr "SUNNYLINK"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/network.py
+msgid "Scan"
+msgstr "Quét"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Scan the QR code to login to your GitHub account"
+msgstr "Quét mã QR để đăng nhập GitHub"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Scan the QR code to visit sunnyhaibin's GitHub Sponsors page"
+msgstr "Quét mã QR để mở trang GitHub Sponsors của sunnyhaibin"
+
+#: system/ui/widgets/network.py
+msgid "Scanning Wi-Fi networks..."
+msgstr "Đang quét mạng Wi-Fi..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/network.py
+msgid "Scanning..."
+msgstr "Đang quét..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/display.py
+msgid "Screen Off"
+msgstr "Tắt màn hình"
+
+#: system/ui/sunnypilot/widgets/tree_dialog.py
+msgid "Search"
+msgstr "Tìm kiếm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Search your vehicle"
+msgstr "Tìm xe của bạn"
+
+#: selfdrive/selfdrived/events.py
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Seatbelt Unlatched"
+msgstr "Chưa thắt dây an toàn"
+
+#: selfdrive/selfdrived/events.py
+msgid "Security Key Not Available"
+msgstr "Không có khóa bảo mật"
+
+#: system/ui/widgets/option_dialog.py
+msgid "Select"
+msgstr "Chọn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Select Torque Control Tune Version"
+msgstr "Chọn phiên bản tinh chỉnh điều khiển mô-men"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Select VinFast"
+msgstr "Chọn VinFast"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Select a Model"
+msgstr "Chọn mô hình"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/software.py
+msgid "Select a branch"
+msgstr "Chọn nhánh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Select a language"
+msgstr "Chọn ngôn ngữ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Select a vehicle"
+msgstr "Chọn xe"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Select vehicle to force fingerprint manually."
+msgstr "Chọn xe để buộc nhận diện thủ công."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Self-Tune"
+msgstr "Tự tinh chỉnh"
+
+#: selfdrive/selfdrived/events.py
+msgid "Selfdrive Process Lagging: Reboot Your Device"
+msgstr "Tiến trình selfdrive bị trễ: Khởi động lại thiết bị"
+
+#: selfdrive/selfdrived/events.py
+msgid "Sensor Data Invalid"
+msgstr "Dữ liệu cảm biến không hợp lệ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Serial"
+msgstr "Số serial"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Set speed changed"
+msgstr "Đã thay đổi tốc độ đặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Set the maximum speed for lane turn desires. Default is 19 mph."
+msgstr "Đặt tốc độ tối đa cho chuyển hướng theo làn. Mặc định là 19 mph."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Settings backup completed."
+msgstr "Đã sao lưu cài đặt."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Settings restored. Confirm to restart the interface."
+msgstr "Đã khôi phục cài đặt. Xác nhận để khởi động lại giao diện."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "Sharing your data with comma helps improve openpilot and sunnypilot for everyone."
+msgstr "Chia sẻ dữ liệu với comma giúp cải thiện openpilot và sunnypilot cho mọi người."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Short Press Increment"
+msgstr "Bước tăng khi bấm nhanh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "Show Advanced Controls"
+msgstr "Hiện tùy chọn nâng cao"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Show Blind Spot Warnings"
+msgstr "Hiện cảnh báo điểm mù"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Show a timer on the HUD when the car is at a standstill."
+msgstr "Hiện bộ đếm thời gian trên HUD khi xe đang dừng."
+
+#: selfdrive/selfdrived/events.py
+msgid "Slow down to engage"
+msgstr "Giảm tốc để kích hoạt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Smart Cruise Control - Map"
+msgstr "Kiểm soát hành trình thông minh - Bản đồ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Smart Cruise Control - Vision"
+msgstr "Kiểm soát hành trình thông minh - Hình ảnh"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Smart/Adaptive Cruise Control: OFF"
+msgstr "Kiểm soát hành trình thông minh/thích ứng: TẮT"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "Snooze Update"
+msgstr "Hoãn cập nhật"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Software"
+msgstr "Phần mềm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Software Delay:"
+msgstr "Độ trễ phần mềm:"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Speed"
+msgstr "Tốc độ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Speed Limit"
+msgstr "Giới hạn tốc độ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Speed Limit Offset"
+msgstr "Mức bù giới hạn tốc độ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_policy.py
+msgid "Speed Limit Source"
+msgstr "Nguồn giới hạn tốc độ"
+
+#: selfdrive/selfdrived/events.py
+msgid "Speed Too High"
+msgstr "Tốc độ quá cao"
+
+#: selfdrive/selfdrived/events.py
+msgid "Speed too low"
+msgstr "Tốc độ quá thấp"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Speedometer: Always Display True Speed"
+msgstr "Đồng hồ tốc độ: Luôn hiện tốc độ thực"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Speedometer: Hide from Onroad Screen"
+msgstr "Đồng hồ tốc độ: Ẩn khỏi màn hình lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Sponsor Status"
+msgstr "Trạng thái tài trợ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Sponsorship isn't required for basic backup/restore"
+msgstr "Không cần tài trợ để dùng sao lưu/khôi phục cơ bản"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Standard"
+msgstr "Tiêu chuẩn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Start Download"
+msgstr "Bắt đầu tải về"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/toyota.py
+msgid "Start the vehicle to check vehicle compatibility."
+msgstr "Khởi động xe để kiểm tra khả năng tương thích."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "State"
+msgstr "Bang"
+
+#: selfdrive/selfdrived/events.py
+msgid "Steer Assist Unavailable Below {}"
+msgstr "Hỗ trợ lái không khả dụng dưới {}"
+
+#: selfdrive/selfdrived/events.py
+msgid "Steer Left"
+msgstr "Đánh lái sang trái"
+
+#: selfdrive/selfdrived/events.py
+msgid "Steer Left to Start Lane Change Once Safe"
+msgstr "Đánh lái sang trái để chuyển làn khi an toàn"
+
+#: selfdrive/selfdrived/events.py
+msgid "Steer Right"
+msgstr "Đánh lái sang phải"
+
+#: selfdrive/selfdrived/events.py
+msgid "Steer Right to Start Lane Change Once Safe"
+msgstr "Đánh lái sang phải để chuyển làn khi an toàn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Steering"
+msgstr "Lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Steering Arc"
+msgstr "Vòng cung lái"
+
+#: selfdrive/selfdrived/events.py
+msgid "Steering Assist Temporarily Unavailable"
+msgstr "Hỗ trợ lái tạm thời không khả dụng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Steering Mode on Brake Pedal"
+msgstr "Chế độ lái khi đạp phanh"
+
+#: selfdrive/selfdrived/events.py
+msgid "Steering Pressed"
+msgstr "Đang tác động vô lăng"
+
+#: selfdrive/selfdrived/events.py
+msgid "Steering Temporarily Unavailable"
+msgstr "Lái tạm thời không khả dụng"
+
+#: selfdrive/selfdrived/events.py
+msgid "Stock AEB: Risk of Collision"
+msgstr "AEB của xe: Nguy cơ va chạm"
+
+#: selfdrive/selfdrived/events.py
+msgid "Stock LKAS: Lane Departure Detected"
+msgstr "LKAS của xe: Phát hiện lệch làn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/subaru.py
+msgid "Stop and Go (Beta)"
+msgstr "Dừng và đi (Beta)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/toyota.py
+msgid "Stop and Go Hack (Alpha)"
+msgstr "Dừng và đi Hack (Alpha)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/subaru.py
+msgid "Stop and Go for Manual Parking Brake (Beta)"
+msgstr "Dừng và đi cho phanh tay cơ (Beta)"
+
+#: selfdrive/selfdrived/events.py
+msgid "System Initializing"
+msgstr "Hệ thống đang khởi tạo"
+
+#: selfdrive/selfdrived/events.py
+msgid "System Overheated"
+msgstr "Hệ thống quá nhiệt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/alert_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "System Unresponsive"
+msgstr "Hệ thống không phản hồi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/software.py
+msgid "System reboot required for changes to take effect. Reboot now?"
+msgstr "Cần khởi động lại hệ thống để áp dụng thay đổi. Khởi động lại ngay?"
+
+#: selfdrive/selfdrived/events.py
+msgid "TAKE CONTROL"
+msgstr "TIẾP QUẢN"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/alert_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "TAKE CONTROL IMMEDIATELY"
+msgstr "HÃY CẦM LÁI NGAY"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "TEMP"
+msgstr "NHIỆT"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "THANKS ♥"
+msgstr "CẢM ƠN ♥"
+
+#: selfdrive/selfdrived/events.py
+msgid "Take Control"
+msgstr "Tiếp quản"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "Taking camera snapshots. System won't start until finished."
+msgstr "Đang chụp ảnh camera. Hệ thống sẽ không khởi động cho đến khi xong."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/__init__.py
+msgid "Tap to force a VinFast model. Takes effect on the next start."
+msgstr "Chạm để chọn mẫu VinFast. Có hiệu lực ở lần khởi động sau."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Target Branch"
+msgstr "Nhánh đích"
+
+#: system/ui/widgets/network.py
+msgid "Tethering Password"
+msgstr "Mật khẩu phát Wi-Fi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "The reset cannot be undone. You have been warned."
+msgstr "Không thể hoàn tác việc đặt lại. Bạn đã được cảnh báo."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "This feature can only be used with sunnypilot longitudinal control enabled."
+msgstr "Tính năng này chỉ dùng được khi bật điều khiển dọc sunnypilot."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "This feature defaults to OFF, and does not allow selection due to vehicle limitations."
+msgstr "Tính năng này mặc định TẮT và không cho phép chọn do giới hạn của xe."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "This feature defaults to ON, and does not allow selection due to vehicle limitations."
+msgstr "Tính năng này mặc định BẬT và không cho phép chọn do giới hạn của xe."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/subaru.py
+msgid "This feature is currently not available on this platform."
+msgstr "Tính năng này hiện chưa có trên dòng xe này."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "This feature is not supported on this platform due to vehicle limitations."
+msgstr "Tính năng này không được hỗ trợ trên dòng xe này do giới hạn của xe."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py
+msgid "This feature is unavailable because sunnypilot Longitudinal Control (Alpha) is not enabled."
+msgstr "Tính năng này không khả dụng vì chưa bật Điều khiển dọc sunnypilot (Alpha)."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py
+msgid "This feature is unavailable while the car is onroad."
+msgstr "Tính năng này không khả dụng khi xe đang chạy."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "This feature requires sunnypilot longitudinal control to be available."
+msgstr "Tính năng này yêu cầu có điều khiển dọc sunnypilot."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "This is the master switch, it will allow you to cutoff any sunnylink requests should you want to do that."
+msgstr "Đây là công tắc chính, cho phép bạn chặn mọi yêu cầu sunnylink nếu muốn."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "This may be due to weak internet connection or sunnylink registration issue. "
+msgstr "Có thể do kết nối internet yếu hoặc lỗi đăng ký sunnylink. "
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "This platform only supports Disengage mode due to vehicle limitations."
+msgstr "Dòng xe này chỉ hỗ trợ chế độ Ngắt do giới hạn của xe."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "This platform supports all MADS settings."
+msgstr "Dòng xe này hỗ trợ tất cả cài đặt MADS."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+msgid "This platform supports limited MADS settings."
+msgstr "Dòng xe này hỗ trợ một số cài đặt MADS."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "This setting will take effect immediately."
+msgstr "Cài đặt này có hiệu lực ngay."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "This setting will take effect once the device enters offroad state."
+msgstr "Cài đặt này có hiệu lực khi thiết bị chuyển sang trạng thái ngoại tuyến."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid ""
+"This will delete ALL downloaded maps\n"
+"\n"
+"Are you sure you want to delete all maps?"
+msgstr ""
+"Thao tác này sẽ xóa TẤT CẢ bản đồ đã tải\n"
+"\n"
+"Bạn có chắc muốn xóa tất cả bản đồ?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "This will delete ALL downloaded models from the cache except the currently active model. Are you sure?"
+msgstr "Thao tác này sẽ xóa TẤT CẢ mô hình đã tải trong bộ nhớ đệm, trừ mô hình đang dùng. Bạn có chắc?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "This will start the download process and it might take a while to complete."
+msgstr "Thao tác này sẽ bắt đầu tải về và có thể mất một lúc để hoàn tất."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "Time"
+msgstr "Thời gian"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Toggle with Main Cruise"
+msgstr "Bật/tắt bằng nút hành trình chính"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Toggles"
+msgstr "Tùy chọn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/torque_settings.py
+msgid "Torque Control Tune Version"
+msgstr "Phiên bản tinh chỉnh điều khiển mô-men"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Total Delay:"
+msgstr "Tổng độ trễ:"
+
+#: selfdrive/selfdrived/events.py
+msgid "Touch Steering Wheel"
+msgstr "Chạm vào vô lăng"
+
+#: selfdrive/selfdrived/events.py
+msgid "Touch Steering Wheel: No Face Detected"
+msgstr "Chạm vào vô lăng: Không phát hiện khuôn mặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/driver_camera_dialog.py
+msgid "Touch Wheel"
+msgstr "Chạm vào vô lăng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Training Guide"
+msgstr "Hướng dẫn sử dụng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Trips"
+msgstr "Chuyến đi"
+
+#: selfdrive/selfdrived/events.py
+msgid "Turn Exceeds Steering Limit"
+msgstr "Góc rẽ vượt giới hạn đánh lái"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Turning Left"
+msgstr "Đang rẽ trái"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Turning Right"
+msgstr "Đang rẽ phải"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "UI Debug Mode"
+msgstr "Chế độ debug UI"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "UNINSTALL"
+msgstr "GỠ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/home.py
+msgid "UPDATE"
+msgstr "CẬP NHẬT"
+
+#: selfdrive/selfdrived/events.py
+msgid "USB Error: Reboot Your Device"
+msgstr "Lỗi USB: Khởi động lại thiết bị"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid ""
+"Unable to download updates\n"
+"%1"
+msgstr ""
+"Không thể tải bản cập nhật\n"
+"%1"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Unable to restore the settings, try again later."
+msgstr "Không thể khôi phục cài đặt, hãy thử lại sau."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/mads_settings.py
+msgid "Unified Engagement Mode (UEM)"
+msgstr "Chế độ kích hoạt hợp nhất (UEM)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Uninstall"
+msgstr "Gỡ cài đặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "Unknown"
+msgstr "Không rõ"
+
+#: selfdrive/selfdrived/events.py
+msgid "Unknown Vehicle Variant"
+msgstr "Biến thể xe không xác định"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Unrecognized Vehicle"
+msgstr "Xe chưa được nhận diện"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/offroad_alerts.py
+msgid "Update available {}. Click to update. Read the release notes at blog.comma.ai."
+msgstr "Có bản cập nhật {}. Bấm để cập nhật. Xem ghi chú phát hành tại blog.comma.ai."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Updates are only downloaded while the car is off."
+msgstr "Bản cập nhật chỉ được tải khi xe tắt máy."
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/prime.py
+msgid "Upgrade Now"
+msgstr "Nâng cấp ngay"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Upload data from the driver facing camera and help improve the driver monitoring algorithm."
+msgstr "Tải dữ liệu camera tài xế để cải thiện thuật toán giám sát tài xế."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Use Lane Turn Desires"
+msgstr "Dùng chuyển hướng theo làn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Use Metric System"
+msgstr "Dùng hệ mét"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Use map data to estimate the appropriate speed to drive through turns ahead."
+msgstr "Dùng dữ liệu bản đồ để ước tính tốc độ phù hợp khi vào cua phía trước."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "Use vision path predictions to estimate the appropriate speed to drive through turns ahead."
+msgstr "Dùng dự đoán đường đi từ hình ảnh để ước tính tốc độ phù hợp khi vào cua phía trước."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "Using Experimental mode is recommended with openpilot longitudinal control alpha."
+msgstr "Nên dùng chế độ Thử nghiệm với điều khiển dọc alpha của openpilot."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "VEHICLE"
+msgstr "XE"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "VIEW"
+msgstr "XEM"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/platform_selector.py
+msgid "Vehicle"
+msgstr "Xe"
+
+#: selfdrive/selfdrived/events.py
+msgid "Vehicle Sensors Calibrating"
+msgstr "Đang hiệu chỉnh cảm biến xe"
+
+#: selfdrive/selfdrived/events.py
+msgid "Vehicle Sensors Invalid"
+msgstr "Cảm biến xe không hợp lệ"
+
+#: selfdrive/selfdrived/events.py
+msgid "Vehicle Steering Time Limit"
+msgstr "Giới hạn thời gian đánh lái của xe"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "View the error log for sunnypilot crashes."
+msgstr "Xem nhật ký lỗi khi sunnypilot gặp sự cố."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/__init__.py
+msgid "VinFast"
+msgstr "VinFast"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/vinfast.py
+msgid "VinFast - Auto Reengage"
+msgstr "VinFast - Tự khởi hành"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "Vision Model"
+msgstr "Mô hình hình ảnh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Visuals"
+msgstr "Giao diện"
+
+#: selfdrive/selfdrived/events.py
+msgid "WARNING: This branch is not tested"
+msgstr "CẢNH BÁO: Nhánh này chưa được kiểm thử"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "WARNING: alpha longitudinal control may disable Automatic Emergency Braking (AEB)"
+msgstr "CẢNH BÁO: điều khiển dọc alpha có thể tắt Phanh khẩn cấp tự động (AEB)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/alert_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "Waiting to start"
+msgstr "Đang chờ khởi động"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "Wake Up Behavior"
+msgstr "Hành vi khi thức dậy"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Warning"
+msgstr "Cảnh báo"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+msgid "Warning: Provides a warning when exceeding the current road's speed limit."
+msgstr "Cảnh báo: Đưa ra cảnh báo khi vượt quá giới hạn tốc độ của đường hiện tại."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "Welcome back!! We're excited to see you've enabled sunnylink again!"
+msgstr "Chào mừng trở lại!! Chúng tôi rất vui khi thấy bạn bật lại sunnylink!"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "Welcome to sunnypilot"
+msgstr "Chào mừng đến sunnypilot"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "What's a good USB-C adapter?"
+msgstr "Bộ sạc USB-C nào là tốt?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/software.py
+msgid "When enabled, automatic software updates will be off.<br><b>This requires a reboot to take effect.</b>"
+msgstr "Khi bật, cập nhật phần mềm tự động sẽ tắt.<br><b>Cần khởi động lại để có hiệu lực.</b>"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "When enabled, pressing the accelerator pedal will disengage sunnypilot."
+msgstr "Khi bật, đạp ga sẽ ngắt sunnypilot."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "When enabled, the speedometer on the onroad screen is not displayed."
+msgstr "Khi bật, đồng hồ tốc độ trên màn hình lái sẽ không hiển thị."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/visuals.py
+msgid "When enabled, visual turn indicators are drawn on the HUD."
+msgstr "Khi bật, đèn xi-nhan sẽ được hiển thị trên HUD."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+#: system/ui/widgets/network.py
+msgid "Wi-Fi Network Metered"
+msgstr "Wi-Fi tính cước"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "Would you like to delete this log?"
+msgstr "Bạn có muốn xóa nhật ký này?"
+
+#: system/ui/widgets/network.py
+msgid "Wrong password"
+msgstr "Sai mật khẩu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "Yes"
+msgstr "Có"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/osm.py
+msgid "Yes, delete all maps"
+msgstr "Có, xóa tất cả bản đồ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "Yes, only upstream openpilot (and particular forks) are able to be used for training."
+msgstr "Có, chỉ openpilot gốc (và một số bản fork nhất định) mới được dùng để huấn luyện."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "You must accept the Terms of Service in order to use sunnypilot."
+msgstr "Bạn phải chấp nhận Điều khoản dịch vụ để dùng sunnypilot."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "You must accept the Terms of Service to use sunnypilot."
+msgstr "Bạn phải chấp nhận Điều khoản dịch vụ để dùng sunnypilot."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "You must accept the Terms of Service to use sunnypilot. Read the latest terms at https://sunnypilot.ai/terms before continuing."
+msgstr "Bạn phải chấp nhận Điều khoản dịch vụ để dùng sunnypilot. Đọc bản mới nhất tại https://sunnypilot.ai/terms trước khi tiếp tục."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py
+msgid "Your vehicle will use the Default longitudinal tuning."
+msgstr "Xe của bạn sẽ dùng tinh chỉnh dọc Mặc định."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py
+msgid "Your vehicle will use the Dynamic longitudinal tuning."
+msgstr "Xe của bạn sẽ dùng tinh chỉnh dọc Động."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py
+msgid "Your vehicle will use the Predictive longitudinal tuning."
+msgstr "Xe của bạn sẽ dùng tinh chỉnh dọc Dự đoán."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid ""
+"accept\n"
+"terms"
+msgstr ""
+"chấp nhận\n"
+"điều khoản"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "active model"
+msgstr "mô hình đang dùng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "aggressive"
+msgstr "mạnh mẽ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "allow data uploading"
+msgstr "cho phép tải dữ liệu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "alpha longitudinal"
+msgstr "dọc alpha"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "always-on driver monitor"
+msgstr "luôn giám sát người lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+msgid "apn settings"
+msgstr "cài đặt apn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "back"
+msgstr "quay lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "backing up"
+msgstr "đang sao lưu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "backup"
+msgstr "sao lưu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "backup settings"
+msgstr "sao lưu cài đặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/widgets/sunnylink_pairing_dialog.py
+msgid "become a sunnypilot sponsor"
+msgstr "trở thành nhà tài trợ sunnypilot"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "cache size"
+msgstr "bộ nhớ đệm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/driver_camera_dialog.py
+#: ../pythonpath/openpilot/selfdrive/ui/onroad/driver_camera_dialog.py
+msgid "camera starting"
+msgstr "đang bật camera"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "cancel download"
+msgstr "hủy tải về"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+msgid "cellular metered"
+msgstr "di động tính phí theo dung lượng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "checking..."
+msgstr "đang kiểm tra..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/prime.py
+msgid "comma prime"
+msgstr "comma prime"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "connect"
+msgstr "kết nối"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "connected"
+msgstr "đã kết nối"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/__init__.py
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "connecting..."
+msgstr "đang kết nối..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/developer.py
+msgid "copyparty Service"
+msgstr "Dịch vụ copyparty"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid ""
+"decline &\n"
+"uninstall"
+msgstr ""
+"từ chối &\n"
+"gỡ cài đặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+#: system/ui/widgets/network.py
+msgid "default"
+msgstr "mặc định"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/settings.py
+msgid "developer"
+msgstr "nhà phát triển"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/settings.py
+msgid "device"
+msgstr "thiết bị"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "device ID"
+msgstr "mã thiết bị"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "device id"
+msgstr "mã thiết bị"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/onboarding.py
+msgid ""
+"disable\n"
+"sunnylink"
+msgstr ""
+"tắt\n"
+"sunnylink"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py
+msgid "disengage to enable always offroad"
+msgstr "ngắt để bật luôn ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "do you want to share video data for training?"
+msgstr "bạn có muốn chia sẻ video để huấn luyện?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "down"
+msgstr "xuống"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "download failed"
+msgstr "tải về thất bại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "download update"
+msgstr "tải bản cập nhật"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "downloading"
+msgstr "đang tải về"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "downloading..."
+msgstr "đang tải..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid ""
+"driver\n"
+"camera preview"
+msgstr ""
+"xem trước\n"
+"camera người lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "driver camera data"
+msgstr "dữ liệu camera người lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid ""
+"driver monitoring\n"
+"check"
+msgstr ""
+"kiểm tra\n"
+"giám sát người lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "driving personality"
+msgstr "phong cách lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+msgid "edit"
+msgstr "sửa"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/onboarding.py
+msgid ""
+"enable\n"
+"sunnylink"
+msgstr ""
+"bật\n"
+"sunnylink"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid ""
+"enable alpha\n"
+"longitudinal"
+msgstr ""
+"bật dọc\n"
+"alpha"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+msgid "enable roaming"
+msgstr "bật chuyển vùng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "enable sunnylink"
+msgstr "bật sunnylink"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "enable sunnypilot"
+msgstr "bật sunnypilot"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+msgid "enable tethering"
+msgstr "bật phát wi-fi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "enabling alpha longitudinal"
+msgstr "bật điều khiển dọc alpha"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+msgid "enter APN..."
+msgstr "nhập APN..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "enter GitHub username..."
+msgstr "nhập tên GitHub..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "enter password..."
+msgstr "nhập mật khẩu..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "error"
+msgstr "lỗi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "experimental mode"
+msgstr "chế độ thử nghiệm"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "failed"
+msgstr "thất bại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "failed to check for update"
+msgstr "không kiểm tra được bản cập nhật"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "failed to update"
+msgstr "cập nhật thất bại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "finalizing update..."
+msgstr "đang hoàn tất cập nhật..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/settings.py
+msgid "firehose"
+msgstr "firehose"
+
+#: system/ui/widgets/network.py
+msgid "for \"{}\""
+msgstr "cho \"{}\""
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "forgetting..."
+msgstr "đang xóa..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "h"
+msgstr "g"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "joystick debug mode"
+msgstr "chế độ gỡ lỗi joystick"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/hud_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/onroad/hud_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/speed_renderer.py
+msgid "km/h"
+msgstr "km/h"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "lane departure warnings"
+msgstr "cảnh báo lệch làn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "language"
+msgstr "ngôn ngữ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "lateral maneuver mode"
+msgstr "chế độ thử lái ngang"
+
+#: system/ui/widgets/network.py
+msgid "leave blank for automatic configuration"
+msgstr "để trống để cấu hình tự động"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "left"
+msgstr "trái"
+
+#: selfdrive/selfdrived/events.py
+msgid "locationd Permanent Error"
+msgstr "locationd lỗi vĩnh viễn"
+
+#: selfdrive/selfdrived/events.py
+msgid "locationd Temporary Error"
+msgstr "locationd lỗi tạm thời"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "longitudinal maneuver mode"
+msgstr "chế độ thử lái dọc"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "looking for driver"
+msgstr "đang tìm người lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/device.py
+msgid "m"
+msgstr "p"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid ""
+"make sure comma\n"
+"four can see your face"
+msgstr ""
+"đảm bảo comma\n"
+"four thấy mặt bạn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+#: system/ui/widgets/network.py
+msgid "metered"
+msgstr "tính cước"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py
+msgid "models"
+msgstr "mô hình"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/hud_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/onroad/hud_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise_sub_layouts/speed_limit_settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/onroad/speed_renderer.py
+msgid "mph"
+msgstr "mph"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/settings.py
+msgid "network"
+msgstr "mạng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+msgid "network usage"
+msgstr "sử dụng mạng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "never"
+msgstr "chưa bao giờ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "next"
+msgstr "tiếp"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/offroad_alerts.py
+msgid "no alerts"
+msgstr "không có cảnh báo"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "no internet"
+msgstr "không có internet"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "no, don't upload"
+msgstr "không, đừng tải lên"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/__init__.py
+msgid "not connected"
+msgstr "chưa kết nối"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "not in range"
+msgstr "ngoài vùng phủ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "now"
+msgstr "bây giờ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/__init__.py
+msgid "obtaining IP..."
+msgstr "đang lấy IP..."
+
+#: selfdrive/selfdrived/events.py
+msgid "openpilot Canceled"
+msgstr "openpilot đã hủy"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "openpilot Unavailable"
+msgstr "openpilot không khả dụng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/augmented_road_view.py
+msgid ""
+"openpilot can't start\n"
+"check alerts"
+msgstr ""
+"openpilot không thể khởi động\n"
+"xem cảnh báo"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "or go to https://sunnypilot.ai/terms"
+msgstr "hoặc truy cập https://sunnypilot.ai/terms"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "pair"
+msgstr "ghép nối"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/widgets/pairing_dialog.py
+msgid "pair with comma connect"
+msgstr "ghép nối với comma connect"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/widgets/sunnylink_pairing_dialog.py
+msgid "pair with sunnylink"
+msgstr "ghép nối với sunnylink"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "paired"
+msgstr "đã ghép nối"
+
+#: selfdrive/selfdrived/events.py
+msgid "paramsd Permanent Error"
+msgstr "paramsd lỗi vĩnh viễn"
+
+#: selfdrive/selfdrived/events.py
+msgid "paramsd Temporary Error"
+msgstr "paramsd lỗi tạm thời"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "please connect to WiFi & try again"
+msgstr "vui lòng kết nối WiFi và thử lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "please reboot & try again"
+msgstr "vui lòng khởi động lại và thử lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "power off"
+msgstr "tắt nguồn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "progress"
+msgstr "tiến độ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/models.py
+msgid "ready"
+msgstr "sẵn sàng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "reboot"
+msgstr "khởi động lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "record & upload driver camera"
+msgstr "ghi & tải lên camera người lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "record & upload mic audio"
+msgstr "ghi & tải lên âm thanh mic"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "regulatory info"
+msgstr "thông tin pháp lý"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "relaxed"
+msgstr "thư thái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/home.py
+msgid "release"
+msgstr "bản phát hành"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "reset"
+msgstr "đặt lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "reset calibration"
+msgstr "đặt lại hiệu chỉnh"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "restore"
+msgstr "khôi phục"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "restore settings"
+msgstr "khôi phục cài đặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "restoring"
+msgstr "đang khôi phục"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid ""
+"review\n"
+"training guide"
+msgstr ""
+"xem lại\n"
+"hướng dẫn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "right"
+msgstr "phải"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_change_settings.py
+msgid "s"
+msgstr "s"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/onboarding.py
+msgid "scroll to continue"
+msgstr "cuộn để tiếp tục"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "searching for networks"
+msgstr "đang tìm mạng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "select model"
+msgstr "chọn mô hình"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/language.py
+msgid "selected"
+msgstr "đã chọn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "serial"
+msgstr "số sê-ri"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "settings backed up"
+msgstr "đã sao lưu cài đặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "slide to"
+msgstr "trượt để"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "slide to backup"
+msgstr "trượt để sao lưu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py
+msgid "slide to exit always offroad"
+msgstr "trượt để thoát luôn ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py
+msgid "slide to force offroad"
+msgstr "trượt để buộc ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "slide to forget"
+msgstr "trượt để quên mạng"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "slide to restart"
+msgstr "trượt để khởi động lại"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "slide to restore"
+msgstr "trượt để khôi phục"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "sponsor"
+msgstr "tài trợ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "sponsor tier"
+msgstr "cấp tài trợ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "standard"
+msgstr "tiêu chuẩn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/augmented_road_view.py
+msgid ""
+"start the car to\n"
+"use sunnypilot"
+msgstr ""
+"khởi động xe để\n"
+"dùng sunnypilot"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/__init__.py
+msgid "starting"
+msgstr "đang khởi động"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "starting..."
+msgstr "đang khởi động..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "subscribed"
+msgstr "đã đăng ký"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/onboarding.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py
+msgid "sunnylink"
+msgstr "sunnylink"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/sunnylink.py
+msgid "sunnylink Dongle ID not found. "
+msgstr "Không tìm thấy Dongle ID của sunnylink. "
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "sunnylink dongle id not found"
+msgstr "không tìm thấy dongle id sunnylink"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/onboarding.py
+msgid "sunnylink enables secured remote access to your comma device from anywhere."
+msgstr "sunnylink cho phép truy cập từ xa an toàn vào thiết bị comma của bạn từ bất cứ đâu."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "sunnylink uploader"
+msgstr "trình tải lên sunnylink"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "sunnypilot Longitudinal Control (Alpha)"
+msgstr "Điều khiển dọc sunnypilot (Alpha)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/cruise.py
+msgid "sunnypilot Longitudinal Control is the default longitudinal control for this platform."
+msgstr "Điều khiển dọc sunnypilot là điều khiển dọc mặc định cho dòng xe này."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/toyota.py
+msgid "sunnypilot Longitudinal Control must be available and enabled for your vehicle to use this feature."
+msgstr "Điều khiển dọc sunnypilot phải khả dụng và được bật cho xe của bạn để dùng tính năng này."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/alert_renderer.py
+#: ../pythonpath/openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "sunnypilot Unavailable"
+msgstr "sunnypilot không khả dụng"
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "sunnypilot detected a change in the device's mounting position. Ensure the device is fully seated in the mount and the mount is firmly secured to the windshield."
+msgstr "sunnypilot phát hiện vị trí gắn thiết bị đã thay đổi. Đảm bảo thiết bị được gắn chặt vào giá và giá được gắn chắc vào kính chắn gió."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "sunnypilot longitudinal control may come in a future update."
+msgstr "Điều khiển dọc sunnypilot có thể có ở bản cập nhật sau."
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "sunnypilot requires the device to be mounted within 4° left or right and within 5° up or 9° down."
+msgstr "sunnypilot yêu cầu gắn thiết bị lệch không quá 4° trái/phải, 5° lên hoặc 9° xuống."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "sunnypilot uses the cabin camera to check if the driver is distracted."
+msgstr "sunnypilot dùng camera trong xe để kiểm tra người lái có mất tập trung không."
+
+#: selfdrive/selfdrived/alerts_offroad.json
+msgid "sunnypilot was unable to identify your car. Your car is either unsupported or its ECUs are not recognized. Please submit a pull request to add the firmware versions to the proper vehicle. Need help? Join discord.comma.ai."
+msgstr "sunnypilot không nhận diện được xe của bạn. Xe của bạn chưa được hỗ trợ hoặc ECU không được nhận diện. Vui lòng gửi pull request để thêm phiên bản firmware cho đúng xe. Cần trợ giúp? Tham gia discord.comma.ai."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/toyota.py
+msgid "sunnypilot will not take over control of gas and brakes. Factory Toyota longitudinal control will be used."
+msgstr "sunnypilot sẽ không điều khiển ga và phanh. Điều khiển dọc nguyên bản của Toyota sẽ được sử dụng."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "swipe for QR code"
+msgstr "vuốt để xem mã QR"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/augmented_road_view.py
+msgid "system booting"
+msgstr "hệ thống đang khởi động"
+
+#: selfdrive/selfdrived/events.py
+msgid "take control"
+msgstr "tiếp quản"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid ""
+"terms &\n"
+"conditions"
+msgstr ""
+"điều khoản &\n"
+"điều kiện"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid ""
+"terms of\n"
+"service"
+msgstr ""
+"điều khoản\n"
+"dịch vụ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "tethering"
+msgstr "phát wi-fi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+msgid "tethering password"
+msgstr "mật khẩu phát wi-fi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "thanks"
+msgstr "cảm ơn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/settings.py
+msgid "toggles"
+msgstr "tùy chọn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "try again later."
+msgstr "hãy thử lại sau."
+
+#: selfdrive/selfdrived/events.py
+msgid "turn exceeds limit"
+msgstr "góc rẽ vượt giới hạn"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/developer.py
+msgid "ui debug mode"
+msgstr "chế độ gỡ lỗi giao diện"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/sunnylink.py
+msgid "unable to restore"
+msgstr "không thể khôi phục"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "uninstall"
+msgstr "gỡ cài đặt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "uninstall sunnypilot"
+msgstr "gỡ cài đặt sunnypilot"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
+#: system/ui/widgets/network.py
+msgid "unmetered"
+msgstr "không tính cước"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "unsupported"
+msgstr "không hỗ trợ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "up"
+msgstr "lên"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "up to date"
+msgstr "đã cập nhật mới nhất"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "up to date, last checked never"
+msgstr "đã mới nhất, chưa từng kiểm tra"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "up to date, last checked {}"
+msgstr "đã mới nhất, kiểm tra lần cuối {}"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "update available"
+msgstr "có bản cập nhật"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "update now"
+msgstr "cập nhật ngay"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "update sunnypilot"
+msgstr "cập nhật sunnypilot"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid ""
+"updater failed\n"
+"to respond"
+msgstr ""
+"trình cập nhật\n"
+"không phản hồi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/device.py
+msgid "upgrade to prime"
+msgstr "nâng cấp lên prime"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
+msgid "use metric units"
+msgstr "dùng đơn vị mét"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
+msgid "what is sunnypilot?"
+msgstr "sunnypilot là gì?"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/__init__.py
+msgid "wi-fi"
+msgstr "wi-fi"
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
+msgid "wrong password"
+msgstr "sai mật khẩu"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/home.py
+msgid "{} ALERT"
+msgid_plural "{} ALERTS"
+msgstr[0] "{} CẢNH BÁO"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "{} day ago"
+msgid_plural "{} days ago"
+msgstr[0] "{} ngày trước"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "{} hour ago"
+msgid_plural "{} hours ago"
+msgstr[0] "{} giờ trước"
+
+#: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "{} minute ago"
+msgid_plural "{} minutes ago"
+msgstr[0] "{} phút trước"
+
+#: selfdrive/selfdrived/events.py
+msgid "{} second remaining. Press again to save early."
+msgstr "Còn {} giây. Bấm lần nữa để lưu sớm."
+
+#: selfdrive/selfdrived/events.py
+msgid "{} seconds remaining. Press again to save early."
+msgstr "Còn {} giây. Bấm lần nữa để lưu sớm."
+
+#: selfdrive/selfdrived/events.py
+msgid "{} second{} remaining. Press again to save early."
+msgstr "Còn {} giây{}. Bấm lần nữa để lưu sớm."
+
+#: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/firehose.py
+msgid "{} segment of your driving is in the training dataset so far."
+msgid_plural "{} segments of your driving is in the training dataset so far."
+msgstr[0] "Hiện có {} đoạn hành trình của bạn trong tập dữ liệu huấn luyện."
+
+#: selfdrive/selfdrived/events.py
+msgid "{} °C"
+msgstr "{} °C"
+
+#: selfdrive/selfdrived/events.py
+msgid "{}% frames dropped"
+msgstr "{}% khung hình bị bỏ"
+
+#: selfdrive/selfdrived/events.py
+msgid "{}% full"
+msgstr "đầy {}%"
+
+#: selfdrive/selfdrived/events.py
+msgid "{}% used"
+msgstr "đã dùng {}%"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/prime.py
+msgid "✓ SUBSCRIBED"
+msgstr "✓ ĐÃ ĐĂNG KÝ"
+
+#: ../pythonpath/openpilot/selfdrive/ui/widgets/setup.py
+msgid "🔥 Firehose Mode 🔥"
+msgstr "🔥 Chế độ Firehose 🔥"
+

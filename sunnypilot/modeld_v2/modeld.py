@@ -13,12 +13,14 @@ os.environ['DEV'] = 'QCOM' if TICI else 'CPU'
 if chestnut_present():
   os.environ['AMD_IFACE'] = 'USB'
   os.environ['HCQDEV_WAIT_TIMEOUT_MS'] = '3000'
+from openpilot.selfdrive.modeld.chestnut_state import ChestnutState
 import pickle
 import threading
 import time
 import numpy as np
 import cereal.messaging as messaging
 from cereal import car, log
+from cereal.services import SERVICE_LIST
 from setproctitle import setproctitle
 from cereal.messaging import PubMaster, SubMaster
 from msgq.visionipc import VisionIpcClient, VisionStreamType, VisionBuf
@@ -119,6 +121,11 @@ class ModelState(ModelStateBase):
     self.DEV = ('AMD' if self.chestnut else 'QCOM') if TICI else 'CPU'
 
     metadata = jits['metadata']
+    self._packed = 'run_policy' in jits
+    self.WARP_DEV = metadata.get('warp_dev', 'QCOM') if TICI and self._packed else self.DEV
+    if self._packed:
+      from openpilot.sunnypilot.modeld_v2.compile_modeld import make_packed_input_queues
+
     if 'model' in metadata:
       model_metadata = metadata['model']
       self.vision_output_slices = model_metadata['output_slices']
@@ -128,7 +135,10 @@ class ModelState(ModelStateBase):
       self._vision_input_names = [k for k in model_metadata['input_shapes'] if 'img' in k]
       from openpilot.sunnypilot.modeld_v2.compile_modeld import make_supercombo_input_queues
       frame_skip = derive_frame_skip({}, model_metadata['input_shapes'])
-      self.input_queues, self.numpy_inputs = make_supercombo_input_queues(model_metadata['input_shapes'], frame_skip, device=self.DEV)
+      if self._packed:
+        self.input_queues, self.numpy_inputs = make_packed_input_queues(model_metadata['input_shapes'], frame_skip, self.DEV, is_supercombo=True)
+      else:
+        self.input_queues, self.numpy_inputs = make_supercombo_input_queues(model_metadata['input_shapes'], frame_skip, device=self.DEV)
     else:
       vision_metadata = metadata['vision']
       policy_keys = [k for k in metadata if k not in ('vision', 'warp_dev')]
@@ -146,7 +156,10 @@ class ModelState(ModelStateBase):
       policy_input_shapes = first_policy_metadata['input_shapes']
       self._vision_input_names = [k for k in vision_input_shapes if 'img' in k]
       frame_skip = derive_frame_skip(vision_input_shapes, policy_input_shapes)
-      self.input_queues, self.numpy_inputs = make_split_input_queues(vision_input_shapes, policy_input_shapes, frame_skip, device=self.DEV)
+      if self._packed:
+        self.input_queues, self.numpy_inputs = make_packed_input_queues({**vision_input_shapes, **policy_input_shapes}, frame_skip, self.DEV)
+      else:
+        self.input_queues, self.numpy_inputs = make_split_input_queues(vision_input_shapes, policy_input_shapes, frame_skip, device=self.DEV)
 
     from openpilot.sunnypilot.modeld_v2.parse_model_outputs_split import Parser as SplitParser
     from openpilot.sunnypilot.modeld_v2.parse_model_outputs import Parser as CombinedParser
@@ -166,10 +179,19 @@ class ModelState(ModelStateBase):
     nv12_info = get_nv12_info(cam_w, cam_h)
     self.frame_buf_params = dict.fromkeys(self._vision_input_names, nv12_info)
 
-    self._run_policy = jits[(cam_w, cam_h)]['run_policy']
-    self._warp_enqueue = jits[(cam_w, cam_h)]['warp_enqueue']
     road_name = next(k for k in self._vision_input_names if 'big' not in k)
     yuv_size = self.frame_buf_params[road_name][3]
+    if self._packed:
+      self._run_policy = jits['run_policy']
+      self._warp = jits[(cam_w, cam_h)]
+      self._warp(
+        tfm=self.input_queues['tfm'], big_tfm=self.input_queues['big_tfm'],
+        frame=Tensor(np.zeros(yuv_size, dtype=np.uint8), device=self.WARP_DEV).contiguous().realize(),
+        big_frame=Tensor(np.zeros(yuv_size, dtype=np.uint8), device=self.WARP_DEV).contiguous().realize())
+      return
+
+    self._run_policy = jits[(cam_w, cam_h)]['run_policy']
+    self._warp_enqueue = jits[(cam_w, cam_h)]['warp_enqueue']
     self._warp_enqueue(
       **self.input_queues,
       frame=Tensor(np.zeros(yuv_size, dtype=np.uint8), device=self.DEV).contiguous().realize(),
@@ -197,14 +219,14 @@ class ModelState(ModelStateBase):
       yuv_size = self.frame_buf_params[key][3]
       cache_key = (key, ptr)
       if cache_key not in self._blob_cache:
-        self._blob_cache[cache_key] = Tensor.from_blob(ptr, (yuv_size,), dtype='uint8', device=self.DEV)
+        self._blob_cache[cache_key] = Tensor.from_blob(ptr, (yuv_size,), dtype='uint8', device=self.WARP_DEV)
       self.full_frames[key] = self._blob_cache[cache_key]
 
     desire_key = self.desire_key
     inputs[desire_key][0] = 0
     self.numpy_inputs[desire_key][:] = np.where(inputs[desire_key] - self.prev_desire > .99, inputs[desire_key], 0)
     self.prev_desire[:] = inputs[desire_key]
-    for key in ('traffic_convention', 'lateral_control_params'):
+    for key in ('traffic_convention', 'lateral_control_params', 'action_t'):
       if key in self.numpy_inputs and key in inputs:
         self.numpy_inputs[key][:] = inputs[key]
 
@@ -213,16 +235,26 @@ class ModelState(ModelStateBase):
     self.numpy_inputs['tfm'][:, :] = transforms[road_key].reshape(3, 3)
     self.numpy_inputs['big_tfm'][:, :] = transforms[wide_key].reshape(3, 3)
 
-    if prepare_only:
+    if self._packed:
+      from openpilot.sunnypilot.modeld_v2.compile_modeld import PACKED_WARP_INPUTS, PACKED_POLICY_INPUTS
+      warped = self._warp(**{k: self.input_queues[k] for k in PACKED_WARP_INPUTS},
+                          frame=self.full_frames[road_key], big_frame=self.full_frames[wide_key])
+      # the queues only advance inside run_policy, so it must run on dropped frames too
+      raw_outputs = self._run_policy(**{k: self.input_queues[k] for k in PACKED_POLICY_INPUTS if k in self.input_queues}, warped=warped)
+      if prepare_only:
+        return None
+    elif prepare_only:
       self._warp_enqueue(**self.input_queues, frame=self.full_frames[road_key], big_frame=self.full_frames[wide_key])
       return None
-
-    raw_outputs = self._run_policy(**self.input_queues, frame=self.full_frames[road_key], big_frame=self.full_frames[wide_key])
+    else:
+      raw_outputs = self._run_policy(**self.input_queues, frame=self.full_frames[road_key], big_frame=self.full_frames[wide_key])
 
     if self._combined_model_type == 'supercombo':
       model_output = raw_outputs.numpy().flatten()
       sliced = {k: model_output[np.newaxis, v] for k, v in self.vision_output_slices.items()}
       outputs = self.parser.parse_outputs(sliced)
+      if 'prev_feat' in self.numpy_inputs and 'hidden_state' in self.vision_output_slices:
+        self.numpy_inputs['prev_feat'][:] = model_output[self.vision_output_slices['hidden_state']]
     else:
       vision_output = raw_outputs[0].numpy().flatten()
       vision_sliced = {k: vision_output[np.newaxis, v] for k, v in self.vision_output_slices.items()}
@@ -248,13 +280,19 @@ class ModelState(ModelStateBase):
 
   def get_action_from_model(self, model_output: dict[str, np.ndarray], prev_action: log.ModelDataV2.Action,
                             lat_action_t: float, long_action_t: float, v_ego: float) -> log.ModelDataV2.Action:
-    plan = model_output['plan'][0]
-    desired_accel, should_stop = get_accel_from_plan(plan[:, Plan.VELOCITY][:, 0], plan[:, Plan.ACCELERATION][:, 0], self.constants.T_IDXS,
-                                                     action_t=long_action_t)
+    if 'action' not in model_output:
+      plan = model_output['plan'][0]
+      desired_accel, should_stop = get_accel_from_plan(plan[:, Plan.VELOCITY][:, 0], plan[:, Plan.ACCELERATION][:, 0], self.constants.T_IDXS,
+                                                       action_t=long_action_t)
+      curvature_plan = (plan + (self.PLANPLUS_CONTROL - 1.0) * model_output['planplus'][0]
+                        if 'planplus' in model_output and self.PLANPLUS_CONTROL != 1.0 else plan)
+      desired_curvature = get_curvature_from_output(model_output, curvature_plan, v_ego, lat_action_t, self.mlsim)
+    else:
+      desired_accel = model_output['action'][0, 1]
+      desired_curvature = model_output['action'][0, 0] / (max(1.0, v_ego))**2
+      should_stop = v_ego < 0.3 and desired_accel < 0.1
     desired_accel = smooth_value(desired_accel, prev_action.desiredAcceleration, self.LONG_SMOOTH_SECONDS)
 
-    curvature_plan = plan + (self.PLANPLUS_CONTROL - 1.0) * model_output['planplus'][0] if 'planplus' in model_output and self.PLANPLUS_CONTROL != 1.0 else plan
-    desired_curvature = get_curvature_from_output(model_output, curvature_plan, v_ego, lat_action_t, self.mlsim)
     if self.generation is not None and self.generation >= 10: # smooth curvature for post FOF models
       if v_ego > self.MIN_LAT_CONTROL_SPEED:
         desired_curvature = smooth_value(desired_curvature, prev_action.desiredCurvature, self.LAT_SMOOTH_SECONDS)
@@ -341,10 +379,11 @@ def main(demo=False):
   cloudlog.warning(f"models loaded in {time.monotonic() - st:.1f}s, modeld starting")
 
   # messaging
-  pm = PubMaster(["modelV2", "drivingModelData", "cameraOdometry", "modelDataV2SP"])
+  pm = PubMaster(["modelV2", "drivingModelData", "cameraOdometry", "modelDataV2SP"] + (["chestnutState"] if CHESTNUT else []))
   sm = SubMaster(["deviceState", "carState", "roadCameraState", "liveCalibration", "driverMonitoringState", "carControl", "liveDelay"])
 
   publish_state = PublishState()
+  chestnut_state = ChestnutState(pm, model.chestnut) if CHESTNUT else None
 
   # setup filter to track dropped frames
   frame_dropped_filter = FirstOrderFilter(0., 10., 1. / model.constants.MODEL_FREQ)
@@ -455,9 +494,16 @@ def main(demo=False):
     if 'lateral_control_params' in model.numpy_inputs:
       inputs['lateral_control_params'] = np.array([v_ego, lat_delay], dtype=np.float32)
 
+    if 'action_t' in model.numpy_inputs:
+      frame_delay = DT_MDL # compensate for time passed since the frame was captured: current_time - timestamp_eof is 50ms on average
+      action_delay = DT_MDL / 2 # middle of the interval between model output (current state) and next frame (expected state)
+      inputs['action_t'] = np.array([lat_delay + frame_delay + action_delay, long_delay + frame_delay + action_delay], dtype=np.float32)
+
     mt1 = time.perf_counter()
     try:
       model_output = model.run(bufs, transforms, inputs, prepare_only)
+      if chestnut_state is not None and run_count % round(model.constants.MODEL_FREQ / SERVICE_LIST['chestnutState'].frequency) == 0:
+        chestnut_state.send()
     except Exception:
       if not model.chestnut:
         raise
@@ -466,6 +512,8 @@ def main(demo=False):
       params.put_bool("ChestnutActive", False)
       assert small_model is not None
       model = small_model
+      if chestnut_state is not None:
+        chestnut_state.big = False
       long_delay = CP.longitudinalActuatorDelay + model.LONG_SMOOTH_SECONDS
       run_count = 0
       model_output = None
