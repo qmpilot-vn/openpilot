@@ -182,6 +182,7 @@ def getParamsMetadata() -> str:
     schema["capabilities"] = generate_capabilities()
     schema["capability_labels"] = CAPABILITY_LABELS
     schema["default_model"] = DEFAULT_MODEL
+    schema["chestnut_active"] = params.get_bool("ChestnutActive")
     raw = json.dumps(schema, separators=(",", ":")).encode("utf-8")
     return base64.b64encode(gzip.compress(raw)).decode("utf-8")
   except Exception:

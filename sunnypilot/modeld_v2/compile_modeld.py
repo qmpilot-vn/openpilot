@@ -7,6 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 """
 
 import argparse
+import math
 import os
 import pickle
 import time
@@ -223,6 +224,70 @@ def make_supercombo_input_queues(input_shapes, frame_skip, device):
     **{k: Tensor(v, device='NPY').realize() for k, v in numpy_keys.items()},
   }
   return input_queues, numpy_keys
+
+
+PACKED_WARP_INPUTS = ['tfm', 'big_tfm']
+PACKED_POLICY_INPUTS = ['img_q', 'big_img_q', 'feat_q', 'desire_q', 'packed_npy_inputs']
+
+
+def get_packed_npy_shapes(input_shapes, is_supercombo=False):
+  desire_key = _detect_desire_key(input_shapes)
+  shapes = {}
+  if desire_key:
+    shapes['desire'] = (input_shapes[desire_key][2],)
+
+  for key, shape in input_shapes.items():
+    if key not in (desire_key, 'features_buffer') and 'img' not in key:
+      shapes[key] = tuple(shape)
+
+  if is_supercombo and 'features_buffer' in input_shapes:
+    fb = input_shapes['features_buffer']
+    shapes['prev_feat'] = (fb[0], math.prod(fb[2:]))
+
+  sizes = [int(np.prod(s)) for s in shapes.values()]
+  return shapes, sizes
+
+
+def make_packed_input_queues(input_shapes, frame_skip, device, is_supercombo=False):
+  """Queues for pkls where warp and run_policy are separate top-level jits and the
+  policy's numpy inputs are packed into a single 'packed_npy_inputs' buffer."""
+  road_key = next((k for k in sorted(input_shapes) if 'img' in k and 'big' not in k), None)
+  desire_key = _detect_desire_key(input_shapes)
+  if road_key is None or desire_key is None:
+    raise ValueError(f"Cannot determine road image / desire keys from {list(input_shapes)}")
+
+  img_shape = input_shapes[road_key]
+  n_frames = img_shape[1] // 6
+  img_buf_shape = (frame_skip * (n_frames - 1) + 1, 6, img_shape[2], img_shape[3])
+  desire_shape = input_shapes[desire_key]
+
+  npy = {
+    'tfm': np.zeros((3, 3), dtype=np.float32),
+    'big_tfm': np.zeros((3, 3), dtype=np.float32),
+  }
+
+  shapes, sizes = get_packed_npy_shapes(input_shapes, is_supercombo=is_supercombo)
+  packed = np.zeros(sum(sizes), dtype=np.float32)
+  views = np.split(packed, np.cumsum(sizes[:-1])) if len(sizes) > 1 else [packed]
+  for (k, s), v in zip(shapes.items(), views, strict=True):
+    npy[k] = v.reshape(s)
+
+  input_queues = {
+    'img_q': Tensor(np.zeros(img_buf_shape, dtype=np.uint8), device=device).contiguous().realize(),
+    'big_img_q': Tensor(np.zeros(img_buf_shape, dtype=np.uint8), device=device).contiguous().realize(),
+    'desire_q': Tensor(np.zeros((frame_skip * desire_shape[1], desire_shape[0], desire_shape[2]), dtype=np.float32),
+                       device=device).contiguous().realize(),
+    'packed_npy_inputs': Tensor(packed, device='NPY').realize(),
+    'tfm': Tensor(npy['tfm'], device='NPY').realize(),
+    'big_tfm': Tensor(npy['big_tfm'], device='NPY').realize(),
+  }
+
+  if (fb := input_shapes.get('features_buffer')) is not None:
+    feat_dim = math.prod(fb[2:])
+    feat_q_len = frame_skip * fb[1] if is_supercombo else frame_skip * (fb[1] - 1) + 1
+    input_queues['feat_q'] = Tensor(np.zeros((feat_q_len, fb[0], feat_dim), dtype=np.float32), device=device).contiguous().realize()
+
+  return input_queues, npy
 
 
 def make_run_supercombo(model_runner, nv12: NV12Frame, model_w, model_h,

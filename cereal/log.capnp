@@ -132,8 +132,11 @@ struct OnroadEvent @0xc4fa6047f024e718 {
     userBookmark @95;
     excessiveActuation @96;
     audioFeedback @97;
+    bigModelLoading @100;
+    bigModelFailed @102;
 
     soundsUnavailableDEPRECATED @47;
+    bigModelReadyDEPRECATED @101;
   }
 }
 
@@ -447,6 +450,8 @@ struct DeviceState @0xa4d8b5af2aa492eb {
   exhaustTempC @47 :Float32;
   gnssTempC @48 :Float32;
   bottomSocTempC @50 :Float32;
+  chestnutPresent @51 :Bool;
+  usbState @52 :UsbState;
   maxTempC @44 :Float32;  # max of other temps, used to control fan
   thermalZones @38 :List(ThermalZone);
   thermalStatus @14 :ThermalStatus;
@@ -682,6 +687,42 @@ struct PeripheralState {
   deprecated :group {
     usbPowerMode @4 :Deprecated.UsbPowerModeDEPRECATED;
   }
+}
+
+struct UsbState {
+  devices @0 :List(Device);
+
+  struct Device {
+    busnum @0 :UInt8;
+    devnum @1 :UInt8;
+    vendorId @2 :UInt16;
+    productId @3 :UInt16;
+    speedMbps @4 :UInt16;
+    manufacturer @6 :Text;
+    product @5 :Text;
+    linkErrorCount @7 :UInt16;
+    usb3Lane @8 :Usb3Lane;
+
+    enum Usb3Lane {
+      unknown @0;
+      a @1;
+      b @2;
+    }
+  }
+}
+
+struct ChestnutState {
+  tempC @0 :Float32;
+  memoryTempC @1 :Float32;
+  powerDrawW @2 :Float32;
+  powerLimitW @3 :Float32;
+  gpuUsagePercent @4 :UInt8;
+  gpuClockMhz @5 :UInt16;
+  fanSpeedRpm @6 :UInt16;
+  pcieLtssm @7 :UInt8;
+  supplyVoltage @8 :UInt16;  # mV
+  supplyCurrent @9 :Int16;  # mA
+  supplyFault @10 :Bool;
 }
 
 struct RadarState @0x9a185389d6fdd05f {
@@ -2483,6 +2524,7 @@ struct Event {
     onroadEvents @134: List(OnroadEvent);
     carParams @69: Car.CarParams;
     driverMonitoringState @151 :DriverMonitoringState;
+    chestnutState @152 :ChestnutState;
     livePose @129 :LivePose;
     modelV2 @75 :ModelDataV2;
     drivingModelData @128 :DrivingModelData;
