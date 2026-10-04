@@ -11,6 +11,7 @@ from openpilot.selfdrive.ui.mici.widgets.button import BigCircleButton
 from openpilot.selfdrive.ui.mici.widgets.dialog import BigConfirmationDialog, BigDialog
 from openpilot.selfdrive.ui.sunnypilot.mici.layouts.sunnylink import SunnylinkLayoutMici
 from openpilot.selfdrive.ui.sunnypilot.mici.layouts.models import ModelsLayoutMici
+from openpilot.selfdrive.ui.sunnypilot.mici.layouts.vehicle import VehicleLayoutMici, current_vehicle_text
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr
@@ -40,6 +41,11 @@ class SettingsLayoutSP(OP.SettingsLayout):
     models_btn = SettingsBigButton(tr("models"), "", gui_app.texture("../../sunnypilot/selfdrive/assets/offroad/icon_models.png", ICON_SIZE, ICON_SIZE))
     models_btn.set_click_callback(lambda: gui_app.push_widget(models_panel))
 
+    vehicle_panel = VehicleLayoutMici(back_callback=gui_app.pop_widget)
+    self._vehicle_btn = SettingsBigButton(tr("vehicle"), current_vehicle_text(),
+                                          gui_app.texture("../../sunnypilot/selfdrive/assets/offroad/icon_vehicle.png", ICON_SIZE, ICON_SIZE))
+    self._vehicle_btn.set_click_callback(lambda: gui_app.push_widget(vehicle_panel))
+
     # onroad: enable button sits at the front (left of toggles)
     self._enable_offroad_btn_onroad = BigCircleButton(self.icon_offroad_enable, red=True)
     self._enable_offroad_btn_onroad.set_click_callback(lambda: self._handle_always_offroad(True))
@@ -58,6 +64,7 @@ class SettingsLayoutSP(OP.SettingsLayout):
 
     items.insert(1, sunnylink_btn)
     items.insert(2, models_btn)
+    items.insert(3, self._vehicle_btn)
 
     # front slots (only one ever visible at a time): exit-always-offroad, then enable-onroad
     items.insert(0, self._enable_offroad_btn_onroad)
@@ -71,6 +78,7 @@ class SettingsLayoutSP(OP.SettingsLayout):
 
   def _update_state(self):
     super()._update_state()
+    self._vehicle_btn.set_value(current_vehicle_text())
 
   def _handle_always_offroad(self, enable: bool):
 
