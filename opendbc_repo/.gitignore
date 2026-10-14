@@ -25,6 +25,7 @@ opendbc/safety/modes/vinfast_vf6.h
 __pycache__/
 # VinFast car native extensions (shipped alongside shims for pull-and-run)
 !opendbc/car/vinfast/*_impl*.so
+!opendbc/dbc/vinfast_dbc_impl*.so
 *.profraw
 opendbc/can/build/
 opendbc/can/obj/
@@ -35,11 +36,10 @@ opendbc/safety/tests/coverage-out
 
 .mull/
 
-# VinFast DBC plaintext (public release ships pickled *.dbc.cache instead)
+# VinFast DBC tables ship only inside vinfast_dbc_impl*.so
 opendbc/dbc/vinfast_vf6_*.dbc
-!opendbc/dbc/vinfast_vf6_*.dbc.cache
 opendbc/dbc/vinfast_vf8_*.dbc
-!opendbc/dbc/vinfast_vf8_*.dbc.cache
+opendbc/dbc/vinfast_*.dbc.cache
 
 # VinFast dev tests (not shipped on vf-release)
 opendbc/car/vinfast/tests/
