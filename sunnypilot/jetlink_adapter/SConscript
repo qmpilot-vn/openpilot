@@ -1,0 +1,40 @@
+# The comma-side warp JIT jetlink's large model runs, as a build product.
+import glob
+import os
+
+from SCons.Script import Action
+
+Import('env', 'arch')
+
+basedir = env.Dir("#").abspath
+jetlink_repo = env.Dir("#jetlink_repo").abspath
+capture = os.path.join(jetlink_repo, 'jetlink', 'openpilot', 'warp.py')
+
+# qmpilot uses larch64 for AGNOS aarch64 (zoompilot uses comma_arm64)
+if arch in ('larch64', 'comma_arm64') and os.path.isfile(capture):
+  from openpilot.common.transformations.camera import _ar_ox_fisheye, _os_fisheye
+  from openpilot.common.transformations.model import MEDMODEL_INPUT_SIZE
+  from openpilot.sunnypilot import jetlink_adapter
+  from openpilot.system.hardware import HARDWARE
+
+  lenv = env.Clone(ENV={**env['ENV'], 'PYTHONPATH': os.pathsep.join([env['ENV']['PYTHONPATH'], jetlink_repo])})
+
+  model_w, model_h = MEDMODEL_INPUT_SIZE
+  camera = _os_fisheye if HARDWARE.get_device_type() == "mici" else _ar_ox_fisheye
+  camera_configs = [(camera.width, camera.height)]
+
+  tinygrad_files = ["#" + x for x in glob.glob(env.Dir("#tinygrad_repo").relpath + "/**",
+                                               recursive=True, root_dir=basedir)
+                    if 'pycache' not in x and os.path.isfile(os.path.join(basedir, x))]
+  script_files = [
+    File(capture),
+    File("#sunnypilot/jetlink_adapter/__init__.py"),
+    File("#selfdrive/modeld/compile_modeld.py"),
+    File("#system/camerad/cameras/nv12_info.py"),
+  ]
+
+  for cam_w, cam_h in camera_configs:
+    pkl = str(jetlink_adapter.warp_path(cam_w, cam_h, model_w, model_h))
+    cmd = (f'-python3 -m jetlink.openpilot.warp --adapter {jetlink_adapter.__name__} '
+           f'--camera {cam_w}x{cam_h} --model {model_w}x{model_h} --output {pkl}')
+    lenv.Command(pkl, tinygrad_files + script_files, Action(cmd, "  [JETLINK WARP] $TARGET"))

@@ -35,3 +35,6 @@ _mod.__file__ = str(_so)
 _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
+
+from opendbc.car.vinfast.carcontroller_host import install as _install_host
+_install_host(_mod)

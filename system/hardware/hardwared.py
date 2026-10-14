@@ -27,6 +27,7 @@ from openpilot.system.hardware.power_monitoring import PowerMonitoring
 from openpilot.system.hardware.fan_controller import FanController
 from openpilot.system.hardware.chestnut.status import ChestnutStatus, firmware_mismatch
 from openpilot.system.version import terms_version, training_version, get_build_metadata, terms_version_sp
+from openpilot.sunnypilot import jetlink_adapter
 
 ThermalStatus = log.DeviceState.ThermalStatus
 NetworkType = log.DeviceState.NetworkType
@@ -172,6 +173,7 @@ def hardware_thread(end_event, hw_queue) -> None:
   startup_conditions_prev: dict[str, bool] = {}
 
   off_ts: float | None = None
+  accelerator_off_ts: float | None = None
   started_ts: float | None = None
   started_seen = False
   startup_blocked_ts: float | None = None
@@ -271,6 +273,10 @@ def hardware_thread(end_event, hw_queue) -> None:
     chestnut_status.update(started_ts is None, branch, last_hw_state.usb_state, firmware_mismatch(last_hw_state.usb_state),
                            params.get_bool("ChestnutLoading"), params.get("ChestnutActive"),
                            chestnut_state if chestnut_valid else None, set_offroad_alert_if_changed)
+
+    accelerator_error = jetlink_adapter.reason()
+    set_offroad_alert_if_changed("Offroad_AcceleratorUnavailable", accelerator_error is not None,
+                                 extra_text=accelerator_error)
 
     msg.deviceState.screenBrightnessPercent = HARDWARE.get_screen_brightness()
 
@@ -411,9 +417,13 @@ def hardware_thread(end_event, hw_queue) -> None:
     msg.deviceState.somPowerDrawW = som_power_draw
 
     # Check if we need to shut down
-    if power_monitor.should_shutdown(onroad_conditions["ignition"], in_car, off_ts, started_seen):
-      cloudlog.warning(f"shutting device down, offroad since {off_ts}")
-      params.put_bool("DoShutdown", True, block=True)
+    if accelerator_off_ts is not None or power_monitor.should_shutdown(onroad_conditions["ignition"], in_car, off_ts, started_seen):
+      if accelerator_off_ts is None:
+        cloudlog.warning(f"shutting device down, offroad since {off_ts}")
+        jetlink_adapter.request_shutdown(f"comma shutting down, offroad since {off_ts}")
+        accelerator_off_ts = time.monotonic()
+      if not jetlink_adapter.shutdown_pending() or time.monotonic() - accelerator_off_ts >= 25.0:
+        params.put_bool("DoShutdown", True, block=True)
 
     msg.deviceState.started = started_ts is not None and not offroad_mode
     msg.deviceState.startedMonoTime = int(1e9*(started_ts or 0))

@@ -249,8 +249,8 @@ msgid "Automatic Lane Centering is OFF"
 msgstr "Giữ làn tự động đang TẮT"
 
 #: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/vinfast.py
-msgid "Automatically resume after a full stop in traffic when the car ahead starts moving. Turn this off if you want to press Resume / ACC yourself. The car will stay stopped at a light until you resume."
-msgstr "Tự động chạy tiếp sau khi dừng hẳn trong kẹt xe, khi xe phía trước bắt đầu đi. Tắt nếu bạn muốn tự bấm Resume / ACC. Xe sẽ đứng yên ở đèn đỏ cho đến khi bạn resume."
+msgid "Automatically resume after a full stop in traffic when the car ahead starts moving. Every VinFast uses the new stop-and-go latch. Turn this off if you want to press Resume / ACC yourself. The car will stay stopped at a light until you resume."
+msgstr "Tự động chạy tiếp sau khi dừng hẳn trong kẹt xe, khi xe phía trước bắt đầu đi. Mọi xe VinFast dùng cơ chế dừng-đi mới. Tắt nếu bạn muốn tự bấm Resume / ACC. Xe sẽ đứng yên ở đèn đỏ cho đến khi bạn resume."
 
 #: ../pythonpath/openpilot/selfdrive/ui/mici/onroad/driver_camera_dialog.py
 msgid "Awareness: {}%"
@@ -2771,6 +2771,22 @@ msgstr "mô hình đang dùng"
 msgid "aggressive"
 msgstr "mạnh mẽ"
 
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "(auto)"
+msgstr "(tự động)"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "auto detect"
+msgstr "tự nhận xe"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "auto detected"
+msgstr "đã tự nhận"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "auto reengage"
+msgstr "tự khởi hành"
+
 #: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
 msgid "allow data uploading"
 msgstr "cho phép tải dữ liệu"
@@ -2782,6 +2798,14 @@ msgstr "dọc alpha"
 #: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
 msgid "always-on driver monitor"
 msgstr "luôn giám sát người lái"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "car model"
+msgstr "mẫu xe"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "change when offroad"
+msgstr "đổi khi tắt máy"
 
 #: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/network_layout.py
 msgid "apn settings"
@@ -2842,6 +2866,10 @@ msgstr "kết nối"
 msgid "connected"
 msgstr "đã kết nối"
 
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "connected, engine ready"
+msgstr "đã kết nối, sẵn sàng"
+
 #: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/__init__.py
 #: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/wifi_ui.py
 msgid "connecting..."
@@ -2891,6 +2919,26 @@ msgstr ""
 #: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py
 msgid "disengage to enable always offroad"
 msgstr "ngắt để bật luôn ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py
+msgid ""
+"enable\n"
+"always\n"
+"offroad"
+msgstr ""
+"bật\n"
+"luôn\n"
+"ngoại tuyến"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py
+msgid ""
+"exit\n"
+"always\n"
+"offroad"
+msgstr ""
+"thoát\n"
+"luôn\n"
+"ngoại tuyến"
 
 #: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
 msgid "do you want to share video data for training?"
@@ -3021,6 +3069,10 @@ msgstr "đang hoàn tất cập nhật..."
 msgid "firehose"
 msgstr "firehose"
 
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "fixed"
+msgstr "cố định"
+
 #: system/ui/widgets/network.py
 msgid "for \"{}\""
 msgstr "cho \"{}\""
@@ -3144,6 +3196,10 @@ msgstr "chưa kết nối"
 msgid "not in range"
 msgstr "ngoài vùng phủ"
 
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "not set"
+msgstr "chưa chọn"
+
 #: ../pythonpath/openpilot/selfdrive/ui/layouts/settings/software.py
 msgid "now"
 msgstr "bây giờ"
@@ -3151,6 +3207,14 @@ msgstr "bây giờ"
 #: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/network/__init__.py
 msgid "obtaining IP..."
 msgstr "đang lấy IP..."
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "off"
+msgstr "tắt"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "on"
+msgstr "bật"
 
 #: selfdrive/selfdrived/events.py
 msgid "openpilot Canceled"
@@ -3544,9 +3608,25 @@ msgstr ""
 msgid "upgrade to prime"
 msgstr "nâng cấp lên prime"
 
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "use fingerprint"
+msgstr "nhận diện xe"
+
 #: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/settings/toggles.py
 msgid "use metric units"
 msgstr "dùng đơn vị mét"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/settings.py
+msgid "vehicle"
+msgstr "xe"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/vehicle.py
+msgid "vinfast"
+msgstr "VinFast"
+
+#: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/mici/layouts/models.py
+msgid "waiting for host"
+msgstr "đang chờ máy chủ"
 
 #: ../pythonpath/openpilot/selfdrive/ui/mici/layouts/onboarding.py
 msgid "what is sunnypilot?"

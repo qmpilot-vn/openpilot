@@ -149,6 +149,10 @@ class ModelFetcher:
       response.raise_for_status()
 
       json_data = response.json()
+      if cache is self.chestnut_cache:
+        from openpilot.sunnypilot import jetlink_adapter
+        if jetlink_adapter.should_extend_catalog():
+          json_data = jetlink_adapter.extend_catalog(json_data)
       cache.set(json_data)
       cloudlog.debug("Successfully updated models cache")
       return self.model_parser.parse_models(json_data)

@@ -6,12 +6,12 @@ Max angle for full factor:
   VF8 non-production only            470
 """
 _VF6_MAX_ANGLE = 180.0
-_VF6_MIN_FACTOR = 0.6
+_VF6_MIN_FACTOR = 0.5
 _VF6_MAX_FACTOR = 1.0
 
 # origin/vf6 VF8/VF9 factors; only the full-torque angle changes by platform
 _VF8_MIN_FACTOR = 0.5
-_VF8_MAX_FACTOR = 0.6
+_VF8_MAX_FACTOR = 0.8
 _VF8_VF9_PROD_MAX_ANGLE = 100.0
 _VF8_NON_PROD_MAX_ANGLE = 470.0
 

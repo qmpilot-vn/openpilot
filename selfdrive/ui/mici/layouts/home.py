@@ -257,10 +257,12 @@ class MiciHomeLayout(Widget):
     usb_connected = ui_state.usb_connected
     usb_unknown = ui_state.usb_unknown
     chestnut_state = ui_state.chestnut_state
-    self._usb_icon.set_visible(usb_connected and usb_unknown)
-    self._chestnut_icon.set_visible(not usb_unknown and chestnut_state not in
+    accelerator = chestnut_state in (ChestnutState.READY, ChestnutState.ACTIVE, ChestnutState.WAITING)
+    self._usb_icon.set_visible(usb_connected and usb_unknown and not accelerator)
+    self._chestnut_icon.set_visible((not usb_unknown or accelerator) and chestnut_state not in
                                     (ChestnutState.LOADING, ChestnutState.UNCOMPILED, ChestnutState.FAILED) and
-                                    (usb_connected or chestnut_state in (ChestnutState.READY, ChestnutState.ACTIVE)))
+                                    (usb_connected or accelerator))
+    self._chestnut_icon.set_opacity(0.5 if chestnut_state == ChestnutState.WAITING else 1.0)
     self._chestnut_loading_icon.set_visible(not usb_unknown and chestnut_state == ChestnutState.LOADING)
     self._chestnut_loading_icon.set_opacity(0.35 + 0.65 * (0.5 - 0.5 * math.cos(rl.get_time() * 6.0)))
     self._chestnut_failed_icon.set_visible(not usb_unknown and chestnut_state in (ChestnutState.UNCOMPILED, ChestnutState.FAILED))

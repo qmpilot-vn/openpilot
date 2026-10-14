@@ -23,7 +23,8 @@ from openpilot.system.ui.widgets.toggle import ON_COLOR
 from openpilot.sunnypilot.models.runners.constants import CUSTOM_MODEL_PATH
 from openpilot.system.ui.sunnypilot.lib.styles import style
 from openpilot.system.ui.sunnypilot.lib.utils import NoElideButtonAction
-from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, toggle_item_sp, option_item_sp
+from openpilot.selfdrive.ui.sunnypilot.accelerator_link import LINK_MODES, LINK_PARAM, LINK_MODE_TITLES, link_mode, link_status, link_toggle_meaningful
+from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, toggle_item_sp, option_item_sp, multiple_button_item_sp
 from openpilot.system.ui.sunnypilot.widgets.progress_bar import progress_item
 from openpilot.system.ui.sunnypilot.widgets.tree_dialog import TreeOptionDialog, TreeNode, TreeFolder
 
@@ -93,7 +94,13 @@ class ModelsLayout(Widget):
 
     self.lagd_toggle = toggle_item_sp(tr("Live Learning Steer Delay"), "", param="LagdToggle")
 
-    self.items = [self.current_model_item, self.cancel_download_item, self.supercombo_label, self.vision_label,
+    self.accelerator_link_item = multiple_button_item_sp(
+      tr("Jetlink"),
+      tr("Run big models over a connected device running Jetlink. Turns off ADB."),
+      buttons=[lambda m=m: tr(LINK_MODE_TITLES[m]) for m in LINK_MODES],
+      param=LINK_PARAM, button_width=300, inline=False)
+
+    self.items = [self.current_model_item, self.accelerator_link_item, self.cancel_download_item, self.supercombo_label, self.vision_label,
                   self.policy_label, self.off_policy_label, self.on_policy_label, self.refresh_item, self.clear_cache_item, self.lane_turn_desire_toggle,
                   self.lane_turn_value_control, self.lagd_toggle, self.delay_control]
 
@@ -242,6 +249,12 @@ class ModelsLayout(Widget):
       self.lane_turn_value_control.action_item.value_change_step = new_step
 
     self._update_lagd_description(live_delay)
+    self.accelerator_link_item.set_visible(link_toggle_meaningful())
+    self.accelerator_link_item.action_item.set_selected_button(LINK_MODES.index(link_mode()))
+    self.accelerator_link_item.action_item.set_enabled(ui_state.is_offroad())
+    status = link_status()
+    desc = tr("Run big models over a connected device running Jetlink. Turns off ADB.")
+    self.accelerator_link_item.set_description(f"{desc} {status}".strip())
     self.model_manager = ui_state.sm["modelManagerSP"]
     self._handle_bundle_download_progress()
     active_name = self.model_manager.activeBundle.internalName if self.model_manager and self.model_manager.activeBundle.ref else f"{DEFAULT_MODEL} (Default)"
