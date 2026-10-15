@@ -17,6 +17,7 @@ PARAM_PATH = Path("/data/params/d") / PARAM
 TITLE = tr_noop("VinFast - Auto Reengage")
 DESC = tr_noop(
   "Automatically resume after a full stop in traffic when the car ahead starts moving. "
+  "Every VinFast uses the new stop-and-go latch. "
   "Turn this off if you want to press Resume / ACC yourself. The car will stay stopped "
   "at a light until you resume."
 )

@@ -15,7 +15,7 @@ V_CRUISE_MAX = 145
 V_CRUISE_UNSET = 255
 V_CRUISE_INITIAL = 40
 V_CRUISE_INITIAL_EXPERIMENTAL_MODE = 105
-VINFAST_V_CRUISE_INITIAL_EXPERIMENTAL_MODE = 20
+VINFAST_V_CRUISE_INITIAL_EXPERIMENTAL_MODE = 60
 IMPERIAL_INCREMENT = round(CV.MPH_TO_KPH, 1)  # round here to avoid rounding errors incrementing set speed
 
 ButtonEvent = car.CarState.ButtonEvent
@@ -45,11 +45,10 @@ class VCruiseHelper(VCruiseHelperSP):
     self.v_cruise_kph_last = 0
     self.button_timers = {ButtonType.decelCruise: 0, ButtonType.accelCruise: 0}
     self.button_change_states = {btn: {"standstill": False, "enabled": False} for btn in self.button_timers}
-    # VinFast: first valid car set speed (TagSpeed / cluster V) becomes experimental init.
+    # VinFast: ADAS_ACC_TagSpeed → speedCluster; syncs experimental-mode ceiling when tag changes
     default_experimental = VINFAST_V_CRUISE_INITIAL_EXPERIMENTAL_MODE if CP.brand == "vinfast" else V_CRUISE_INITIAL_EXPERIMENTAL_MODE
     self.v_initial_experimental_mode = default_experimental
     self.last_tag_speed_kph = 0.0
-    self._car_set_speed_latched = False
     # Adjust v_initial_experimental_mode via accel/decel before cruise is initialized (session-only)
     self.adjusting_vmax_init = False
     self.vmax_init_adjust_timer = 0
@@ -89,9 +88,15 @@ class VCruiseHelper(VCruiseHelperSP):
         self.update_button_timers(CS, enabled)
       return
 
-    # VinFast: latch the first dash set speed as experimental init (do not follow later tag moves).
-    if self.CP.brand == "vinfast":
-      self._maybe_latch_car_set_speed(CS)
+    # VinFast: tag speed cluster → experimental initial speed (only when tag changes meaningfully)
+    if self.CP.brand == "vinfast" and CS.cruiseState.speedCluster > 0:
+      tag_speed_kph = CS.cruiseState.speedCluster * CV.MS_TO_KPH
+      if (V_CRUISE_MIN <= tag_speed_kph <= V_CRUISE_MAX and
+          abs(tag_speed_kph - self.last_tag_speed_kph) > 0.5):
+        self.v_initial_experimental_mode = int(round(tag_speed_kph))
+        self.last_tag_speed_kph = tag_speed_kph
+      elif self.last_tag_speed_kph == 0:
+        self.last_tag_speed_kph = tag_speed_kph
 
     if self.CP.brand == "vinfast":
       self.update_vmax_init_experimental(CS, enabled, is_metric)
@@ -232,30 +237,8 @@ class VCruiseHelper(VCruiseHelperSP):
         self.button_timers[br] = 1 if b.pressed else 0
         self.button_change_states[br] = {"standstill": CS.cruiseState.standstill, "enabled": enabled}
 
-  def _car_set_speed_kph(self, CS):
-    """VinFast cluster set speed: ADAS_ACC_TagSpeed is speed, else speedCluster."""
-    if CS.cruiseState.speed > 0:
-      kph = CS.cruiseState.speed * CV.MS_TO_KPH
-    elif CS.cruiseState.speedCluster > 0:
-      kph = CS.cruiseState.speedCluster * CV.MS_TO_KPH
-    else:
-      return None
-    if V_CRUISE_MIN <= kph <= V_CRUISE_MAX:
-      return kph
-    return None
-
-  def _maybe_latch_car_set_speed(self, CS) -> None:
-    if self._car_set_speed_latched:
-      return
-    kph = self._car_set_speed_kph(CS)
-    if kph is None:
-      return
-    self.v_initial_experimental_mode = int(round(kph))
-    self.last_tag_speed_kph = kph
-    self._car_set_speed_latched = True
-
   def get_v_initial_experimental_mode(self) -> int:
-    """Initial set speed cap for experimental mode (first VF set speed + vmax-init buttons)."""
+    """Initial set speed cap for experimental mode (VinFast tag + vmax-init buttons)."""
     return self.v_initial_experimental_mode
 
   def update_vmax_init_experimental(self, CS, enabled, is_metric) -> bool:
@@ -310,9 +293,6 @@ class VCruiseHelper(VCruiseHelperSP):
 
     if self.CP.pcmCruise:
       return
-
-    if self.CP.brand == "vinfast":
-      self._maybe_latch_car_set_speed(CS)
 
     initial_experimental_mode = experimental_mode and not dynamic_experimental_control
     if initial_experimental_mode:

@@ -9,7 +9,8 @@ import pyray as rl
 
 from cereal import custom
 from openpilot.sunnypilot.models.default_model import DEFAULT_MODEL
-from openpilot.selfdrive.ui.mici.widgets.button import BigButton
+from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigMultiToggle
+from openpilot.selfdrive.ui.sunnypilot.accelerator_link import LINK_MODES, LINK_PARAM, link_mode, link_toggle_meaningful
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.models import ModelsLayout
 from openpilot.selfdrive.ui.ui_state import ui_state, device
 from openpilot.system.ui.lib.application import FontWeight, gui_app
@@ -68,6 +69,35 @@ class CurrentModelInfo(Widget):
     self.info_text.set_position(self._rect.x + 20, self._rect.y + 161 - 25)
     self.info_text.render()
 
+LINK_MODE_LABELS = {"off": "off", "usb": "usb", "ios": "iOS"}
+
+
+class AcceleratorLinkToggle(BigMultiToggle):
+  """Off / USB / iOS. Cycles on tap; only parked."""
+
+  def __init__(self):
+    super().__init__(tr("jetlink"), [tr(LINK_MODE_LABELS[m]) for m in LINK_MODES])
+    self._mode = link_mode()
+    self._show()
+    self.set_enabled(lambda: ui_state.is_offroad())
+
+  def _show(self) -> None:
+    value = self._options[LINK_MODES.index(self._mode)]
+    if value != self.get_value():
+      self.set_value(value)
+
+  def _handle_mouse_release(self, mouse_pos) -> None:
+    BigButton._handle_mouse_release(self, mouse_pos)
+    if self.enabled:
+      self._mode = LINK_MODES[(LINK_MODES.index(self._mode) + 1) % len(LINK_MODES)]
+      ui_state.params.put(LINK_PARAM, LINK_MODES.index(self._mode), block=True)
+    self._show()
+
+  def refresh(self) -> None:
+    self._mode = link_mode()
+    self._show()
+
+
 class ModelsLayoutMici(NavScroller):
   def __init__(self, back_callback: Callable):
     super().__init__()
@@ -83,10 +113,12 @@ class ModelsLayoutMici(NavScroller):
     self.select_model_btn = BigButton(tr("select model"))
     self.select_model_btn.set_click_callback(self._show_folders)
 
+    self.jetlink_toggle = AcceleratorLinkToggle()
+
     self.cancel_download_btn = BigButton(tr("cancel download"))
     self.cancel_download_btn.set_click_callback(lambda: ui_state.params.remove("ModelManager_DownloadIndex"))
 
-    self.main_items = [self.current_model_info, self.select_model_btn, self.cancel_download_btn]
+    self.main_items = [self.current_model_info, self.select_model_btn, self.jetlink_toggle, self.cancel_download_btn]
     self._scroller.add_widgets(self.main_items)
 
   @property
@@ -174,6 +206,8 @@ class ModelsLayoutMici(NavScroller):
     super()._update_state()
 
     self.select_model_btn.set_enabled(ui_state.is_offroad())
+    self.jetlink_toggle.set_visible(link_toggle_meaningful())
+    self.jetlink_toggle.refresh()
     self.cancel_download_btn.set_visible(False)
     self.current_model_info.current_model_header._shimmer = False
     self.current_model_info.info_header._shimmer = False
@@ -195,6 +229,28 @@ class ModelsLayoutMici(NavScroller):
     self.current_model_info.current_model_text.set_text(model_text)
     self.current_model_info.info_header.set_text(tr("cache size"))
     self.current_model_info.info_text.set_text(f"{ModelsLayout.calculate_cache_size():.2f} MB")
+
+    jetlink = ui_state.jetlink
+    if jetlink is not None and (jetlink.enabled or jetlink.present or jetlink.progress):
+      name = (jetlink.active_model or jetlink.model or jetlink.default_model or "").lower()
+      if name:
+        self.current_model_info.current_model_text.set_text(name)
+      progress = jetlink.progress or {}
+      stage = str(progress.get("stage") or "")
+      msg = str(progress.get("msg") or "")
+      if jetlink.present and (stage in ("", "ready") and jetlink.ready):
+        self.current_model_info.info_header.set_text(tr("jetlink"))
+        self.current_model_info.info_text.set_text(tr("connected, engine ready"))
+      elif stage:
+        self.current_model_info.info_header.set_text(tr("jetlink") + self._download_progress)
+        self.current_model_info.info_text.set_text(msg or stage)
+        self.current_model_info.info_header._shimmer = True
+      elif jetlink.present:
+        self.current_model_info.info_header.set_text(tr("jetlink"))
+        self.current_model_info.info_text.set_text(tr("connected"))
+      else:
+        self.current_model_info.info_header.set_text(tr("jetlink"))
+        self.current_model_info.info_text.set_text(tr("waiting for host"))
 
     if manager.selectedBundle and manager.selectedBundle.status == custom.ModelManagerSP.DownloadStatus.failed:
       self.current_model_info.info_header.set_text(tr("error") + self._download_progress)

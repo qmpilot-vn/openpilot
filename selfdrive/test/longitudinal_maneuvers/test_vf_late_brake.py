@@ -12,8 +12,9 @@ from openpilot.common.realtime import DT_CTRL, DT_MDL
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl, LongCtrlState
 from openpilot.selfdrive.controls.lib.longitudinal_planner import (
   VF_MILD_DECEL_FLOOR, VF_MILD_DECEL_SCALE, VF_REDLIGHT_ENGAGE_FRAMES, VF_REDLIGHT_HOLD_FRAMES,
-  LongitudinalPlanner, is_vf_red_light_slowdown, vf_mild_decel_scale)
-from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import STOP_LEAD_MIN_GAP
+  VF_STOP_LEAD_GAP_M, VF67_STOP_LEAD_GAP_M, LongitudinalPlanner, is_vf_red_light_slowdown,
+  vf_mild_decel_scale, vf_stop_lead_adjust_m, vf_stop_lead_gap_m)
+from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import STOP_DISTANCE, STOP_LEAD_MIN_GAP
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.controls.radard import _LEAD_ACCEL_TAU
 
@@ -96,6 +97,41 @@ def build_sm(v_ego, d_rel, v_lead, path_x, desired_a, brake_prob=0.0, should_sto
     'gpsLocation': messaging.new_message('gpsLocation').gpsLocation,
     'gpsLocationExternal': messaging.new_message('gpsLocationExternal').gpsLocationExternal,
   }
+
+
+class TestVFStopLeadAdjust:
+  def test_vf8_vf9_match_vf67_gap(self):
+    """4 m parked ego on a moto at a red light, so VF8/VF9 sit where VF6/VF7 sit."""
+    for fp in ("VINFAST_VF8", "VINFAST_VF8_ECO", "VINFAST_VF9"):
+      assert vf_stop_lead_gap_m(log.LongitudinalPersonality.aggressive, fp) == 6.0
+      assert vf_stop_lead_gap_m(log.LongitudinalPersonality.standard, fp) == 7.0
+      assert vf_stop_lead_gap_m(log.LongitudinalPersonality.relaxed, fp) == 8.0
+    assert VF_STOP_LEAD_GAP_M[int(log.LongitudinalPersonality.standard)] == 7.0
+
+  def test_vf6_vf7_sit_farther_than_stock_six(self):
+    for fp in ("VINFAST_VF6", "VINFAST_VF7"):
+      assert vf_stop_lead_gap_m(log.LongitudinalPersonality.aggressive, fp) == 6.0
+      assert vf_stop_lead_gap_m(log.LongitudinalPersonality.standard, fp) == 7.0
+      assert vf_stop_lead_gap_m(log.LongitudinalPersonality.relaxed, fp) == 8.0
+    assert VF67_STOP_LEAD_GAP_M[int(log.LongitudinalPersonality.relaxed)] == 8.0
+
+  def test_adjust_is_the_room_beyond_stop_distance(self):
+    """The MPC settles at STOP_DISTANCE + adjust, so adjust is gap - STOP_DISTANCE.
+
+    The old sign was inverted, which made relaxed sit at the 4 m floor instead of 8 m.
+    """
+    for fp in ("VINFAST_VF6", "VINFAST_VF8", "VINFAST_VF9"):
+      for personality in (log.LongitudinalPersonality.aggressive,
+                          log.LongitudinalPersonality.standard,
+                          log.LongitudinalPersonality.relaxed):
+        gap = vf_stop_lead_gap_m(personality, fp)
+        assert vf_stop_lead_adjust_m(personality, fp) == pytest.approx(gap - STOP_DISTANCE)
+        assert STOP_DISTANCE + vf_stop_lead_adjust_m(personality, fp) == pytest.approx(gap)
+    assert vf_stop_lead_adjust_m(log.LongitudinalPersonality.aggressive, "VINFAST_VF8") == pytest.approx(0.0)
+    assert vf_stop_lead_adjust_m(log.LongitudinalPersonality.relaxed, "VINFAST_VF8") == pytest.approx(2.0)
+
+  def test_unknown_personality_uses_standard(self):
+    assert vf_stop_lead_adjust_m(99) == pytest.approx(1.0)
 
 
 class TestVFMildDecelScale:
@@ -213,6 +249,7 @@ class ApproachSim:
     self.planner = LongitudinalPlanner(CP, CP_SP, init_v=v_ego)
     self.LoC = LongControl(CP, CP_SP)
     if stop_adjust is not None:
+      self.planner.vf_stop_lead_adjust_override = stop_adjust
       self.planner.mpc.stop_lead_obstacle_adjust_m = stop_adjust
     self.v_ego = v_ego
     self.d_rel = d_rel

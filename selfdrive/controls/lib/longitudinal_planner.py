@@ -35,7 +35,7 @@ _A_TOTAL_MAX_BP = [20., 40.]
 # Thresholds still need committed stop intent so green/coast approaches do not
 # brake early, but they must trigger during the approach: while this reads False
 # the softening below is what is applied instead.
-VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF9"}
+VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF8_PLUS", "VINFAST_VF9"}
 VF_REDLIGHT_ACCEL_SCALE = 1.03
 VF_REDLIGHT_BRAKE_PROB = 0.60
 # The model path is "short" relative to where a free-driving prediction would end,
@@ -60,15 +60,23 @@ VF_MILD_DECEL_SCALE = 0.93
 VF_MILD_SOFTEN_START = 0.4  # [m/s²] full softening below this decel
 VF_MILD_DECEL_FLOOR = -1.6  # [m/s²] no softening at or beyond this decel
 
+# VinFast ACC standstill gap behind a stopped lead (camera-frame).
+# MPC STOP_DISTANCE is 6.0 m; personality matches the moving T_FOLLOW characteristic.
 # Shared VF6–VF9: 4 m sits on a moto at a red light. Sit at stock 6 m even on
-# aggressive, and give standard/relaxed extra room (positive MPC adjust).
+# aggressive, and give standard/relaxed extra room.
 VF_STOP_LEAD_GAP_M = {
   int(log.LongitudinalPersonality.aggressive): 6.0,
   int(log.LongitudinalPersonality.standard): 7.0,
   int(log.LongitudinalPersonality.relaxed): 8.0,
 }
 VF67_STOP_LEAD_GAP_M = VF_STOP_LEAD_GAP_M
-VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7", "VINFAST_VF8", "VINFAST_VF8_ECO", "VINFAST_VF9"}
+VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7", "VINFAST_VF8", "VINFAST_VF8_PLUS", "VINFAST_VF8_ECO", "VINFAST_VF9"}
+
+# VinFast: above ~70 km/h the car delivers ~0.3-0.35 m/s² of a larger request and surges around it
+# (VF6 00000069 70-100 km/h: +0.90 asked, +0.33 delivered, 0.2 s accel std 0.59-0.74 against 0.12
+# when +0.35 is asked). Request only what it tracks; the clip rate limit ramps the cap in.
+VF_HIGHWAY_ACCEL_BP = [65. * CV.KPH_TO_MS, 72. * CV.KPH_TO_MS]
+VF_HIGHWAY_ACCEL_V = [1.0, 0.4]
 
 # Set False to restore personality-only T_FOLLOW (no Thông tư 38/2024 floor).
 VN_LEGAL_FOLLOW = True
@@ -84,18 +92,21 @@ def vf_stop_lead_gap_m(personality, fingerprint=None) -> float:
 
 
 def vf_stop_lead_adjust_m(personality, fingerprint=None) -> float:
-  """How far to shift a stopped lead so the standstill gap matches the platform.
+  """How far to shift a stopped lead so the standstill gap matches personality.
 
   The MPC subtracts this from the obstacle position and settles where
   `obstacle - x_ego == STOP_DISTANCE`, so the gap it holds is
   `STOP_DISTANCE + adjust`. The sign therefore follows the extra room wanted
-  beyond STOP_DISTANCE: 0 m on aggressive, +2 m on relaxed (VF6–VF9 6/7/8 m).
+  beyond STOP_DISTANCE: 0 m on aggressive, +2 m on relaxed.
   """
   return vf_stop_lead_gap_m(personality, fingerprint) - STOP_DISTANCE
 
 
-def get_max_accel(v_ego):
-  return np.interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_MAX_VALS)
+def get_max_accel(v_ego, vinfast=False):
+  a_max = np.interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_MAX_VALS)
+  if vinfast and v_ego > VF_HIGHWAY_ACCEL_BP[0]:
+    a_max = min(a_max, np.interp(v_ego, VF_HIGHWAY_ACCEL_BP, VF_HIGHWAY_ACCEL_V))
+  return a_max
 
 
 def is_vf_red_light_slowdown(sm, CP) -> bool:
@@ -197,7 +208,8 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
   def __init__(self, CP, CP_SP, init_v=0.0, init_a=0.0, dt=DT_MDL):
     self.CP = CP
     self.mpc = LongitudinalMpc(dt=dt)
-    # VinFast standstill: VF6–VF9 6/7/8 m from personality.
+    # VinFast standstill gap behind a stopped lead (ACC / e2e-off).
+    # VF6–VF9: 6 / 7 / 8 m from personality. Recomputed each frame below.
     # Tests can pin vf_stop_lead_adjust_override.
     self.vf_stop_lead_adjust_override = None
     self.mpc.stop_lead_obstacle_adjust_m = (
@@ -284,7 +296,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     # No change cost when user is controlling the speed, or when standstill
     prev_accel_constraint = not (reset_state or sm['carState'].standstill)
 
-    accel_clip = [ACCEL_MIN, get_max_accel(v_ego)]
+    accel_clip = [ACCEL_MIN, get_max_accel(v_ego, self.CP.brand == "vinfast")]
     steer_angle_without_offset = sm['carState'].steeringAngleDeg - sm['liveParameters'].angleOffsetDeg
     accel_clip = limit_accel_in_turns(v_ego, steer_angle_without_offset, accel_clip, self.CP)
 

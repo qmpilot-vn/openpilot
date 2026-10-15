@@ -11,8 +11,11 @@ from openpilot.system.hardware import TICI
 from openpilot.selfdrive.modeld.helpers import chestnut_present
 os.environ['DEV'] = 'QCOM' if TICI else 'CPU'
 if chestnut_present():
-  os.environ['AMD_IFACE'] = 'USB'
+  # this tinygrad takes the interface in DEV; AMD_IFACE is rejected
+  os.environ['DEV'] += ';USB+AMD'
   os.environ['HCQDEV_WAIT_TIMEOUT_MS'] = '3000'
+  # the GPU firmware is fetched once into the cache; ~/.cache is wiped every boot
+  os.environ.setdefault('XDG_CACHE_HOME', '/data/tinycache')
 from openpilot.selfdrive.modeld.chestnut_state import ChestnutState
 import pickle
 import threading
@@ -43,6 +46,7 @@ from openpilot.sunnypilot.modeld_v2.camera_offset_helper import CameraOffsetHelp
 from openpilot.sunnypilot.livedelay.helpers import get_lat_delay
 from openpilot.sunnypilot.modeld_v2.modeld_base import ModelStateBase
 from openpilot.sunnypilot.models.helpers import get_active_bundle
+from openpilot.sunnypilot import jetlink_adapter
 
 PROCESS_NAME = "selfdrive.modeld.modeld_tinygrad"
 BIG_MODEL_TIMEOUT = 60
@@ -107,16 +111,18 @@ class ModelState(ModelStateBase):
     from tinygrad.tensor import Tensor
     from openpilot.system.camerad.cameras.nv12_info import get_nv12_info
     from openpilot.sunnypilot.modeld_v2.compile_modeld import derive_frame_skip, make_split_input_queues
-    from openpilot.common.file_chunker import read_file_chunked
+    from openpilot.common.file_chunker import open_file_chunked
     from openpilot.selfdrive.modeld.helpers import load_oob
-    import io
 
     cloudlog.warning(f"loading combined pkl: {pkl_path} chestnut={self.chestnut}")
-    raw = read_file_chunked(pkl_path)
     try:
-      jits = load_oob(io.BytesIO(raw))
+      with open_file_chunked(pkl_path) as f:
+        jits = load_oob(f)
+    except (MemoryError, RuntimeError):
+      raise
     except Exception:
-      jits = pickle.loads(raw)
+      with open_file_chunked(pkl_path) as f:
+        jits = pickle.load(f)
 
     self.DEV = ('AMD' if self.chestnut else 'QCOM') if TICI else 'CPU'
 
@@ -310,6 +316,8 @@ def main(demo=False):
   setproctitle(PROCESS_NAME)
   CHESTNUT = chestnut_present()
   if not CHESTNUT:
+    # before going realtime: prepare() starts tinygrad's device thread
+    jetlink_adapter.prepare()
     # The eGPU saturates a core, so leave realtime scheduling off while it is attached.
     config_realtime_process(7, 54)
 
@@ -374,13 +382,15 @@ def main(demo=False):
       small_model = None
   if model is None:
     model = small_model
+  if (joined := jetlink_adapter.attach(small_model, vipc_client_main.width, vipc_client_main.height)) is not None:
+    model = joined
   params.put_bool("ChestnutLoading", False)
   assert model is not None
   cloudlog.warning(f"models loaded in {time.monotonic() - st:.1f}s, modeld starting")
 
   # messaging
   pm = PubMaster(["modelV2", "drivingModelData", "cameraOdometry", "modelDataV2SP"] + (["chestnutState"] if CHESTNUT else []))
-  sm = SubMaster(["deviceState", "carState", "roadCameraState", "liveCalibration", "driverMonitoringState", "carControl", "liveDelay"])
+  sm = SubMaster(["deviceState", "carState", "roadCameraState", "liveCalibration", "driverMonitoringState", "carControl", "carControlSP", "liveDelay"])
 
   publish_state = PublishState()
   chestnut_state = ChestnutState(pm, model.chestnut) if CHESTNUT else None
@@ -494,10 +504,14 @@ def main(demo=False):
     if 'lateral_control_params' in model.numpy_inputs:
       inputs['lateral_control_params'] = np.array([v_ego, lat_delay], dtype=np.float32)
 
-    if 'action_t' in model.numpy_inputs:
+    # the joining model shows the small model's inputs, but its large model may take action_t
+    if 'action_t' in model.numpy_inputs or joined is not None:
       frame_delay = DT_MDL # compensate for time passed since the frame was captured: current_time - timestamp_eof is 50ms on average
       action_delay = DT_MDL / 2 # middle of the interval between model output (current state) and next frame (expected state)
       inputs['action_t'] = np.array([lat_delay + frame_delay + action_delay, long_delay + frame_delay + action_delay], dtype=np.float32)
+
+    model.in_control = jetlink_adapter.in_control(sm)
+    model.frame_drop_ratio = frame_drop_ratio
 
     mt1 = time.perf_counter()
     try:

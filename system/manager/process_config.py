@@ -10,6 +10,7 @@ from openpilot.system.hardware.hw import Paths
 
 from openpilot.sunnypilot.mapd.mapd_manager import MAPD_PATH
 
+from openpilot.sunnypilot import jetlink_adapter
 from openpilot.sunnypilot.models.helpers import get_active_model_runner
 from openpilot.sunnypilot.sunnylink.utils import sunnylink_need_register, sunnylink_ready, use_sunnylink_uploader
 
@@ -171,6 +172,7 @@ procs = [
 procs += [
   # Models
   PythonProcess("models_manager", "sunnypilot.models.manager", only_offroad),
+  PythonProcess(jetlink_adapter.OWNER, "sunnypilot.jetlink_adapter", and_(always_run, jetlink_adapter.should_run), restart_if_crash=True),
   NativeProcess("modeld_tinygrad", "sunnypilot/modeld_v2", ["./modeld"], and_(only_onroad, is_tinygrad_model)),
 
   # Backup

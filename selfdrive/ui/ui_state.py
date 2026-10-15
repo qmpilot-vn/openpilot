@@ -15,6 +15,7 @@ from openpilot.system.hardware import HARDWARE, PC
 from openpilot.common.hardware.usb import TYPEC_CC_ORIENTATION_PATH, get_usb_state, is_chestnut_usb_id, read_int
 from openpilot.selfdrive.modeld.helpers import chestnut_compiled
 from openpilot.sunnypilot.models.helpers import chestnut_model_available
+from openpilot.sunnypilot import jetlink_adapter
 
 from openpilot.selfdrive.ui.sunnypilot.ui_state import UIStateSP, DeviceSP
 
@@ -37,6 +38,9 @@ class ChestnutState(Enum):
   LOADING = "loading"
   ACTIVE = "active"
   FAILED = "failed"
+  # onroad, an off-board accelerator only: loaded and waiting for a window to
+  # switch. A board is loaded before the first modelV2 and never sees this
+  WAITING = "waiting"
 
 
 def big_model_available() -> bool:
@@ -105,6 +109,8 @@ class UIState(UIStateSP):
     self.usb_disconnected_ts: float | None = None
     self.usb_unknown: bool = False
     self.chestnut_state = ChestnutState.DISCONNECTED
+    self.jetlink = None
+    self._accelerator_state_name = ""
     self.started: bool = False
     self.ignition: bool = False
     self.recording_audio: bool = False
@@ -221,7 +227,25 @@ class UIState(UIStateSP):
 
       self._started_prev = self.started
 
+  @property
+  def jetlink_view(self):
+    s = self.jetlink
+    return s if s is not None and (s.enabled or s.present or s.progress is not None) else None
+
+  def _jetlink_state(self, view):
+    model_seen = self.sm.recv_frame["modelV2"] > self.started_frame
+    running_big = self.sm.alive["modelV2"] and self.sm["modelV2"].big
+    name = view.icon(self.started, model_seen, running_big, self._accelerator_state_name)
+    try:
+      return ChestnutState(name)
+    except ValueError:
+      return ChestnutState.READY if name == "waiting" else ChestnutState.FAILED
+
   def _update_chestnut_state(self) -> None:
+    if (view := self.jetlink_view) is not None:
+      self.chestnut_state = self._jetlink_state(view)
+      return
+
     detected = self.sm["deviceState"].chestnutPresent
     if not self.started:
       self.chestnut_present = detected
@@ -262,6 +286,7 @@ class UIState(UIStateSP):
       self.chestnut_compiled = big_model_available()
     self.chestnut_active = self.params.get("ChestnutActive")
     self.chestnut_loading = self.params.get_bool("ChestnutLoading")
+    self.jetlink = None if self.chestnut_present else jetlink_adapter.status()
     now = time.monotonic()
     if read_int(TYPEC_CC_ORIENTATION_PATH) != 0:
       self.usb_disconnected_ts = None
@@ -270,7 +295,9 @@ class UIState(UIStateSP):
         self.usb_connected_ts = now
         self.usb_unknown = False
       elif self.usb_connected_ts is not None and now - self.usb_connected_ts > 10.:
-        self.usb_unknown = not any(is_chestnut_usb_id(d["vendorId"], d["productId"], True) for d in get_usb_state())
+        # the comma is the gadget for an off-board accelerator and enumerates nothing
+        self.usb_unknown = not (self.jetlink_view is not None or
+                                any(is_chestnut_usb_id(d["vendorId"], d["productId"], True) for d in get_usb_state()))
         self.usb_connected_ts = None
     elif self.usb_connected:
       if self.usb_disconnected_ts is None:
@@ -279,6 +306,10 @@ class UIState(UIStateSP):
         self.usb_connected = False
         self.usb_connected_ts = None
         self.usb_unknown = False
+    # the Jetson configures the gadget after the one-shot usb_unknown decision;
+    # recognising it late still clears "unknown" so the GPU icon can show
+    if (view := self.jetlink_view) is not None and (view.present or view.enabled) and self.usb_unknown:
+      self.usb_unknown = False
 
     UIStateSP.update_params(self)
 

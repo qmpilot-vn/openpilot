@@ -70,6 +70,9 @@ function launch {
   ln -sfn $(pwd) /data/pythonpath
   export PYTHONPATH="$PWD"
 
+  # submodule package symlink so `import jetlink` works on device
+  ln -sfn jetlink_repo/jetlink jetlink
+
   # hardware specific init
   if [ -f /AGNOS ]; then
     agnos_init

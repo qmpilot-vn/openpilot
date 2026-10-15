@@ -7,6 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 from enum import IntEnum
 
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.cruise_sub_layouts.speed_limit_settings import SpeedLimitSettingsLayout
+from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.vinfast import DESC, TITLE, _reengage_enabled, _set_reengage
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.sunnypilot.widgets.list_view import toggle_item_sp, option_item_sp, simple_button_item_sp
@@ -41,6 +42,14 @@ class CruiseLayout(Widget):
     self._scroller = Scroller(items, line_separator=True, spacing=0)
 
   def _initialize_items(self):
+
+    self.vf_reengage_toggle = toggle_item_sp(
+      title=lambda: tr(TITLE),
+      description=lambda: tr(DESC),
+      initial_state=_reengage_enabled(),
+      callback=_set_reengage,
+      enabled=lambda: not ui_state.engaged,
+    )
 
     self.icbm_toggle = toggle_item_sp(
       title=tr("Intelligent Cruise Button Management (ICBM) (Alpha)"),
@@ -88,6 +97,7 @@ class CruiseLayout(Widget):
       param="DynamicExperimentalControl")
 
     items = [
+      self.vf_reengage_toggle,
       self.icbm_toggle,
       self.dec_toggle,
       self.scc_v_toggle,

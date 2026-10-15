@@ -20,11 +20,11 @@ STEER_TQ_AVG_FRAMES = 8
 STEER_RATE_GLITCH_DEG_S = 80.0  # 000002c0/5 bump: 88–240 deg/s
 STEER_RATE_INHIBIT_FRAMES = 20  # ignore new press ~200 ms after a SAS glitch
 
-# Tai overlay (values.py): 1.5 / 0.75. Fallback when values_impl.so is missing
+# Same numbers as vf6 / values.py overlay. Used when values_impl.so is missing
 # or does not export the names (host x86, or older package).
 _DEFAULTS = SimpleNamespace(
-  STEER_DRIVER_PRESS_NM=1.5,
-  STEER_DRIVER_RELEASE_NM=0.75,
+  STEER_DRIVER_PRESS_NM=2.0,
+  STEER_DRIVER_RELEASE_NM=0.8,
   STEER_PRESSED_MIN_COUNT=5,
   STEER_RELEASE_MIN_COUNT=50,
   STEER_PRESS_RATE_GAIN=0.02,
