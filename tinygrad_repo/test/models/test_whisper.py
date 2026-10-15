@@ -6,7 +6,6 @@ import examples.mlperf.metrics as metrics
 from tinygrad.helpers import fetch
 from test.helpers import slow
 from tinygrad import Tensor, Device, dtypes
-from tinygrad.device import is_dtype_supported
 import numpy as np
 
 # Audio generated with the command on MacOS:
@@ -52,8 +51,6 @@ def wer_helper(result: str, reference: str)->float:
   wer, _, _ = metrics.word_error_rate([result], [reference])
   return wer
 
-@unittest.skipIf(Device.DEFAULT in ["CPU"], "slow")
-@unittest.skipUnless(is_dtype_supported(dtypes.float16), "need float16 support")
 # TODO: WEBGPU GPU dispatch dimensions limit
 @unittest.skipIf(Device.DEFAULT == "WEBGPU", "WEBGPU GPU dispatch dimensions limit")
 class TestWhisper(unittest.TestCase):
@@ -77,6 +74,7 @@ class TestWhisper(unittest.TestCase):
         err
       )
 
+  @slow
   def test_transcribe_file1(self):
     self.assertEqual(transcribe_file(self.model, self.enc, TEST_FILE_1),  TRANSCRIPTION_1)
 
@@ -92,6 +90,7 @@ class TestWhisper(unittest.TestCase):
     self.assertEqual(TRANSCRIPTION_1,  transcriptions[0])
     self.assertEqual(TRANSCRIPTION_2,  transcriptions[1])
 
+  @slow
   def test_transcribe_batch21(self):
     waveforms = [load_file_waveform(TEST_FILE_2), load_file_waveform(TEST_FILE_1)]
     transcriptions = transcribe_waveform(self.model, self.enc, waveforms)

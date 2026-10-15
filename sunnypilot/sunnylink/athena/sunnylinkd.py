@@ -28,7 +28,10 @@ from websocket import (ABNF, WebSocket, WebSocketException, WebSocketTimeoutExce
                        create_connection, WebSocketConnectionClosedException)
 
 import cereal.messaging as messaging
+from openpilot.selfdrive.modeld.helpers import chestnut_present
 from openpilot.sunnypilot.models.default_model import DEFAULT_MODEL
+from openpilot.sunnypilot.models.helpers import REQUIRED_JSON_VERSION
+from openpilot.sunnypilot.models.model_name import DEFAULT_BIG_MODEL
 from openpilot.sunnypilot.selfdrive.car.sync_sunnylink_params import update_car_list_param
 from openpilot.sunnypilot.sunnylink.api import SunnylinkApi
 from openpilot.sunnypilot.sunnylink.utils import sunnylink_need_register, sunnylink_ready, get_param_as_byte, save_param_from_base64_encoded_string
@@ -43,6 +46,44 @@ SUNNYLINK_RECONNECT_TIMEOUT_S = 70  # FYI changing this will also would require 
 DISALLOW_LOG_UPLOAD = threading.Event()
 
 params = Params()
+
+# sunnylink.ai uses upstream's key names; these are stored here under other names
+PARAM_ALIASES = {
+  "ModelManager_ModelsCache_Chestnut": "ModelManager_ModelsCacheChestnut",
+  "ModelManager_LastSyncTime_Chestnut": "ModelManager_LastSyncTimeChestnut",
+}
+DOWNLOAD_REF = "ModelManager_DownloadRef"
+CHESTNUT_INDEX_OFFSET = 10000
+
+
+def _model_catalogs() -> list[tuple[int, list[dict]]]:
+  # small models first, as upstream resolves a ref
+  catalogs = []
+  for key, offset in (("ModelManager_ModelsCache", 0), ("ModelManager_ModelsCacheChestnut", CHESTNUT_INDEX_OFFSET)):
+    cache = params.get(key) or {}
+    bundles = [b for b in cache.get("bundles", []) if str(b.get("minimum_selector_version")) == str(REQUIRED_JSON_VERSION)]
+    catalogs.append((offset, bundles))
+  return catalogs
+
+
+def _download_index_for_ref(ref: str) -> int | None:
+  for offset, bundles in _model_catalogs():
+    for bundle in bundles:
+      if bundle.get("ref") == ref:
+        return offset + int(bundle["index"])
+  return None
+
+
+def _download_ref() -> str:
+  index = params.get("ModelManager_DownloadIndex")
+  if index is None:
+    return ""
+  for offset, bundles in _model_catalogs():
+    for bundle in bundles:
+      if offset + int(bundle["index"]) == int(index):
+        return str(bundle.get("ref", ""))
+  return ""
+
 
 # Parameters that should never be remotely modified
 BLOCKED_PARAMS = {
@@ -166,7 +207,7 @@ def toggleLogUpload(enabled: bool):
 @dispatcher.add_method
 def getParamsAllKeys() -> list[str]:
   keys: list[str] = [k.decode('utf-8') for k in Params().all_keys()]
-  return keys
+  return keys + list(PARAM_ALIASES) + [DOWNLOAD_REF]
 
 
 @dispatcher.add_method
@@ -182,6 +223,9 @@ def getParamsMetadata() -> str:
     schema["capabilities"] = generate_capabilities()
     schema["capability_labels"] = CAPABILITY_LABELS
     schema["default_model"] = DEFAULT_MODEL
+    schema["default_big_model"] = DEFAULT_BIG_MODEL
+    # ChestnutActive is cleared offroad; a fitted chestnut still offers its big models
+    schema["chestnut_active"] = params.get_bool("ChestnutActive") or chestnut_present()
     raw = json.dumps(schema, separators=(",", ":")).encode("utf-8")
     return base64.b64encode(gzip.compress(raw)).decode("utf-8")
   except Exception:
@@ -205,20 +249,25 @@ def getParams(params_keys: list[str], compression: bool = False) -> str | dict[s
       ParamKeyType.BYTES.value: b"",
     }
 
-    param_keys_validated = [key for key in params_keys if key in available_keys]
+    param_keys_validated = [key for key in params_keys if key in available_keys or key in PARAM_ALIASES or key == DOWNLOAD_REF]
     params_dict: dict[str, list[dict[str, str | bool | int]]] = {"params": []}
     for key in param_keys_validated:
-      value = get_param_as_byte(key)
-      if value is None:
-        value = get_param_as_byte(key, get_default=True)
-      if value is None:
-        param_type = params.get_type(key)
-        value = zero_values.get(param_type.value, b"")
+      if key == DOWNLOAD_REF:
+        value = _download_ref().encode('utf-8')
+        param_type = ParamKeyType.STRING
+      else:
+        stored_key = PARAM_ALIASES.get(key, key)
+        param_type = params.get_type(stored_key)
+        value = get_param_as_byte(stored_key)
+        if value is None:
+          value = get_param_as_byte(stored_key, get_default=True)
+        if value is None:
+          value = zero_values.get(param_type.value, b"")
 
       params_dict["params"].append({
         "key": key,
         "value": base64.b64encode(gzip.compress(value) if compression else value).decode('utf-8'),
-        "type": int(params.get_type(key).value),
+        "type": int(param_type.value),
         "is_compressed": compression
       })
 
@@ -240,7 +289,16 @@ def saveParams(params_to_update: dict[str, str], compression: bool = False) -> N
       continue
 
     try:
-      save_param_from_base64_encoded_string(key, value, compression)
+      if key == DOWNLOAD_REF:
+        raw = base64.b64decode(value)
+        ref = (gzip.decompress(raw) if compression else raw).decode('utf-8').strip()
+        index = _download_index_for_ref(ref)
+        if index is None:
+          cloudlog.warning(f"sunnylinkd.saveParams: no model with ref '{ref}' for this device")
+        else:
+          params.put("ModelManager_DownloadIndex", index, block=True)
+        continue
+      save_param_from_base64_encoded_string(PARAM_ALIASES.get(key, key), value, compression)
     except Exception as e:
       cloudlog.error(f"sunnylinkd.saveParams.exception {e}")
 

@@ -12,7 +12,7 @@ from openpilot.system.ui.widgets.scroller_tici import Scroller
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.factory import BrandSettingsFactory
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.platform_selector import PlatformSelector, LegendWidget
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP
+from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, button_item_sp
 
 
 class VehicleLayout(Widget):
@@ -27,8 +27,15 @@ class VehicleLayout(Widget):
                                     callback=self._platform_selector._on_clicked)
     self._vehicle_item.title_color = self._platform_selector.color
     self._legend_widget = LegendWidget(self._platform_selector)
+    self._vinfast_item = button_item_sp(
+      tr("VinFast"),
+      self._platform_selector.vinfast_button_text,
+      description=tr("Tap to force a VinFast model. Takes effect on the next start."),
+      callback=self._platform_selector._show_vinfast_dialog,
+    )
+    self._vinfast_item.show_description(True)
 
-    self.items = [self._vehicle_item, self._legend_widget]
+    self.items = [self._vehicle_item, self._vinfast_item, self._legend_widget]
     self._scroller = Scroller(self.items, line_separator=True, spacing=0)
 
   @staticmethod
@@ -37,7 +44,8 @@ class VehicleLayout(Widget):
       return bundle.get("brand", "")
     elif ui_state.CP is not None and ui_state.CP.carFingerprint != "MOCK":
       return ui_state.CP.brand
-    return ""
+    # This fork is VinFast; show the toggle offroad before fingerprint.
+    return "vinfast"
 
   def _update_brand_settings(self):
     self._vehicle_item._title = self._platform_selector.text
@@ -51,7 +59,7 @@ class VehicleLayout(Widget):
       self._brand_settings = BrandSettingsFactory.create_brand_settings(brand)
       self._brand_items = self._brand_settings.items if self._brand_settings else []
 
-      self.items = [self._vehicle_item, self._legend_widget] + self._brand_items
+      self.items = [self._vehicle_item, self._vinfast_item, self._legend_widget] + self._brand_items
       self._scroller = Scroller(self.items, line_separator=True, spacing=0)
 
   def _update_state(self):

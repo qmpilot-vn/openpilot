@@ -13,18 +13,22 @@ from typing import Optional
 import numpy as np
 
 from cereal import custom
+from openpilot.common.file_chunker import get_manifest_path
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.sunnypilot.models.constants import Meta, MetaSimPose, MetaTombRaider
 from openpilot.system.hardware.hw import Paths
 
 # SET ME TO THE EXACT JSON VERSION WE SET IN SUNNYPILOT_MODELS REPO
-REQUIRED_JSON_VERSION = 15
+REQUIRED_JSON_VERSION = 19
 
 CUSTOM_MODEL_PATH = Paths.model_root()
 METADATA_PATH = Path(__file__).parent / '../models/supercombo_metadata.pkl'
 ModelManager = custom.ModelManagerSP
-_LAST_VALIDATED_RAW = None
+_LAST_VALIDATED_RAW: dict[str, dict | bytes | None] = {}
+
+ACTIVE_BUNDLE_QCOM = "ModelManager_ActiveBundle"
+ACTIVE_BUNDLE_CHESTNUT = "ModelManager_ActiveBundleChestnut"
 
 PMV2_MIN_LAT_SMOOTH = 0.15
 
@@ -45,9 +49,10 @@ def ensure_pmv2_lat_override(overrides_data: dict[str, str], short_name: str) ->
 
 
 def _compute_hash(file_path: str) -> str | None:
-  from openpilot.common.file_chunker import read_file_chunked
+  from openpilot.common.file_chunker import open_file_chunked
   try:
-    return hashlib.sha256(read_file_chunked(file_path)).hexdigest().lower()
+    with open_file_chunked(file_path) as f:
+      return hashlib.file_digest(f, "sha256").hexdigest().lower()
   except FileNotFoundError:
     return None
 
@@ -119,35 +124,47 @@ def _bundle_needs_reset(active_bundle: custom.ModelManagerSP.ModelBundle, availa
   return not _bundle_is_valid_locally(active_bundle)
 
 
-def validate_active_bundle(params: Params, available_bundles: list[custom.ModelManagerSP.ModelBundle] | None = None) -> None:
+def validate_active_bundle(params: Params, available_bundles: list[custom.ModelManagerSP.ModelBundle] | None = None,
+                           key: str = ACTIVE_BUNDLE_QCOM) -> None:
   global _LAST_VALIDATED_RAW
 
-  raw_bundle = params.get("ModelManager_ActiveBundle")
+  raw_bundle = params.get(key)
   if not raw_bundle:
     return
 
-  if raw_bundle == _LAST_VALIDATED_RAW:
+  if raw_bundle == _LAST_VALIDATED_RAW.get(key):
     return
 
-  active_bundle = get_active_bundle(params, raw_bundle_dict=raw_bundle)
+  active_bundle = get_active_bundle(params, raw_bundle_dict=raw_bundle, chestnut=(key == ACTIVE_BUNDLE_CHESTNUT))
   if active_bundle is None or _bundle_needs_reset(active_bundle, available_bundles):
     cloudlog.warning("Active model bundle invalid; resetting to default")
-    params.remove("ModelManager_ActiveBundle")
-    params.put("ModelRunnerTypeCache", int(custom.ModelManagerSP.Runner.stock), block=True)
-    _LAST_VALIDATED_RAW = None
+    params.remove(key)
+    if key == ACTIVE_BUNDLE_QCOM:
+      params.put("ModelRunnerTypeCache", int(custom.ModelManagerSP.Runner.stock), block=True)
+    _LAST_VALIDATED_RAW.pop(key, None)
   else:
-    _LAST_VALIDATED_RAW = raw_bundle
+    _LAST_VALIDATED_RAW[key] = raw_bundle
 
 
-def get_active_bundle(params: Params | None = None, raw_bundle_dict: dict | bytes | None = None) -> "custom.ModelManagerSP.ModelBundle | None":
+def get_active_bundle(params: Params | None = None, raw_bundle_dict: dict | bytes | None = None,
+                      chestnut: bool = False) -> "custom.ModelManagerSP.ModelBundle | None":
   params = params or Params()
+  key = ACTIVE_BUNDLE_CHESTNUT if chestnut else ACTIVE_BUNDLE_QCOM
   try:
-    active_bundle_dict = raw_bundle_dict if raw_bundle_dict is not None else (params.get("ModelManager_ActiveBundle") or {})
+    active_bundle_dict = raw_bundle_dict if raw_bundle_dict is not None else (params.get(key) or {})
     if active_bundle_dict and is_bundle_version_compatible(active_bundle_dict):
       return custom.ModelManagerSP.ModelBundle(**active_bundle_dict)
   except Exception:
     pass
   return None
+
+
+def chestnut_model_available(params: Params | None = None) -> bool:
+  bundle = get_active_bundle(params, chestnut=True)
+  if bundle is None or not bundle.models:
+    return False
+  pkl_path = os.path.join(Paths.model_root(), bundle.models[0].artifact.fileName)
+  return os.path.exists(pkl_path) or os.path.exists(get_manifest_path(pkl_path))
 
 
 def get_active_model_runner(params: Params | None = None, force_check: bool = False) -> int:
