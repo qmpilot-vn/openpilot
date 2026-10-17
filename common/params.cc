@@ -208,19 +208,46 @@ std::map<std::string, std::string> Params::readAll() {
 void Params::clearAll(ParamKeyFlag key_flag) {
   FileLock file_lock(params_path + "/.lock");
 
-  // 1) delete params of key_flag
-  // 2) delete files that are not defined in the keys.
+  // keys is compiled into this binary. A new params_pyx.so whose table failed
+  // to initialize, or that was built from a different params_keys.h, would
+  // otherwise treat every file under /data/params as unknown and unlink it
+  // (DongleId, calibration, toggles).
+  if (keys.size() < 50) {
+    LOGE("params: refusing clearAll, key table has %zu entries", keys.size());
+    return;
+  }
+
+  std::vector<std::string> names;
   if (DIR *d = opendir(getParamPath().c_str())) {
     struct dirent *de = NULL;
     while ((de = readdir(d))) {
-      if (de->d_type != DT_DIR) {
-        auto it = keys.find(de->d_name);
-        if (it == keys.end() || (it->second.flags & key_flag)) {
-          unlink(getParamPath(de->d_name).c_str());
-        }
+      if (de->d_name[0] == '.' || de->d_type == DT_DIR) {
+        continue;
       }
+      names.emplace_back(de->d_name);
     }
     closedir(d);
+  }
+
+  int unknown = 0;
+  for (const auto &name : names) {
+    if (keys.find(name) == keys.end()) {
+      unknown++;
+    }
+  }
+  if (!names.empty() && unknown >= 8 && unknown * 2 > static_cast<int>(names.size())) {
+    LOGE("params: refusing clearAll, %d of %zu on-disk params are not in this binary's key table",
+         unknown, names.size());
+    return;
+  }
+
+  // 1) delete params of key_flag
+  // 2) delete files that are not defined in the keys.
+  for (const auto &name : names) {
+    auto it = keys.find(name);
+    if (it == keys.end() || (it->second.flags & key_flag)) {
+      unlink(getParamPath(name).c_str());
+    }
   }
 
   fsync_dir(getParamPath());
