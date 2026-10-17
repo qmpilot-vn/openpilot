@@ -230,7 +230,7 @@ class ModelsLayoutMici(NavScroller):
     self.current_model_info.info_header.set_text(tr("cache size"))
     self.current_model_info.info_text.set_text(f"{ModelsLayout.calculate_cache_size():.2f} MB")
 
-    jetlink = ui_state.jetlink
+    jetlink = None if ui_state.chestnut_present else ui_state.jetlink
     if jetlink is not None and (jetlink.enabled or jetlink.present or jetlink.progress):
       name = (jetlink.active_model or jetlink.model or jetlink.default_model or "").lower()
       if name:

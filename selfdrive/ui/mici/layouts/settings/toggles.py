@@ -30,9 +30,9 @@ class TogglesLayoutMici(NavScroller):
     self._update_language_btn()
 
     self._scroller.add_widgets([
+      self._language_btn,
       self._personality_toggle,
       self._experimental_btn,
-      self._language_btn,
       is_metric_toggle,
       ldw_toggle,
       always_on_dm_toggle,
