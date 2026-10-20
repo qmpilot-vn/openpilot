@@ -10,7 +10,7 @@ import cereal.messaging as messaging
 from cereal import log, custom
 
 from opendbc.car import structs
-from openpilot.common.params import Params
+from openpilot.common.params import Params, UnknownKeyName
 from openpilot.common.swaglog import cloudlog
 from openpilot.sunnypilot import PARAMS_UPDATE_PERIOD
 from openpilot.sunnypilot.livedelay.helpers import get_lat_delay
@@ -26,6 +26,10 @@ class ControlsExt(ModelStateBase):
     self.params = params
     self._param_update_time: float = 0.0
     self.blinker_pause_lateral = BlinkerPauseLateral()
+    self.lane_centering_enabled = False
+    self.lane_center_offset = 0.0
+    self.lane_centering_e2e_authority = 1.0
+    self._update_lane_centering_params()
 
     cloudlog.info("controlsd_ext is waiting for CarParamsSP")
     self.CP_SP = messaging.log_from_bytes(params.get("CarParamsSP", block=True), custom.CarParamsSP)
@@ -47,9 +51,20 @@ class ControlsExt(ModelStateBase):
     else:
       return lac
 
+  def _update_lane_centering_params(self) -> None:
+    try:
+      self.lane_centering_enabled = self.params.get_bool("LaneCentering")
+      self.lane_center_offset = float(self.params.get("LaneCenterOffset", return_default=True) or 0.0)
+      self.lane_centering_e2e_authority = float(self.params.get("LaneCenteringE2EAuthority", return_default=True) or 1.0)
+    except (TypeError, ValueError, UnknownKeyName):
+      self.lane_centering_enabled = False
+      self.lane_center_offset = 0.0
+      self.lane_centering_e2e_authority = 1.0
+
   def get_params_sp(self, sm: messaging.SubMaster) -> None:
     if time.monotonic() - self._param_update_time > PARAMS_UPDATE_PERIOD:
       self.blinker_pause_lateral.get_params()
+      self._update_lane_centering_params()
 
       if self.CP.lateralTuning.which() == 'torque':
         self.lat_delay = get_lat_delay(self.params, sm["liveDelay"].lateralDelay)
