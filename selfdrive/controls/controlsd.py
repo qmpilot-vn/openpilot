@@ -34,8 +34,9 @@ LaneChangeState = log.LaneChangeState
 LaneChangeDirection = log.LaneChangeDirection
 
 # Custom-model curvature: +5% winding, -5% sharp turn (steer > 150 deg)
-# Applied to PMV2 and TCPMV3 (The Cool Peoples Model v3).
-CURVATURE_TUNE_MODELS = {"PMV2", "TCPMV3"}
+# Applied to PMV2, TCPMV3 (The Cool Peoples Model v3), FM (Firehose Model),
+# and OPMV3 (Off Policy Model v3).
+CURVATURE_TUNE_MODELS = {"PMV2", "TCPMV3", "FM", "OPMV3"}
 PMV2_WINDING_CURVATURE_BOOST = 1.05
 PMV2_SHARP_STEER_DEG = 150.0
 PMV2_SHARP_CURVATURE_SCALE = 0.95
