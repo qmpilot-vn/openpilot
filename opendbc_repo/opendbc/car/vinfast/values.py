@@ -48,24 +48,28 @@ _mod.CarControllerParams.STEER_PRESS_NM_MAX = 4.0
 from opendbc.car.lateral import AngleSteeringLimits
 
 _VF8_PLUS = "VINFAST_VF8_PLUS"
-_vf8_cfg = _mod.CAR.VINFAST_VF8.config
-_plus_dbc = dict(_mod.CAR.VINFAST_VF6.config.dbc_dict)
-_plus_cfg = _vf8_cfg.override(
-  car_docs=[_mod.VinFastCarDocs("VinFast VF8 Plus 2025-26", "All", car_parts=_vf8_cfg.car_docs[0].car_parts)],
-  dbc_dict=_plus_dbc,
-)
-_plus_cfg.platform_str = _VF8_PLUS
-_plus_cfg.freeze()
-_plus = str.__new__(_mod.CAR, _VF8_PLUS)
-_plus._name_ = _VF8_PLUS
-_plus._value_ = _VF8_PLUS
-_plus.config = _plus_cfg
-_plus._sort_order_ = len(_mod.CAR._member_names_)
-setattr(_mod.CAR, _VF8_PLUS, _plus)
-_mod.CAR._member_map_[_VF8_PLUS] = _plus
-_mod.CAR._value2member_map_[_VF8_PLUS] = _plus
-_mod.CAR._member_names_.append(_VF8_PLUS)
-_mod.DBC[_plus] = _plus_cfg.dbc_dict
+if getattr(_mod.CAR, _VF8_PLUS, None) is not None:
+  # The packed values module already defines VF8 Plus. Do not rebuild the enum member.
+  _plus = getattr(_mod.CAR, _VF8_PLUS)
+else:
+  _vf8_cfg = _mod.CAR.VINFAST_VF8.config
+  _plus_dbc = dict(_mod.CAR.VINFAST_VF6.config.dbc_dict)
+  _plus_cfg = _vf8_cfg.override(
+    car_docs=[_mod.VinFastCarDocs("VinFast VF8 Plus 2025-26", "All", car_parts=_vf8_cfg.car_docs[0].car_parts)],
+    dbc_dict=_plus_dbc,
+  )
+  _plus_cfg.platform_str = _VF8_PLUS
+  _plus_cfg.freeze()
+  _plus = str.__new__(_mod.CAR, _VF8_PLUS)
+  _plus._name_ = _VF8_PLUS
+  _plus._value_ = _VF8_PLUS
+  _plus.config = _plus_cfg
+  _plus._sort_order_ = len(_mod.CAR._member_names_)
+  setattr(_mod.CAR, _VF8_PLUS, _plus)
+  _mod.CAR._member_map_[_VF8_PLUS] = _plus
+  _mod.CAR._value2member_map_[_VF8_PLUS] = _plus
+  _mod.CAR._member_names_.append(_VF8_PLUS)
+  _mod.DBC[_plus] = _plus_cfg.dbc_dict
 
 _orig_is_vf6 = _mod.is_vf6_safety_platform
 
