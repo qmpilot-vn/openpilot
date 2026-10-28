@@ -11,8 +11,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"AlwaysOnDM", {PERSISTENT | BACKUP, BOOL}},
     {"ApiCache_Device", {PERSISTENT, STRING}},
     {"ApiCache_FirehoseStats", {PERSISTENT, JSON}},
-    {"ApiHost", {PERSISTENT | BACKUP, STRING}},  // qmpilot-server / custom upload API host (no trailing slash)
-    {"QmpilotApiKey", {PERSISTENT | DONT_LOG, STRING}},  // device API key for qmpilot-server
+    {"ApiHost", {PERSISTENT | BACKUP, STRING}},  // qmpilot-connect host (no trailing slash). Comma Connect stays api.commadotai.com.
+    {"QmpilotApiKey", {PERSISTENT | DONT_LOG, STRING}},  // device API key for qmpilot-connect. With ApiHost, selects that uploader.
     {"AssistNowToken", {PERSISTENT, STRING}},
     {"AthenadPid", {PERSISTENT, INT}},
     {"AthenadUploadQueue", {PERSISTENT, JSON}},
@@ -140,6 +140,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"UpdaterState", {CLEAR_ON_MANAGER_START, STRING}},
     {"UpdaterTargetBranch", {CLEAR_ON_MANAGER_START, STRING}},
     {"UpdaterLastFetchTime", {PERSISTENT, TIME}},
+    {"UploadBackend", {PERSISTENT | BACKUP, INT, "0"}},  // 0 comma, 1 qmpilot
     {"UptimeOffroad", {PERSISTENT, FLOAT, "0.0"}},
     {"UptimeOnroad", {PERSISTENT, FLOAT, "0.0"}},
     {"UsbGpuPresent", {CLEAR_ON_MANAGER_START | CLEAR_ON_OFFROAD_TRANSITION, BOOL}},

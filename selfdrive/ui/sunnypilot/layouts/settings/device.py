@@ -94,6 +94,16 @@ class DeviceLayoutSP(DeviceLayout):
     )
     self._reg_and_training.action_item.right_button.set_button_style(ButtonStyle.NORMAL)
 
+    self._upload_backend = multiple_button_item_sp(
+      title=lambda: tr("Upload"),
+      description=lambda: tr("One server per drive. comma sends to comma connect. qmpilot sends to qmpilot-connect."),
+      param="UploadBackend",
+      buttons=[lambda: tr("comma"), lambda: tr("qmpilot")],
+      button_width=280,
+      inline=False,
+    )
+    self._upload_backend.show_description(True)
+
     self._onroad_uploads_and_reset_settings = dual_button_item_sp(
       left_text=lambda: tr("Onroad Uploads"),
       left_callback=lambda: ui_state.params.put_bool("OnroadUploads", not ui_state.params.get_bool("OnroadUploads")),
@@ -125,6 +135,8 @@ class DeviceLayoutSP(DeviceLayout):
       LineSeparator(height=10),
       self._quiet_mode_and_dcam,
       self._reg_and_training,
+      self._upload_backend,
+      LineSeparator(),
       self._onroad_uploads_and_reset_settings,
       Spacer(10),
       LineSeparator(height=10),
