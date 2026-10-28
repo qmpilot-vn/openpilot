@@ -5,6 +5,7 @@ This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 """
 from openpilot.selfdrive.ui.layouts.settings.device import DeviceLayout
+from openpilot.selfdrive.ui.widgets.qmpilot_pairing_dialog import QmpilotPairingDialog
 from openpilot.selfdrive.ui.onroad.driver_camera_dialog import DriverCameraDialog
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.hardware import HARDWARE
@@ -104,6 +105,13 @@ class DeviceLayoutSP(DeviceLayout):
     )
     self._upload_backend.show_description(True)
 
+    self._qmpilot_pair_btn = button_item_sp(
+      lambda: tr("Pair qmpilot"),
+      lambda: tr("PAIR"),
+      lambda: tr("Scan a QR code to store this car on qmpilot-connect. Wi-Fi is required."),
+      callback=lambda: gui_app.push_widget(QmpilotPairingDialog()),
+    )
+
     self._onroad_uploads_and_reset_settings = dual_button_item_sp(
       left_text=lambda: tr("Onroad Uploads"),
       left_callback=lambda: ui_state.params.put_bool("OnroadUploads", not ui_state.params.get_bool("OnroadUploads")),
@@ -124,6 +132,8 @@ class DeviceLayoutSP(DeviceLayout):
       text_item(lambda: tr("Serial"), self._params.get("HardwareSerial") or (lambda: tr("N/A"))),
       LineSeparator(),
       self._pair_device_btn,
+      LineSeparator(),
+      self._qmpilot_pair_btn,
       LineSeparator(),
       self._reset_calib_btn,
       LineSeparator(),
@@ -220,6 +230,13 @@ class DeviceLayoutSP(DeviceLayout):
 
     # Quiet Mode button
     self._quiet_mode_and_dcam.action_item.left_button.set_button_style(ButtonStyle.PRIMARY if ui_state.params.get_bool("QuietMode") else ButtonStyle.NORMAL)
+
+    backend = ui_state.params.get("UploadBackend")
+    try:
+      selected = int(backend)
+    except (TypeError, ValueError):
+      selected = 0
+    self._upload_backend.action_item.set_selected_button(1 if selected == 1 else 0)
 
     # Onroad Uploads
     self._onroad_uploads_and_reset_settings.action_item.left_button.set_button_style(

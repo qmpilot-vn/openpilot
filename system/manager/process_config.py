@@ -162,7 +162,7 @@ procs = [
   PythonProcess("tombstoned", "system.tombstoned", always_run, enabled=not PC),
   PythonProcess("updated", "system.updated.updated", only_offroad, enabled=not PC),
   PythonProcess("uploader", "system.loggerd.uploader", and_(uploader_ready, use_comma_uploader)),
-  PythonProcess("qmpilot_uploader", "system.loggerd.qmpilot_uploader", and_(uploader_ready, use_qmpilot_uploader)),
+  PythonProcess("qmpilot_uploader", "system.loggerd.qmpilot_uploader", and_(uploader_ready, use_qmpilot_uploader), restart_if_crash=True),
   PythonProcess("statsd", "system.statsd", always_run),
   PythonProcess("feedbackd", "selfdrive.ui.feedback.feedbackd", only_onroad),
 

@@ -61,5 +61,5 @@ Implemented in `system/loggerd/qmpilot_uploader.py`. It runs only when the Devic
 - [x] Upload URL, PUT, callback, and the segment path rewrite.
 - [x] 401 and 403 are retried. 503 on a heavy file waits for Save.
 - [x] One upload target at a time, chosen under Settings, Device, Upload.
-- [ ] Pair screen: `POST /v1/pair/start`, QR, poll `GET /v1/pair/status`.
-- [ ] On a returned key, write Params, write `/persist/qmpilot/`, set Upload to qmpilot, and let manager start the uploader.
+- [x] Pair screen on Settings, Device, **Pair qmpilot**: `POST /v1/pair/start`, QR, poll `GET /v1/pair/status`.
+- [x] On a returned key, write Params, write `/persist/qmpilot/`, set Upload to qmpilot, and let manager start the uploader.

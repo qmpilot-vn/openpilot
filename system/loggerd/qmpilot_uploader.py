@@ -302,6 +302,11 @@ def main(exit_event: threading.Event | None = None) -> None:
 
   backoff = 0.1
   while not exit_event.is_set():
+    host = get_qmpilot_api_host()
+    key = get_qmpilot_api_key()
+    if host != uploader.api_host or key != uploader.api_key:
+      cloudlog.info("qmpilot credentials changed; exiting so the uploader restarts")
+      return
     sm.update(0)
     offroad = params.get_bool("IsOffroad")
     network_type = sm['deviceState'].networkType if not force_wifi else NetworkType.wifi
