@@ -1,0 +1,24 @@
+---
+description: Keep vf-release-c4-tai behavior when copying files from vf-dev-c4, vf-staging-c4, or vf-release-c4.
+alwaysApply: true
+---
+
+# vf-release-c4-tai
+
+Do not checkout or overwrite these from `vf-dev-c4`, `vf-staging-c4`, or `vf-release-c4`. A whole-file copy drops them. Do not push tai-only behavior onto those branches.
+
+## Keep
+
+- **Lateral without car ACC.** `sunnypilot/selfdrive/controls/controlsd_ext.py` `get_lat_active` must not return False when VinFast `cruiseState.available` and not `cruiseState.enabled`. Lateral follows MADS / `selfdriveState.active`. Origin `18f327c4`, restored `106167a0`. `b64209c3` deleted it by copying staging's `controlsd_ext.py`.
+- **Chestnut owns the big model.** `sunnypilot/modeld_v2/modeld.py`: do not call `jetlink_adapter.attach` when `CHESTNUT`. `selfdrive/ui/sunnypilot/mici/layouts/models.py`: `jetlink = None` when `ui_state.chestnut_present`.
+- **`params_pyx.so` is the on-device blob** `e98a6d24` from `dbe4be5e` (2,798,128 bytes, `HardwareTici`, `/data/params`). It is a superset of blob `59dbb6c0`: same keys plus `LaneCentering`, `LaneCenterOffset`, `LaneCenteringE2EAuthority`. Do not replace it with the PC build `ee620bc3` (`/.comma`, `Path::comma_home`). The `clearAll` guard in `common/params.py` stays.
+- **Lane centering is back on** at `18d92f88`: controller, steering settings, and the three keys, default off. It 1reads the on-device module above. Do not drop it when copying `controlsd.py`, `controlsd_ext.py`, or `steering.py` from another C4 branch.
+- **Lane-change floor 20 km/h.** `selfdrive/controls/lib/desire_helper.py` `LANE_CHANGE_SPEED_MIN = 20 * CV.KPH_TO_MS`. Origin `111e854a`, restored `d7f216b6`. A merge put it back to 20 mph (`CV.MPH_TO_MS`). Do not copy `desire_helper.py` from the other C4 branches.
+- **Nerfed driver monitoring.** `selfdrive/monitoring/policy.py` stays the tai nerf `ad54737d`: skip the silent green alert, vision timeouts 20/40/80 s, wheel-touch 30/55/90 s, face off-hold plus a 2 s orange-banner hold, and `_POSE_DISTRACTED_SCALE = 2.0` so a cluster glance is not distracted. `b64209c3` replaced it with staging's stock policy (vision 3/5/11, wheel 15/24/30) and the matching `test_monitoring.py`. Do not copy those two files from another C4 branch. The nerf is not on the current tip; restore it from `ad54737d`.
+
+## Already overwritten
+
+These tai commits are not on the current tip. A merge put the shared C4 values back. Do not treat them as present:
+
+- Steer press 1.5 / 0.75 Nm (`111e854a`, `5e9fe68d`). The values overlay is 2.0 / 0.8 Nm.
+- Experimental init speed 20 kph (`9eeb8a57`). `cruise.py` is 60 again.
