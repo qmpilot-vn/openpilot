@@ -186,6 +186,18 @@ def apply_vf_late_brake(sm, CP, a_target: float, red_light: bool) -> float:
   return float(a_target * vf_mild_decel_scale(a_target))
 
 
+def blend_experimental_accel(e2e_accel: float, mpc_accel: float, *, should_stop: bool, lead_limiting: bool) -> float:
+  """Experimental long: the cruise plan reaches the set speed unless the model is slowing.
+
+  A stop, a lead the cruise planner is already using, or a negative model accel
+  keeps the lower of the two. Otherwise the cruise accel is used, so a model
+  that levels off under the set speed still gets there.
+  """
+  if should_stop or lead_limiting or float(e2e_accel) < 0.0:
+    return float(min(e2e_accel, mpc_accel))
+  return float(mpc_accel)
+
+
 def get_coast_accel(pitch):
   return np.sin(pitch) * -5.65 - 0.3  # fitted from data using xx/projects/allow_throttle/compute_coast_accel.py
 
@@ -363,15 +375,19 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     output_should_stop_e2e = sm['modelV2'].action.shouldStop
 
     if self.is_e2e(sm):
-      output_a_target = min(output_a_target_e2e, output_a_target_mpc)
-      self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
-      # VN floor: if closer than the legal gap, do not let e2e coast/accel inside it.
       lead = sm['radarState'].leadOne
       vn_gap = self.vn_follow_m
-      if (vn_gap is not None and lead.status and float(lead.dRel) < vn_gap
-          and output_a_target_e2e > output_a_target_mpc):
-        output_a_target = output_a_target_mpc
-      elif output_a_target < output_a_target_mpc:
+      # Inside the legal gap the cruise plan is the floor, same as a tracked lead.
+      inside_legal_gap = vn_gap is not None and lead.status and float(lead.dRel) < float(vn_gap)
+      lead_limiting = (
+        self.mpc.source in (LongitudinalPlanSource.lead0, LongitudinalPlanSource.lead1)
+        or inside_legal_gap
+      )
+      self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
+      output_a_target = blend_experimental_accel(
+        output_a_target_e2e, output_a_target_mpc,
+        should_stop=self.output_should_stop, lead_limiting=lead_limiting)
+      if output_a_target < output_a_target_mpc:
         self.mpc.source = LongitudinalPlanSource.e2e
     else:
       output_a_target = output_a_target_mpc
