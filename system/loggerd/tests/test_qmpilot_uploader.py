@@ -7,6 +7,7 @@ from openpilot.common.api.comma_connect import (
   UPLOAD_QMPILOT,
   comma_backend_selected,
   get_api_host,
+  get_athena_host,
   get_qmpilot_api_host,
   qmpilot_backend_selected,
 )
@@ -58,12 +59,32 @@ def test_old_both_value_uploads_to_comma_only(monkeypatch):
   assert not qmpilot_backend_selected()
 
 
+def test_comma_env_host_does_not_hide_saved_qmpilot_host(monkeypatch):
+  monkeypatch.setenv("API_HOST", DEFAULT_API_HOST)
+
+  def read(name):
+    if name == "ApiHost":
+      return "https://qmpilot-connect.com/"
+    return None
+
+  monkeypatch.setattr("openpilot.common.api.comma_connect._read_param_str", read)
+  assert get_qmpilot_api_host() == "https://qmpilot-connect.com"
+
+
 def test_qmpilot_not_selected_without_key(monkeypatch):
   monkeypatch.delenv("QMPILOT_API_KEY", raising=False)
   monkeypatch.delenv("API_HOST", raising=False)
   monkeypatch.setattr("openpilot.common.api.comma_connect._read_param_str", lambda name: None)
   assert get_qmpilot_api_host() is None
   assert not qmpilot_backend_selected()
+
+
+def test_athena_host_follows_upload_backend(monkeypatch):
+  from openpilot.common.api import comma_connect
+  monkeypatch.setattr(comma_connect, "qmpilot_backend_selected", lambda: True)
+  assert get_athena_host() == "wss://qmpilot-connect.com"
+  monkeypatch.setattr(comma_connect, "qmpilot_backend_selected", lambda: False)
+  assert get_athena_host() == "wss://athena.comma.ai"
 
 
 def test_path_rewrite():
@@ -152,3 +173,102 @@ def test_lte_keeps_qlog_and_holds_heavy(monkeypatch, tmp_path):
   (seg / "rlog.zst").write_bytes(b"r")
   names = [name for name, _, _ in up.list_upload_files(True)]
   assert names == ["qlog"]
+
+
+def test_heavy_files_are_not_auto_queued(monkeypatch, tmp_path):
+  up = _uploader(monkeypatch, tmp_path)
+  older = tmp_path / "00000054--aaaaaaaaaa--30"
+  newer = tmp_path / "0000005f--bbbbbbbbbb--0"
+  older.mkdir()
+  newer.mkdir()
+  (older / "fcamera.hevc").write_bytes(b"c")
+  (older / "rlog.zst").write_bytes(b"r")
+  (older / "qlog.zst").write_bytes(b"q")
+  (newer / "rlog.zst").write_bytes(b"r")
+  (newer / "qlog.zst").write_bytes(b"q")
+
+  keys = [key for _, key, _ in up.list_upload_files(False)]
+  assert keys == [
+    "00000054--aaaaaaaaaa--30/qlog.zst",
+    "0000005f--bbbbbbbbbb--0/qlog.zst",
+  ]
+
+
+def test_heavy_timeout_defers_and_qlog_does_not(monkeypatch, tmp_path):
+  up = _uploader(monkeypatch, tmp_path)
+  monkeypatch.setattr(qmpilot, "fake_upload", False)
+  camera_name, camera_key, camera_fn = _segment(tmp_path, "fcamera.hevc")
+  qlog_name, qlog_key, qlog_fn = _segment(tmp_path / "other", "qlog")
+
+  def get(url, **kwargs):
+    return Resp(200, '{"url": "http://upload.local/obj", "headers": {}}')
+
+  def put(url, **kwargs):
+    raise qmpilot.requests.exceptions.Timeout("write")
+
+  monkeypatch.setattr(qmpilot.requests, "get", get)
+  monkeypatch.setattr(qmpilot.requests, "put", put)
+
+  assert up.upload(camera_name, camera_key, camera_fn, 1, False)
+  assert getxattr(camera_fn, qmpilot.UPLOAD_ATTR_NAME) is None
+  assert up._defer_until[camera_fn] > 0
+
+  assert not up.upload(qlog_name, qlog_key, qlog_fn, 1, False)
+  assert qlog_fn not in up._defer_until
+  assert getxattr(qlog_fn, qmpilot.UPLOAD_ATTR_NAME) is None
+
+
+def test_qcamera_timeout_steps_aside_for_the_next_qlog(monkeypatch, tmp_path):
+  up = _uploader(monkeypatch, tmp_path)
+  monkeypatch.setattr(qmpilot, "fake_upload", False)
+  older = tmp_path / "00000057--af92006b37--7"
+  newer = tmp_path / "00000057--af92006b37--8"
+  older.mkdir()
+  newer.mkdir()
+  qcamera_fn = older / "qcamera.ts"
+  qlog_fn = newer / "qlog.zst"
+  qcamera_fn.write_bytes(b"cam" * 1000)
+  qlog_fn.write_bytes(b"qlog")
+
+  timeouts = []
+
+  def get(url, **kwargs):
+    return Resp(200, '{"url": "http://upload.local/obj", "headers": {}}')
+
+  def put(url, **kwargs):
+    timeouts.append(kwargs["timeout"])
+    raise qmpilot.requests.exceptions.Timeout("write")
+
+  monkeypatch.setattr(qmpilot.requests, "get", get)
+  monkeypatch.setattr(qmpilot.requests, "put", put)
+
+  assert up.upload("qcamera.ts", "00000057--af92006b37--7/qcamera.ts", str(qcamera_fn), 1, False)
+  assert timeouts == [(10.0, 30.0)]
+  assert getxattr(str(qcamera_fn), qmpilot.UPLOAD_ATTR_NAME) is None
+  assert up._defer_until[str(qcamera_fn)] > 0
+  assert [name for name, _, _ in up.list_upload_files(False)] == ["qlog.zst"]
+
+  assert not up.upload("qlog.zst", "00000057--af92006b37--8/qlog.zst", str(qlog_fn), 1, False)
+  assert timeouts[1][1] >= 120.0
+  assert str(qlog_fn) not in up._defer_until
+
+
+def test_412_is_done_only_after_callback(monkeypatch, tmp_path):
+  up = _uploader(monkeypatch, tmp_path)
+  name, key, fn = _segment(tmp_path)
+  posts = []
+
+  monkeypatch.setattr(qmpilot.requests, "get", lambda *a, **k: Resp(412, "already"))
+
+  def post(url, **kwargs):
+    posts.append(kwargs["json"])
+    return Resp(500, "no")
+
+  monkeypatch.setattr(qmpilot.requests, "post", post)
+  assert not up.upload(name, key, fn, 1, False)
+  assert posts
+  assert getxattr(fn, qmpilot.UPLOAD_ATTR_NAME) is None
+
+  monkeypatch.setattr(qmpilot.requests, "post", lambda *a, **k: Resp(200))
+  assert up.upload(name, key, fn, 1, False)
+  assert getxattr(fn, qmpilot.UPLOAD_ATTR_NAME) == qmpilot.UPLOAD_ATTR_VALUE

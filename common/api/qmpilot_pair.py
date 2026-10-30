@@ -1,11 +1,10 @@
 """Pair a Comma 4 with qmpilot-connect. The API key never goes in the QR."""
-import os
 import threading
 import time
 from urllib.parse import urlencode
 
 from openpilot.common.api.base import BaseApi
-from openpilot.common.api.comma_connect import UPLOAD_QMPILOT
+from openpilot.common.api.comma_connect import set_upload_backend, store_qmpilot_file
 
 PAIR_HOST = "https://qmpilot-connect.com"
 
@@ -23,19 +22,33 @@ def pair_url(dongle_id: str, pair_nonce: str) -> str:
   return f"{PAIR_HOST}/pair?{query}"
 
 
+def _put_param(params, key: str, value) -> None:
+  """Params may not know a key in the running params_pyx.so. The file copy still has to land."""
+  try:
+    params.put(key, value, block=True)
+  except Exception:
+    pass
+
+
 def save_pair(params, api_host: str, api_key: str, persist_dir: str = "/persist/qmpilot") -> None:
   """Store the key where the uploader reads it, and select the qmpilot upload target."""
   host = str(api_host).rstrip("/")
-  params.put("ApiHost", host, block=True)
-  params.put("QmpilotApiKey", api_key, block=True)
-  params.put("UploadBackend", UPLOAD_QMPILOT, block=True)
-  os.makedirs(persist_dir, exist_ok=True)
-  for name, value in (("ApiHost", host), ("QmpilotApiKey", api_key)):
-    path = os.path.join(persist_dir, name)
-    tmp = path + ".tmp"
-    with open(tmp, "w") as f:
-      f.write(value)
-    os.replace(tmp, path)
+  _put_param(params, "ApiHost", host)
+  _put_param(params, "QmpilotApiKey", api_key)
+  set_upload_backend(1, params, persist_dir)
+  store_qmpilot_file("ApiHost", host, persist_dir)
+  store_qmpilot_file("QmpilotApiKey", api_key, persist_dir)
+
+
+def key_from_status(body: dict) -> tuple[str, str] | None:
+  """A string api_key on pair/status is the device's key, including when paired is already true."""
+  if not isinstance(body, dict):
+    return None
+  key = body.get("api_key")
+  if not isinstance(key, str) or not key:
+    return None
+  host = body.get("api_host") if isinstance(body.get("api_host"), str) else PAIR_HOST
+  return key, host.rstrip("/")
 
 
 class QmpilotPairClient:
@@ -79,7 +92,11 @@ class QmpilotPairClient:
 
 
 class PairWorker:
-  """Calls pair/start, then polls pair/status until a key arrives or the nonce is about to expire."""
+  """Reads pair/status first. A car the phone already linked gets its key with no new QR.
+
+  pair/start runs only when status has no key yet. A 409 from start checks status
+  once more, because qmpilot keeps the key on status after the phone links.
+  """
 
   def __init__(self, client: QmpilotPairClient, on_wifi, poll_s: float = 2.0, refresh_lead_s: float = 20.0):
     self.client = client
@@ -112,16 +129,45 @@ class PairWorker:
       for name, value in kwargs.items():
         setattr(self, name, value)
 
+  def _apply_status(self, body: dict) -> bool:
+    found = key_from_status(body)
+    if found is None:
+      return False
+    key, host = found
+    self._set(api_key=key, api_host=host, message="paired")
+    return True
+
+  def _read_status(self) -> str:
+    """paired, rejected, or empty when there is no key yet. Network errors stay empty."""
+    try:
+      body = self.client.status()
+    except PairRejected:
+      return "rejected"
+    except Exception:
+      return ""
+    if self._apply_status(body):
+      return "paired"
+    return ""
+
   def _run(self) -> None:
     while not self._stop.is_set():
       if not self.on_wifi():
         self._set(message="wifi", url="")
         self._stop.wait(1)
         continue
+      found = self._read_status()
+      if found == "paired":
+        return
+      if found == "rejected":
+        self._set(message="rejected")
+        return
       try:
         nonce, expires = self.client.start()
       except PairConflict:
-        self._set(message="conflict")
+        found = self._read_status()
+        if found == "paired":
+          return
+        self._set(message="rejected" if found == "rejected" else "conflict")
         return
       except PairRejected:
         self._set(message="rejected")
@@ -135,20 +181,10 @@ class PairWorker:
       self._set(url=url, message="")
       deadline = time.monotonic() + max(self.poll_s, float(expires) - self.refresh_lead_s)
       while time.monotonic() < deadline and not self._stop.is_set():
-        try:
-          body = self.client.status()
-        except PairConflict:
-          self._set(message="conflict")
+        found = self._read_status()
+        if found == "paired":
           return
-        except PairRejected:
+        if found == "rejected":
           self._set(message="rejected")
-          return
-        except Exception:
-          self._stop.wait(self.poll_s)
-          continue
-        key = body.get("api_key")
-        if isinstance(key, str) and key:
-          host = body.get("api_host") if isinstance(body.get("api_host"), str) else PAIR_HOST
-          self._set(api_key=key, api_host=host.rstrip("/"), message="paired")
           return
         self._stop.wait(self.poll_s)

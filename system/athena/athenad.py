@@ -32,6 +32,7 @@ import cereal.messaging as messaging
 from cereal import car, log
 from cereal.services import SERVICE_LIST
 from openpilot.common.api import Api, get_key_pair
+from openpilot.common.api.comma_connect import get_athena_host
 from openpilot.common.utils import CallbackReader, get_upload_stream
 from openpilot.common.params import Params
 from openpilot.common.realtime import set_core_affinity
@@ -169,11 +170,15 @@ class UploadQueueCache:
       cloudlog.exception("athena.UploadQueueCache.cache.exception")
 
 
-def handle_long_poll(ws: WebSocket, exit_event: threading.Event | None) -> None:
+def athena_ws_uri(dongle_id: str) -> str:
+  return get_athena_host() + "/ws/v2/" + dongle_id
+
+
+def handle_long_poll(ws: WebSocket, exit_event: threading.Event | None, ws_uri: str | None = None) -> None:
   end_event = threading.Event()
 
   threads = [
-    threading.Thread(target=ws_manage, args=(ws, end_event), name='ws_manage'),
+    threading.Thread(target=ws_manage, args=(ws, end_event, ws_uri), name='ws_manage'),
     threading.Thread(target=ws_recv, args=(ws, end_event), name='ws_recv'),
     threading.Thread(target=ws_send, args=(ws, end_event), name='ws_send'),
     threading.Thread(target=upload_handler, args=(end_event,), name='upload_handler'),
@@ -913,12 +918,18 @@ def ws_send(ws: WebSocket, end_event: threading.Event) -> None:
       end_event.set()
 
 
-def ws_manage(ws: WebSocket, end_event: threading.Event) -> None:
+def ws_manage(ws: WebSocket, end_event: threading.Event, ws_uri: str | None = None) -> None:
   params = Params()
   onroad_prev = None
   sock = ws.sock
 
   while not end_event.wait(5):
+    if ws_uri is not None:
+      dongle_id = params.get("DongleId")
+      if dongle_id and athena_ws_uri(dongle_id) != ws_uri:
+        cloudlog.event("athenad.ws_manage.host_changed", ws_uri=ws_uri)
+        end_event.set()
+        continue
     onroad = params.get_bool("IsOnroad")
     if onroad != onroad_prev:
       onroad_prev = onroad
@@ -951,7 +962,6 @@ def main(exit_event: threading.Event | None = None):
   dongle_id = params.get("DongleId")
   UploadQueueCache.initialize(upload_queue)
 
-  ws_uri = ATHENA_HOST + "/ws/v2/" + dongle_id
   api = Api(dongle_id)
 
   conn_start = None
@@ -961,6 +971,7 @@ def main(exit_event: threading.Event | None = None):
       if conn_start is None:
         conn_start = time.monotonic()
 
+      ws_uri = athena_ws_uri(dongle_id)
       cloudlog.event("athenad.main.connecting_ws", ws_uri=ws_uri, retries=conn_retries)
       ws = create_connection(ws_uri,
                              cookie="jwt=" + api.get_token(),
@@ -973,7 +984,7 @@ def main(exit_event: threading.Event | None = None):
       conn_retries = 0
       cur_upload_items.clear()
 
-      handle_long_poll(ws, exit_event)
+      handle_long_poll(ws, exit_event, ws_uri)
 
       ws.close()
     except (KeyboardInterrupt, SystemExit):

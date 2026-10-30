@@ -93,6 +93,10 @@ def use_qmpilot_uploader(started, params, CP: car.CarParams) -> bool:
   """qmpilot-connect uploader. On only when the Device toggle is qmpilot and the key is set."""
   return qmpilot_backend_selected()
 
+def use_qmpilot_athena(started, params, CP: car.CarParams) -> bool:
+  """Live qmpilot session. Same gate as the uploader, and it also runs onroad."""
+  return qmpilot_backend_selected()
+
 def is_tinygrad_model(started, params, CP: car.CarParams) -> bool:
   """Check if the active model runner is SNPE."""
   return bool(get_active_model_runner(params, not started) == custom.ModelManagerSP.Runner.tinygrad)
@@ -163,6 +167,7 @@ procs = [
   PythonProcess("updated", "system.updated.updated", only_offroad, enabled=not PC),
   PythonProcess("uploader", "system.loggerd.uploader", and_(uploader_ready, use_comma_uploader)),
   PythonProcess("qmpilot_uploader", "system.loggerd.qmpilot_uploader", and_(uploader_ready, use_qmpilot_uploader), restart_if_crash=True),
+  PythonProcess("qmpilotd", "system.athena.qmpilotd", use_qmpilot_athena, restart_if_crash=True),
   PythonProcess("statsd", "system.statsd", always_run),
   PythonProcess("feedbackd", "selfdrive.ui.feedback.feedbackd", only_onroad),
 

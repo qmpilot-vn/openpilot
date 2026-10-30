@@ -9,15 +9,13 @@ import json
 import os
 import random
 import requests
-import threading
 import time
 import traceback
-import datetime
 from collections.abc import Iterator
 
 from cereal import log
 import cereal.messaging as messaging
-from openpilot.common.api.comma_connect import get_qmpilot_api_host, get_qmpilot_api_key
+from openpilot.common.api.comma_connect import get_qmpilot_api_host, get_qmpilot_api_key, qmpilot_backend_selected
 from openpilot.common.utils import get_upload_stream
 from openpilot.common.params import Params
 from openpilot.common.realtime import set_core_affinity
@@ -45,6 +43,8 @@ UPLOAD_PRIORITY = {
 
 HEAVY_NAMES = {"rlog", "rlog.zst", "rlog.bz2", "fcamera.hevc", "ecamera.hevc", "dcamera.hevc"}
 ALWAYS_NAMES = {"qlog", "qlog.zst", "qlog.bz2", "qcamera.ts"}
+# A stalled PUT of these steps aside for 60s. qlog stays at the head and retries.
+STEP_ASIDE_NAMES = HEAVY_NAMES | {"qcamera.ts"}
 
 allow_sleep = bool(int(os.getenv("UPLOADER_SLEEP", "1")))
 force_wifi = os.getenv("FORCEWIFI") is not None
@@ -104,6 +104,10 @@ class Uploader:
     requested_routes = [] if r is None else [route for route in r.split(",") if route]
     now = time.monotonic()
 
+    # Same auto queue as comma connect: qlog then qcamera, oldest segment
+    # first. rlog and the cameras are not queued here. The server sends those
+    # with uploadFilesToUrls on the Athena socket.
+    pending_light: list[tuple[str, str, str]] = []
     for logdir in _listdir_by_creation(self.root):
       if logdir in ("boot", "crash") or logdir.startswith(("boot/", "crash/")):
         continue
@@ -117,6 +121,7 @@ class Uploader:
       if any(name.endswith(".lock") for name in names):
         continue
 
+      viewed = self._route_requested(logdir, requested_routes)
       for name in sorted(names, key=lambda n: self.immediate_priority.get(n, 1000)):
         if name not in self.immediate_priority and name not in ALWAYS_NAMES and name not in HEAVY_NAMES:
           continue
@@ -132,14 +137,14 @@ class Uploader:
         if self._defer_until.get(fn, 0) > now:
           continue
 
-        if metered:
-          viewed = self._route_requested(logdir, requested_routes)
-          if name == "qcamera.ts" and not viewed:
-            continue
-          if name in HEAVY_NAMES and not viewed:
-            continue
+        if name in HEAVY_NAMES:
+          continue
+        if metered and name == "qcamera.ts" and not viewed:
+          continue
 
-        yield name, key, fn
+        pending_light.append((name, key, fn))
+
+    yield from pending_light
 
   def next_file_to_upload(self, metered: bool) -> tuple[str, str, str] | None:
     for name, key, fn in self.list_upload_files(metered):
@@ -177,7 +182,12 @@ class Uploader:
       cloudlog.exception(f"qmpilot_upload_callback_exception key={remote_key}")
       return False
 
-  def _put_timeout(self, sz: int) -> tuple[float, float]:
+  def _put_timeout(self, name: str, sz: int) -> tuple[float, float]:
+    # qcamera, rlog, and hevc end the attempt and step aside. The proxy write
+    # fails in about 20s, so a longer read timeout does not finish the file.
+    # qlog keeps the long timeout and is retried in place.
+    if name in STEP_ASIDE_NAMES:
+      return (10.0, 30.0)
     read_s = max(120.0, (sz / 250_000.0) + 60.0)
     return (15.0, min(read_s, 1800.0))
 
@@ -189,7 +199,7 @@ class Uploader:
       retry = 60
     self._defer_until[fn] = time.monotonic() + max(1, retry)
 
-  def do_upload(self, key: str, fn: str):
+  def do_upload(self, key: str, fn: str, name: str = ""):
     url_resp = self._request_upload_url(key)
     if url_resp.status_code in (412, 503):
       return url_resp
@@ -206,7 +216,7 @@ class Uploader:
     try:
       compress = key.endswith('.zst') and not fn.endswith('.zst')
       stream, content_length = get_upload_stream(fn, compress)
-      response = requests.put(url, data=stream, headers=headers, timeout=self._put_timeout(content_length))
+      response = requests.put(url, data=stream, headers=headers, timeout=self._put_timeout(name, content_length))
       return response
     finally:
       if stream:
@@ -233,7 +243,7 @@ class Uploader:
       stat = None
       last_exc = None
       try:
-        stat = self.do_upload(key, fn)
+        stat = self.do_upload(key, fn, name)
       except Exception as e:
         last_exc = (e, traceback.format_exc())
 
@@ -243,6 +253,11 @@ class Uploader:
         return True
 
       # 401 and 403 stay unmarked so the file is sent again
+      if stat is not None and stat.status_code in (401, 403):
+        cloudlog.event("qmpilot_upload_failed", stat=stat, exc=last_exc, key=key, fn=fn, sz=sz,
+                       network_type=network_type, metered=metered)
+        return False
+
       if stat is not None and stat.status_code in (200, 201, 412):
         self.last_filename = fn
         dt = time.monotonic() - start_time
@@ -256,9 +271,15 @@ class Uploader:
         success = True
         needs_callback = True
       else:
-        success = False
         cloudlog.event("qmpilot_upload_failed", stat=stat, exc=last_exc, key=key, fn=fn, sz=sz,
                        network_type=network_type, metered=metered)
+        # A stalled qcamera, rlog, or hevc must not stay in front of the next qlog.
+        if name in STEP_ASIDE_NAMES:
+          self._defer(fn, stat)
+          cloudlog.event("qmpilot_upload_deferred", key=key, fn=fn, sz=sz,
+                         status=getattr(stat, "status_code", None))
+          return True
+        return False
 
     if success and needs_callback and not self.do_callback(key):
       success = False
@@ -282,10 +303,7 @@ class Uploader:
     return self.upload(name, key, fn, network_type, metered)
 
 
-def main(exit_event: threading.Event | None = None) -> None:
-  if exit_event is None:
-    exit_event = threading.Event()
-
+def main(exit_event=None) -> None:
   try:
     set_core_affinity([0, 1, 2, 3])
   except Exception:
@@ -299,9 +317,15 @@ def main(exit_event: threading.Event | None = None) -> None:
 
   sm = messaging.SubMaster(['deviceState'])
   uploader = Uploader(dongle_id, Paths.log_root())
+  _upload_loop(exit_event, params, sm, uploader)
 
+
+def _upload_loop(exit_event, params, sm, uploader) -> None:
   backoff = 0.1
-  while not exit_event.is_set():
+  while exit_event is None or not exit_event.is_set():
+    if not qmpilot_backend_selected():
+      cloudlog.info("qmpilot uploader stopped; backend is comma connect")
+      return
     host = get_qmpilot_api_host()
     key = get_qmpilot_api_key()
     if host != uploader.api_host or key != uploader.api_key:

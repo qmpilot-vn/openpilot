@@ -2,7 +2,7 @@
 
 Live host: `https://qmpilot-connect.com`. No trailing slash.
 
-Branch: `vf-dev-c4-mrr-closing`. Upload is implemented. Pairing is not. A car that already has `ApiHost` and `QmpilotApiKey` can upload. A new car cannot get those two values from the server until the pair screen exists.
+Branch: `vf-dev-c4-mrr-closing`. Upload is implemented. Pairing is implemented. A phone can link the car before the device has stored the key. The device then reads that key from `GET /v1/pair/status` and stores it. No second QR.
 
 The Device **Upload** control is one choice. **comma** or **qmpilot**. Default is **comma**. Pairing must set the control to **qmpilot**, or the new key sits unused.
 
@@ -19,23 +19,33 @@ All pair calls go to `https://qmpilot-connect.com`, even before `ApiHost` is set
 
 `Api()` points at `https://api.commadotai.com`. The pair screen must construct `BaseApi(dongle_id, "https://qmpilot-connect.com")` itself.
 
-1. `POST /v1/pair/start` with `{ "public_key": "<contents of the .pub file>" }`.
-2. On 200, read `pair_nonce` and `expires_in` (300 seconds). Draw this QR:
+The device calls `GET /v1/pair/status` before `POST /v1/pair/start`.
+
+1. `GET /v1/pair/status`. When `api_key` is a non-empty string, store it and stop. Do not call `pair/start` and do not draw a QR. This is the auto-pair for a car the phone already linked. `paired: true` with that key is the success shape:
+
+```
+{ "dongle_id": "<16 hex>", "paired": true, "api_key": "<string>", "api_host": "https://qmpilot-connect.com" }
+```
+
+2. When `api_key` is null, `POST /v1/pair/start` with `{ "public_key": "<contents of the .pub file>" }`.
+3. On 200, read `pair_nonce` and `expires_in` (300 seconds). Draw this QR:
 
 ```
 https://qmpilot-connect.com/pair?dongle_id=<16 hex>&pair_nonce=<pair_nonce>
 ```
 
-3. Show the dongle id in large text. Call `pair/start` again before the nonce expires and replace the QR.
-4. Poll `GET /v1/pair/status` every 2 seconds with the same JWT.
-5. When `api_key` is a string, store it and stop polling:
+4. Show the dongle id in large text. Call `pair/start` again before the nonce expires and replace the QR.
+5. Poll `GET /v1/pair/status` every 2 seconds with the same JWT.
+6. When `api_key` is a string, store it and stop polling:
    - `ApiHost` = `api_host` from the response, no trailing slash
    - `QmpilotApiKey` = `api_key`
    - `UploadBackend` = `1` (the qmpilot side of the Device control)
-6. Write `ApiHost` and `QmpilotApiKey` with Params, and also as files under `/persist/qmpilot/`, so a manager reset does not delete them. The uploader already reads that directory.
-7. The qmpilot uploader reads host and key only at process start. Setting `UploadBackend` to `1` makes manager start it.
+7. Write `ApiHost` and `QmpilotApiKey` with Params, and also as files under `/data/qmpilot/` (and `/persist/qmpilot/` when that directory is writable). The running params module does not know `UploadBackend`, and `/persist` is read-only on this device. The uploader reads `/data/qmpilot/`.
+8. The qmpilot uploader reads host and key only at process start. Setting `UploadBackend` to `1` makes manager start it.
 
-`api_key` is null on every later poll. A 409 means this dongle is already registered to another key. A 401 means the JWT or public key was rejected.
+qmpilot-connect must keep `api_key` and `api_host` on `GET /v1/pair/status` for this device JWT after the phone links. The device may poll late. Clearing `api_key` on the next poll leaves the car linked on the server and unable to upload.
+
+`POST /v1/pair/start` on an already paired dongle may return 409. That 409 is not "another key" when the same JWT can still read `api_key` from status. The device calls status again and stores that key. 409 with `api_key` still null means the dongle is registered to a key this device cannot read. A 401 means the JWT or public key was rejected.
 
 The current **Pair Device** button opens `https://connect.comma.ai/?pair=<jwt>`. That is comma connect. It is not this screen.
 
@@ -61,5 +71,6 @@ Implemented in `system/loggerd/qmpilot_uploader.py`. It runs only when the Devic
 - [x] Upload URL, PUT, callback, and the segment path rewrite.
 - [x] 401 and 403 are retried. 503 on a heavy file waits for Save.
 - [x] One upload target at a time, chosen under Settings, Device, Upload.
-- [x] Pair screen on Settings, Device, **Pair qmpilot**: `POST /v1/pair/start`, QR, poll `GET /v1/pair/status`.
-- [x] On a returned key, write Params, write `/persist/qmpilot/`, set Upload to qmpilot, and let manager start the uploader.
+- [x] Pair screen on Settings, Device, **Pair qmpilot**: `GET /v1/pair/status` first, then `POST /v1/pair/start`, QR, poll status.
+- [x] A status body that already has `api_key` is stored with no new QR. A 409 from `pair/start` reads status once more and stores that key when it is still there.
+- [x] On a returned key, write Params, write `/data/qmpilot/`, set Upload to qmpilot, and let manager start the uploader.

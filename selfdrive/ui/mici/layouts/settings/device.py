@@ -4,13 +4,15 @@ import pyray as rl
 from enum import IntEnum
 from collections.abc import Callable
 
+from openpilot.common.api.comma_connect import get_upload_backend, set_upload_backend
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.params import Params
 from openpilot.common.time_helpers import system_time_valid
 from openpilot.system.ui.widgets.scroller import NavRawScrollPanel, NavScroller
-from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigCircleButton
+from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigCircleButton, BigMultiToggle
 from openpilot.selfdrive.ui.mici.widgets.dialog import BigDialog, BigConfirmationDialog
 from openpilot.selfdrive.ui.mici.widgets.pairing_dialog import PairingDialog
+from openpilot.selfdrive.ui.mici.widgets.qmpilot_pairing_dialog import QmpilotPairingDialog
 from openpilot.selfdrive.ui.mici.onroad.driver_camera_dialog import DriverCameraDialog
 from openpilot.selfdrive.ui.mici.layouts.onboarding import TrainingGuide, TermsPage
 from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos
@@ -162,6 +164,66 @@ class PairBigButton(BigButton):
     else:
       dlg = PairingDialog()
     gui_app.push_widget(dlg)
+
+
+class UploadBackendToggle(BigMultiToggle):
+  """Same control as driving personality. Tap to move to the next backend."""
+
+  def __init__(self):
+    super().__init__(tr("backend"), [tr("comma connect"), tr("qmpilot connect")])
+    self._load_value()
+
+  def _load_value(self) -> None:
+    try:
+      idx = 1 if get_upload_backend() == 1 else 0
+    except Exception:
+      idx = 0
+    choice = self._options[idx]
+    if self.value != choice:
+      self.set_value(choice)
+
+  def _update_state(self):
+    super()._update_state()
+    self._load_value()
+
+  def _handle_mouse_release(self, mouse_pos: MousePos):
+    super()._handle_mouse_release(mouse_pos)
+    try:
+      set_upload_backend(self._options.index(self.value))
+    except Exception:
+      self._load_value()
+
+
+class QmpilotPairBigButton(BigButton):
+  """Pair this car with qmpilot-connect. The comma pair tile stays on connect.comma.ai."""
+
+  def __init__(self):
+    super().__init__(tr("pair qmpilot"), "qmpilot-connect.com", gui_app.texture("icons_mici/settings/device/pair.png", 33, 60))
+    self.set_click_callback(self._open)
+
+  def _update_state(self):
+    super()._update_state()
+    raw = ui_state.params.get("QmpilotApiKey")
+    if isinstance(raw, bytes):
+      raw = raw.decode()
+    if (raw or "").strip():
+      self.set_text(tr("qmpilot"))
+      self.set_value(tr("paired"))
+    else:
+      self.set_text(tr("pair qmpilot"))
+      self.set_value("qmpilot-connect.com")
+
+  def _open(self):
+    dongle = ui_state.params.get("DongleId") or ""
+    if isinstance(dongle, bytes):
+      dongle = dongle.decode()
+    dongle = dongle.strip()
+    if not system_time_valid():
+      gui_app.push_widget(BigDialog("", tr("Connect to Wi-Fi so the clock is valid, then pair.")))
+    elif not dongle or dongle == UNREGISTERED_DONGLE_ID:
+      gui_app.push_widget(BigDialog("", tr("This device has no dongle id.")))
+    else:
+      gui_app.push_widget(QmpilotPairingDialog())
 
 
 UPDATER_TIMEOUT = 10.0  # seconds to wait for updater to respond
@@ -340,8 +402,9 @@ class DeviceLayoutMici(NavScroller):
 
     self._scroller.add_widgets([
       DeviceInfoLayoutMici(),
+      UploadBackendToggle(),
       UpdateOpenpilotBigButton(),
-      PairBigButton(),
+      QmpilotPairBigButton(),
       review_training_guide_btn,
       driver_cam_btn,
       terms_btn,

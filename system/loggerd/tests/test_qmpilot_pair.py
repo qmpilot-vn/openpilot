@@ -34,6 +34,7 @@ def test_save_pair_selects_qmpilot_and_persists(tmp_path):
   assert params.store["UploadBackend"] == UPLOAD_QMPILOT
   assert (tmp_path / "ApiHost").read_text() == "https://qmpilot-connect.com"
   assert (tmp_path / "QmpilotApiKey").read_text() == "secret-key"
+  assert (tmp_path / "UploadBackend").read_text() == "1"
 
 
 class FakeClient:
@@ -68,6 +69,7 @@ def _wait_done(worker, timeout=2.0):
 
 def test_worker_stores_key_from_status():
   client = FakeClient([
+    {"api_key": None},
     ("nonce-1", 300),
     {"api_key": None},
     {"api_key": "the-key", "api_host": "https://qmpilot-connect.com"},
@@ -86,7 +88,11 @@ def test_worker_stores_key_from_status():
 
 
 def test_worker_stops_on_conflict():
-  client = FakeClient([PairConflict("409")])
+  client = FakeClient([
+    {"api_key": None, "paired": False},
+    PairConflict("409"),
+    {"api_key": None, "paired": True},
+  ])
   worker = PairWorker(client, lambda: True, poll_s=0.01)
   worker.start()
   try:
@@ -95,10 +101,50 @@ def test_worker_stops_on_conflict():
     worker.stop()
   assert message == "conflict"
   assert key is None
+  assert client.starts == 1
+
+
+def test_worker_claims_key_without_a_new_qr():
+  client = FakeClient([
+    {"paired": True, "api_key": "already", "api_host": "https://qmpilot-connect.com"},
+  ])
+  worker = PairWorker(client, lambda: True, poll_s=0.01)
+  worker.start()
+  try:
+    url, message, key, host = _wait_done(worker)
+  finally:
+    worker.stop()
+  assert message == "paired"
+  assert key == "already"
+  assert host == "https://qmpilot-connect.com"
+  assert url == ""
+  assert client.starts == 0
+
+
+def test_worker_claims_key_after_start_conflict():
+  client = FakeClient([
+    {"api_key": None, "paired": False},
+    PairConflict("409"),
+    {"paired": True, "api_key": "still-here", "api_host": PAIR_HOST},
+  ])
+  worker = PairWorker(client, lambda: True, poll_s=0.01)
+  worker.start()
+  try:
+    _, message, key, host = _wait_done(worker)
+  finally:
+    worker.stop()
+  assert message == "paired"
+  assert key == "still-here"
+  assert host == PAIR_HOST
+  assert client.starts == 1
 
 
 def test_worker_stops_on_rejected_status():
-  client = FakeClient([("nonce-1", 300), PairRejected("401")])
+  client = FakeClient([
+    {"api_key": None},
+    ("nonce-1", 300),
+    PairRejected("401"),
+  ])
   worker = PairWorker(client, lambda: True, poll_s=0.01, refresh_lead_s=0)
   worker.start()
   try:
@@ -114,7 +160,11 @@ def test_worker_waits_for_wifi():
   def wifi():
     return online["ok"]
 
-  client = FakeClient([("nonce-1", 300), {"api_key": "k", "api_host": PAIR_HOST}])
+  client = FakeClient([
+    {"api_key": None},
+    ("nonce-1", 300),
+    {"api_key": "k", "api_host": PAIR_HOST},
+  ])
   worker = PairWorker(client, wifi, poll_s=0.01)
   worker.start()
   try:
