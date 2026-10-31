@@ -77,6 +77,11 @@ VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7", "VINFAST_VF8", "VINFAST_
 # when +0.35 is asked). Request only what it tracks; the clip rate limit ramps the cap in.
 VF_HIGHWAY_ACCEL_BP = [65. * CV.KPH_TO_MS, 72. * CV.KPH_TO_MS]
 VF_HIGHWAY_ACCEL_V = [1.0, 0.4]
+# Cruise-only brake. A lead, a stop, or FCW still uses the full decel limit.
+# -1.2 matches CRUISE_MIN_ACCEL at the start of the ramp, so city and 65 km/h
+# are unchanged. Above 72 km/h a set-speed correction stays at a light brake.
+VF_HIGHWAY_DECEL_BP = VF_HIGHWAY_ACCEL_BP
+VF_HIGHWAY_DECEL_V = [-1.2, -0.8]
 
 # Set False to restore personality-only T_FOLLOW (no Thông tư 38/2024 floor).
 VN_LEGAL_FOLLOW = True
@@ -107,6 +112,20 @@ def get_max_accel(v_ego, vinfast=False):
   if vinfast and v_ego > VF_HIGHWAY_ACCEL_BP[0]:
     a_max = min(a_max, np.interp(v_ego, VF_HIGHWAY_ACCEL_BP, VF_HIGHWAY_ACCEL_V))
   return a_max
+
+
+def limit_vf_highway_cruise_brake(a_target: float, v_ego: float, *, vinfast: bool, cruise: bool,
+                                  should_stop: bool, fcw: bool, red_light: bool) -> float:
+  """Keep a VinFast set-speed brake from becoming a hard stop on the highway.
+
+  Lead following, a stop request, FCW, and a committed red light are unchanged.
+  """
+  if not vinfast or not cruise or should_stop or fcw or red_light or a_target >= 0.0:
+    return float(a_target)
+  if v_ego <= VF_HIGHWAY_DECEL_BP[0]:
+    return float(a_target)
+  floor = float(np.interp(v_ego, VF_HIGHWAY_DECEL_BP, VF_HIGHWAY_DECEL_V))
+  return float(max(a_target, floor))
 
 
 def is_vf_red_light_slowdown(sm, CP) -> bool:
@@ -186,6 +205,38 @@ def apply_vf_late_brake(sm, CP, a_target: float, red_light: bool) -> float:
   return float(a_target * vf_mild_decel_scale(a_target))
 
 
+# popv2 levels off short of the set speed once the road is a highway.
+HIGHWAY_EXPERIMENTAL_V = 60. * CV.KPH_TO_MS
+# A model request above this is the leveled-off plan, not a brake. Segment 45
+# chatters between about -0.09 and +0.08, and snapping to the cruise cap on
+# each zero crossing is the jerk.
+HIGHWAY_MODEL_BRAKE = -0.15
+# Rise toward the cruise plan, and ease off it, without a step.
+HIGHWAY_CLIMB_SLEW = 0.5   # m/s^2 per second
+HIGHWAY_RELEASE_SLEW = 1.0
+
+
+def blend_experimental_accel(e2e_accel: float, mpc_accel: float, *, v_ego: float,
+                             should_stop: bool, lead_limiting: bool) -> float:
+  """Below 60 km/h the model keeps the pedal, including when it is timid.
+
+  At highway speed the cruise plan is the target while the model is not actually
+  braking and a lead or a stop is not limiting. The caller slews up to it.
+  """
+  if v_ego < HIGHWAY_EXPERIMENTAL_V or should_stop or lead_limiting or float(e2e_accel) < HIGHWAY_MODEL_BRAKE:
+    return float(min(e2e_accel, mpc_accel))
+  return float(mpc_accel)
+
+
+def slew_highway_accel(previous: float, target: float, dt: float, *, snap: bool) -> float:
+  """Move toward the highway target. A real brake or a city plan is applied at once."""
+  if snap:
+    return float(target)
+  if target >= previous:
+    return float(min(target, previous + HIGHWAY_CLIMB_SLEW * dt))
+  return float(max(target, previous - HIGHWAY_RELEASE_SLEW * dt))
+
+
 def get_coast_accel(pitch):
   return np.sin(pitch) * -5.65 - 0.3  # fitted from data using xx/projects/allow_throttle/compute_coast_accel.py
 
@@ -224,6 +275,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.v_desired_filter = FirstOrderFilter(init_v, 2.0, self.dt)
     self.prev_accel_clip = [ACCEL_MIN, ACCEL_MAX]
     self.output_a_target = 0.0
+    self.highway_accel = 0.0
     self.output_should_stop = False
     self.vf_redlight_count = 0
     self.vf_redlight_hold = 0
@@ -363,22 +415,35 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     output_should_stop_e2e = sm['modelV2'].action.shouldStop
 
     if self.is_e2e(sm):
-      output_a_target = min(output_a_target_e2e, output_a_target_mpc)
+      # Inside the legal gap, and whenever the model is braking, keep the lower
+      # accel. On an open highway the cruise plan is what reaches the set speed.
       self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
-      # VN floor: if closer than the legal gap, do not let e2e coast/accel inside it.
       lead = sm['radarState'].leadOne
-      vn_gap = self.vn_follow_m
-      if (vn_gap is not None and lead.status and float(lead.dRel) < vn_gap
-          and output_a_target_e2e > output_a_target_mpc):
-        output_a_target = output_a_target_mpc
-      elif output_a_target < output_a_target_mpc:
+      lead_limiting = self.mpc.source in (LongitudinalPlanSource.lead0, LongitudinalPlanSource.lead1)
+      if self.vn_follow_m is not None and lead.status and float(lead.dRel) < self.vn_follow_m:
+        lead_limiting = True
+      target = blend_experimental_accel(
+        output_a_target_e2e, output_a_target_mpc, v_ego=v_ego,
+        should_stop=self.output_should_stop, lead_limiting=lead_limiting)
+      # A timid model still climbs. A lead, a stop, city speed, or a real brake snaps.
+      climbing = (v_ego >= HIGHWAY_EXPERIMENTAL_V and not self.output_should_stop and not lead_limiting
+                  and float(output_a_target_e2e) >= HIGHWAY_MODEL_BRAKE)
+      output_a_target = slew_highway_accel(self.highway_accel, target, self.dt, snap=not climbing)
+      self.highway_accel = output_a_target
+      if not climbing and output_a_target < output_a_target_mpc:
         self.mpc.source = LongitudinalPlanSource.e2e
     else:
       output_a_target = output_a_target_mpc
+      self.highway_accel = output_a_target
       self.output_should_stop = output_should_stop_mpc
 
     # VF8/VF9: delay the onset of braking; small boost only on committed red-light stops.
-    output_a_target = apply_vf_late_brake(sm, self.CP, output_a_target, self.vf_red_light_committed(sm))
+    red_light = self.vf_red_light_committed(sm)
+    output_a_target = apply_vf_late_brake(sm, self.CP, output_a_target, red_light)
+    output_a_target = limit_vf_highway_cruise_brake(
+      output_a_target, v_ego, vinfast=self.CP.brand == "vinfast",
+      cruise=self.mpc.source == LongitudinalPlanSource.cruise,
+      should_stop=self.output_should_stop, fcw=self.fcw, red_light=red_light)
 
     for idx in range(2):
       accel_clip[idx] = np.clip(accel_clip[idx], self.prev_accel_clip[idx] - 0.05, self.prev_accel_clip[idx] + 0.05)
