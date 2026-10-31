@@ -4,7 +4,8 @@ import pytest
 
 from cereal import log
 from openpilot.selfdrive.controls.lib.longitudinal_planner import (
-  LongitudinalPlanner, blend_experimental_accel, limit_vf_highway_cruise_brake)
+  HIGHWAY_CLIMB_SLEW, LongitudinalPlanner, blend_experimental_accel,
+  limit_vf_highway_cruise_brake, slew_highway_accel)
 from openpilot.selfdrive.test.longitudinal_maneuvers.test_vf_late_brake import build_sm
 
 LongitudinalPlanSource = log.LongitudinalPlan.LongitudinalPlanSource
@@ -22,6 +23,23 @@ def test_city_keeps_a_timid_model_accel():
 def test_highway_uses_the_cruise_plan_when_the_model_is_not_braking():
   assert blend_experimental_accel(0.0, 0.6, **HIGHWAY) == 0.6
   assert blend_experimental_accel(0.15, 0.6, **HIGHWAY) == 0.6
+  # Segment 45: the model sits just under zero. That is not a brake.
+  assert blend_experimental_accel(-0.05, 0.8, **HIGHWAY) == 0.8
+  assert blend_experimental_accel(-0.09, 0.8, **HIGHWAY) == 0.8
+
+
+def test_highway_climb_ramps_instead_of_stepping():
+  # One frame must not jump from the model to the cruise cap.
+  assert slew_highway_accel(0.0, 0.8, 0.05, snap=False) == pytest.approx(HIGHWAY_CLIMB_SLEW * 0.05)
+  a = 0.0
+  for model in (0.02, -0.02, 0.0, 0.05, -0.05, 0.08):
+    target = blend_experimental_accel(model, 0.8, **HIGHWAY)
+    nxt = slew_highway_accel(a, target, 0.05, snap=False)
+    assert nxt - a < 0.05
+    assert nxt >= a
+    a = nxt
+  # A real brake still arrives immediately.
+  assert slew_highway_accel(a, -0.4, 0.05, snap=True) == -0.4
 
 
 def test_above_set_speed_still_follows_cruise_brake():

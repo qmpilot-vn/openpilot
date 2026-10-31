@@ -207,18 +207,34 @@ def apply_vf_late_brake(sm, CP, a_target: float, red_light: bool) -> float:
 
 # popv2 levels off short of the set speed once the road is a highway.
 HIGHWAY_EXPERIMENTAL_V = 60. * CV.KPH_TO_MS
+# A model request above this is the leveled-off plan, not a brake. Segment 45
+# chatters between about -0.09 and +0.08, and snapping to the cruise cap on
+# each zero crossing is the jerk.
+HIGHWAY_MODEL_BRAKE = -0.15
+# Rise toward the cruise plan, and ease off it, without a step.
+HIGHWAY_CLIMB_SLEW = 0.5   # m/s^2 per second
+HIGHWAY_RELEASE_SLEW = 1.0
 
 
 def blend_experimental_accel(e2e_accel: float, mpc_accel: float, *, v_ego: float,
                              should_stop: bool, lead_limiting: bool) -> float:
   """Below 60 km/h the model keeps the pedal, including when it is timid.
 
-  At highway speed the cruise plan is used while the model is not braking and a
-  lead or a stop is not limiting. The accel clip still caps that request.
+  At highway speed the cruise plan is the target while the model is not actually
+  braking and a lead or a stop is not limiting. The caller slews up to it.
   """
-  if v_ego < HIGHWAY_EXPERIMENTAL_V or should_stop or lead_limiting or float(e2e_accel) < 0.0:
+  if v_ego < HIGHWAY_EXPERIMENTAL_V or should_stop or lead_limiting or float(e2e_accel) < HIGHWAY_MODEL_BRAKE:
     return float(min(e2e_accel, mpc_accel))
   return float(mpc_accel)
+
+
+def slew_highway_accel(previous: float, target: float, dt: float, *, snap: bool) -> float:
+  """Move toward the highway target. A real brake or a city plan is applied at once."""
+  if snap:
+    return float(target)
+  if target >= previous:
+    return float(min(target, previous + HIGHWAY_CLIMB_SLEW * dt))
+  return float(max(target, previous - HIGHWAY_RELEASE_SLEW * dt))
 
 
 def get_coast_accel(pitch):
@@ -259,6 +275,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.v_desired_filter = FirstOrderFilter(init_v, 2.0, self.dt)
     self.prev_accel_clip = [ACCEL_MIN, ACCEL_MAX]
     self.output_a_target = 0.0
+    self.highway_accel = 0.0
     self.output_should_stop = False
     self.vf_redlight_count = 0
     self.vf_redlight_hold = 0
@@ -405,13 +422,19 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       lead_limiting = self.mpc.source in (LongitudinalPlanSource.lead0, LongitudinalPlanSource.lead1)
       if self.vn_follow_m is not None and lead.status and float(lead.dRel) < self.vn_follow_m:
         lead_limiting = True
-      output_a_target = blend_experimental_accel(
+      target = blend_experimental_accel(
         output_a_target_e2e, output_a_target_mpc, v_ego=v_ego,
         should_stop=self.output_should_stop, lead_limiting=lead_limiting)
-      if output_a_target < output_a_target_mpc:
+      # A timid model still climbs. A lead, a stop, city speed, or a real brake snaps.
+      climbing = (v_ego >= HIGHWAY_EXPERIMENTAL_V and not self.output_should_stop and not lead_limiting
+                  and float(output_a_target_e2e) >= HIGHWAY_MODEL_BRAKE)
+      output_a_target = slew_highway_accel(self.highway_accel, target, self.dt, snap=not climbing)
+      self.highway_accel = output_a_target
+      if not climbing and output_a_target < output_a_target_mpc:
         self.mpc.source = LongitudinalPlanSource.e2e
     else:
       output_a_target = output_a_target_mpc
+      self.highway_accel = output_a_target
       self.output_should_stop = output_should_stop_mpc
 
     # VF8/VF9: delay the onset of braking; small boost only on committed red-light stops.
