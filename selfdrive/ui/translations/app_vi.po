@@ -1,0 +1,911 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: vi\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid " Steering torque response calibration is complete."
+msgstr " Hiệu chỉnh phản hồi mô-men lái đã hoàn tất."
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid " Steering torque response calibration is {}% complete."
+msgstr " Hiệu chỉnh phản hồi mô-men lái đã hoàn tất {}%."
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid " Your device is pointed {:.1f}° {} and {:.1f}° {}."
+msgstr " Thiết bị đang nghiêng {:.1f}° {} và {:.1f}° {}."
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "--"
+msgstr "--"
+
+#: openpilot/selfdrive/ui/widgets/prime.py
+msgid "1 year of drive storage"
+msgstr "Lưu dữ liệu lái 1 năm"
+
+#: openpilot/selfdrive/ui/widgets/prime.py
+msgid "24/7 LTE connectivity"
+msgstr "Kết nối LTE 24/7"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "2G"
+msgstr "2G"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "3G"
+msgstr "3G"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "5G"
+msgstr "5G"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "<br><br>Steering lag calibration is complete."
+msgstr "<br><br>Hiệu chỉnh độ trễ lái đã hoàn tất."
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "<br><br>Steering lag calibration is {}% complete."
+msgstr "<br><br>Hiệu chỉnh độ trễ lái đã hoàn tất {}%."
+
+#: openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "ADD"
+msgstr "THÊM"
+
+#: system/ui/widgets/network.py
+msgid "APN Setting"
+msgstr "Cài đặt APN"
+
+#: openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "Acknowledge Excessive Actuation"
+msgstr "Xác nhận tác động quá mức"
+
+#: system/ui/widgets/network.py
+msgid "Advanced"
+msgstr "Nâng cao"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Aggressive"
+msgstr "Mạnh"
+
+#: openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "Agree"
+msgstr "Đồng ý"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Always-On Driver Monitoring"
+msgstr "Giám sát tài xế luôn bật"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/vinfast.py
+msgid "VinFast - Auto Reengage"
+msgstr "VinFast - Tự khởi hành"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/vinfast.py
+msgid "Automatically resume after a full stop in traffic when the car ahead starts moving. Turn this off if you want to press Resume / ACC yourself. The car will stay stopped at a light until you resume."
+msgstr "Tự động chạy tiếp sau khi dừng hẳn trong kẹt xe, khi xe phía trước bắt đầu đi. Tắt nếu bạn muốn tự bấm Resume / ACC. Xe sẽ đứng yên ở đèn đỏ cho đến khi bạn resume."
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Are you sure you want to power off?"
+msgstr "Bạn có chắc muốn tắt nguồn?"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Are you sure you want to reboot?"
+msgstr "Bạn có chắc muốn khởi động lại?"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Are you sure you want to reset calibration?"
+msgstr "Bạn có chắc muốn đặt lại hiệu chỉnh?"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Are you sure you want to uninstall?"
+msgstr "Bạn có chắc muốn gỡ cài đặt?"
+
+#: openpilot/selfdrive/ui/layouts/onboarding.py
+#: system/ui/widgets/network.py
+msgid "Back"
+msgstr "Quay lại"
+
+#: openpilot/selfdrive/ui/widgets/prime.py
+msgid "Become a comma prime member at connect.comma.ai"
+msgstr "Đăng ký comma prime tại connect.comma.ai"
+
+#: openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "Bookmark connect.comma.ai to your home screen to use it like an app"
+msgstr "Ghim connect.comma.ai ra màn hình chính để dùng như ứng dụng"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "CHANGE"
+msgstr "ĐỔI"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "CHECK"
+msgstr "KIỂM TRA"
+
+#: openpilot/selfdrive/ui/widgets/exp_mode_button.py
+msgid "CHILL MODE ON"
+msgstr "NHẸ ĐANG BẬT"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+#: system/ui/widgets/network.py
+msgid "CONNECT"
+msgstr "KẾT NỐI"
+
+#: system/ui/widgets/network.py
+msgid "CONNECTING..."
+msgstr "ĐANG KẾT NỐI..."
+
+#: system/ui/widgets/confirm_dialog.py
+#: system/ui/widgets/keyboard.py
+#: system/ui/widgets/network.py
+#: system/ui/widgets/option_dialog.py
+msgid "Cancel"
+msgstr "Hủy"
+
+#: system/ui/widgets/network.py
+msgid "Cellular Metered"
+msgstr "Di động tính cước"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Change Language"
+msgstr "Đổi ngôn ngữ"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Changing this setting will restart sunnypilot if the car is powered on."
+msgstr "Đổi cài đặt này sẽ khởi động lại sunnypilot nếu xe đang bật nguồn."
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Choose your sponsorship tier and confirm your support"
+msgstr "Chọn gói tài trợ và xác nhận hỗ trợ"
+
+#: openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "Click \"add new device\" and scan the QR code on the right"
+msgstr "Nhấn \"add new device\" rồi quét mã QR bên phải"
+
+#: openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "Close"
+msgstr "Đóng"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Current Version"
+msgstr "Phiên bản hiện tại"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "DOWNLOAD"
+msgstr "TẢI"
+
+#: openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "Decline"
+msgstr "Từ chối"
+
+#: openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "Decline, uninstall sunnypilot"
+msgstr "Từ chối, gỡ cài đặt sunnypilot"
+
+#: openpilot/selfdrive/ui/layouts/settings/settings.py
+msgid "Developer"
+msgstr "Nhà phát triển"
+
+#: openpilot/selfdrive/ui/layouts/settings/settings.py
+msgid "Device"
+msgstr "Thiết bị"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Display"
+msgstr "Màn hình"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Cruise"
+msgstr "Hành trình"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Models"
+msgstr "Mô hình"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "OSM"
+msgstr "OSM"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Steering"
+msgstr "Lái"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Trips"
+msgstr "Chuyến đi"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Vehicle"
+msgstr "Xe"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "Visuals"
+msgstr "Giao diện"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/settings.py
+msgid "sunnylink"
+msgstr "sunnylink"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Disengage on Accelerator Pedal"
+msgstr "Ngắt khi đạp ga"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Disengage to Power Off"
+msgstr "Ngắt hệ thống để tắt nguồn"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Disengage to Reboot"
+msgstr "Ngắt hệ thống để khởi động lại"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Disengage to Reset Calibration"
+msgstr "Ngắt hệ thống để đặt lại hiệu chỉnh"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Display speed in km/h instead of mph."
+msgstr "Hiển thị tốc độ bằng km/h thay vì mph."
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Dongle ID"
+msgstr "Dongle ID"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Download"
+msgstr "Tải xuống"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Driver Camera"
+msgstr "Camera tài xế"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Driving Personality"
+msgstr "Phong cách lái"
+
+#: system/ui/widgets/network.py
+msgid "EDIT"
+msgstr "SỬA"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "ERROR"
+msgstr "LỖI"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "ETH"
+msgstr "ETH"
+
+#: openpilot/selfdrive/ui/widgets/exp_mode_button.py
+msgid "EXPERIMENTAL MODE ON"
+msgstr "THỬ NGHIỆM ĐANG BẬT"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Early Access: Become a sunnypilot Sponsor"
+msgstr "Truy cập sớm: Trở thành nhà tài trợ sunnypilot"
+
+#: openpilot/selfdrive/ui/layouts/settings/developer.py
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Enable"
+msgstr "Bật"
+
+#: openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Enable ADB"
+msgstr "Bật ADB"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Enable Lane Departure Warnings"
+msgstr "Bật cảnh báo lệch làn"
+
+#: system/ui/widgets/network.py
+msgid "Enable Roaming"
+msgstr "Bật roaming"
+
+#: openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Enable SSH"
+msgstr "Bật SSH"
+
+#: system/ui/widgets/network.py
+msgid "Enable Tethering"
+msgstr "Bật phát Wi-Fi"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Enable driver monitoring even when sunnypilot is not engaged."
+msgstr "Giám sát tài xế ngay cả khi sunnypilot chưa kích hoạt."
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Enable sunnypilot"
+msgstr "Bật sunnypilot"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Enable the sunnypilot longitudinal control (alpha) toggle to allow Experimental mode."
+msgstr "Bật điều khiển dọc sunnypilot (alpha) để dùng chế độ thử nghiệm."
+
+#: system/ui/widgets/network.py
+msgid "Enter APN"
+msgstr "Nhập APN"
+
+#: system/ui/widgets/network.py
+msgid "Enter SSID"
+msgstr "Nhập SSID"
+
+#: system/ui/widgets/network.py
+msgid "Enter new tethering password"
+msgstr "Nhập mật khẩu phát Wi-Fi mới"
+
+#: system/ui/widgets/network.py
+msgid "Enter password"
+msgstr "Nhập mật khẩu"
+
+#: system/ui/sunnypilot/widgets/tree_dialog.py
+msgid "Enter search query"
+msgstr "Nhập từ khóa tìm kiếm"
+
+#: openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "Enter your GitHub username"
+msgstr "Nhập tên người dùng GitHub"
+
+#: system/ui/widgets/list_view.py
+msgid "Error"
+msgstr "Lỗi"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Experimental Mode"
+msgstr "Chế độ thử nghiệm"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Experimental mode is currently unavailable on this car since the car's stock ACC is used for longitudinal control."
+msgstr "Chế độ thử nghiệm chưa dùng được trên xe này vì đang dùng ACC gốc để điều khiển dọc."
+
+#: system/ui/widgets/network.py
+msgid "FORGETTING..."
+msgstr "ĐANG QUÊN..."
+
+#: openpilot/selfdrive/ui/widgets/setup.py
+msgid "Finish Setup"
+msgstr "Hoàn tất cài đặt"
+
+#: openpilot/selfdrive/ui/layouts/settings/settings.py
+msgid "Firehose"
+msgstr "Firehose"
+
+#: openpilot/selfdrive/ui/layouts/settings/firehose.py
+msgid "Firehose Mode"
+msgstr "Chế độ Firehose"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Follow the prompts to complete the pairing process"
+msgstr "Làm theo hướng dẫn để hoàn tất ghép nối"
+
+#: system/ui/widgets/network.py
+msgid "Forget"
+msgstr "Quên"
+
+#: system/ui/widgets/network.py
+msgid "Forget Wi-Fi Network \"{}\"?"
+msgstr "Quên mạng Wi-Fi \"{}\"?"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "GOOD"
+msgstr "TỐT"
+
+#: openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "Go to https://connect.comma.ai on your phone"
+msgstr "Mở https://connect.comma.ai trên điện thoại"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "HIGH"
+msgstr "CAO"
+
+#: system/ui/widgets/network.py
+msgid "Hidden Network"
+msgstr "Mạng ẩn"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "INSTALL"
+msgstr "CÀI"
+
+#: system/ui/widgets/network.py
+msgid "IP Address"
+msgstr "Địa chỉ IP"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "If sponsorship status was not updated, please contact a moderator on the community forum at https://community.sunnypilot.ai"
+msgstr "Nếu trạng thái tài trợ chưa cập nhật, hãy liên hệ quản trị viên tại https://community.sunnypilot.ai"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Install Update"
+msgstr "Cài bản cập nhật"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Join our Community Forum at https://community.sunnypilot.ai and reach out to a moderator if you have issues"
+msgstr "Tham gia diễn đàn https://community.sunnypilot.ai và liên hệ quản trị viên nếu gặp vấn đề"
+
+#: openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Joystick Debug Mode"
+msgstr "Chế độ debug joystick"
+
+#: openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "LOADING"
+msgstr "ĐANG TẢI"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "LTE"
+msgstr "LTE"
+
+#: openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Lateral Maneuver Mode"
+msgstr "Chế độ thao tác ngang"
+
+#: openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "Longitudinal Maneuver Mode"
+msgstr "Chế độ thao tác dọc"
+
+#: openpilot/selfdrive/ui/onroad/hud_renderer.py
+msgid "MAX"
+msgstr "MAX"
+
+#: openpilot/selfdrive/ui/widgets/setup.py
+msgid "Maximize your training data uploads to improve openpilot's driving models."
+msgstr "Tải lên nhiều dữ liệu huấn luyện hơn để cải thiện mô hình lái của openpilot."
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "N/A"
+msgstr "N/A"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "NO"
+msgstr "KHÔNG"
+
+#: openpilot/selfdrive/ui/layouts/settings/settings.py
+msgid "Network"
+msgstr "Mạng"
+
+#: openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "No SSH keys found for user '{}'"
+msgstr "Không tìm thấy khóa SSH cho người dùng '{}'"
+
+#: openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "No release notes available."
+msgstr "Không có ghi chú phát hành."
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "OFFLINE"
+msgstr "NGOẠI TUYẾN"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+#: system/ui/widgets/confirm_dialog.py
+#: system/ui/widgets/html_render.py
+msgid "OK"
+msgstr "OK"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "ONLINE"
+msgstr "TRỰC TUYẾN"
+
+#: openpilot/selfdrive/ui/widgets/setup.py
+msgid "Open"
+msgstr "Mở"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "PAIR"
+msgstr "GHÉP"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "PANDA"
+msgstr "PANDA"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "PREVIEW"
+msgstr "XEM"
+
+#: openpilot/selfdrive/ui/widgets/prime.py
+msgid "PRIME FEATURES:"
+msgstr "TÍNH NĂNG PRIME:"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Pair Device"
+msgstr "Ghép thiết bị"
+
+#: openpilot/selfdrive/ui/widgets/setup.py
+msgid "Pair device"
+msgstr "Ghép thiết bị"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Pair your GitHub account"
+msgstr "Ghép tài khoản GitHub"
+
+#: openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "Pair your device to your comma account"
+msgstr "Ghép thiết bị với tài khoản comma"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+#: openpilot/selfdrive/ui/widgets/setup.py
+msgid "Pair your device with comma connect (connect.comma.ai) and claim your comma prime offer."
+msgstr "Ghép thiết bị với comma connect (connect.comma.ai) và nhận ưu đãi comma prime."
+
+#: openpilot/selfdrive/ui/widgets/setup.py
+msgid "Please connect to Wi-Fi to complete initial pairing"
+msgstr "Hãy kết nối Wi-Fi để hoàn tất ghép nối ban đầu"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Power Off"
+msgstr "Tắt nguồn"
+
+#: system/ui/widgets/network.py
+msgid "Prevent large data uploads when on a metered Wi-Fi connection"
+msgstr "Không tải dữ liệu lớn khi Wi-Fi tính cước"
+
+#: system/ui/widgets/network.py
+msgid "Prevent large data uploads when on a metered cellular connection"
+msgstr "Không tải dữ liệu lớn khi dùng mạng di động tính cước"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Preview the driver facing camera to ensure that driver monitoring has good visibility. (vehicle must be off)"
+msgstr "Xem trước camera hướng tài xế để đảm bảo giám sát nhìn rõ. (xe phải tắt máy)"
+
+#: openpilot/selfdrive/ui/widgets/pairing_dialog.py
+msgid "QR Code Error"
+msgstr "Lỗi mã QR"
+
+#: openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "REMOVE"
+msgstr "XÓA"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "RESET"
+msgstr "ĐẶT LẠI"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "REVIEW"
+msgstr "XEM"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Re-enter the \"sunnylink\" panel to verify sponsorship status"
+msgstr "Vào lại mục \"sunnylink\" để kiểm tra trạng thái tài trợ"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Reboot"
+msgstr "Khởi động lại"
+
+#: openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "Reboot Device"
+msgstr "Khởi động lại thiết bị"
+
+#: openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "Reboot and Update"
+msgstr "Khởi động lại và cập nhật"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Record and Upload Driver Camera"
+msgstr "Ghi và tải camera tài xế"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Record and Upload Microphone Audio"
+msgstr "Ghi và tải âm thanh micro"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Record and store microphone audio while driving. The audio will be included in the dashcam video in comma connect."
+msgstr "Ghi âm micro khi lái xe. Âm thanh sẽ nằm trong video dashcam trên comma connect."
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Regulatory"
+msgstr "Quy định"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Relaxed"
+msgstr "Nhẹ"
+
+#: openpilot/selfdrive/ui/widgets/prime.py
+msgid "Remote access"
+msgstr "Truy cập từ xa"
+
+#: openpilot/selfdrive/ui/widgets/prime.py
+msgid "Remote snapshots"
+msgstr "Ảnh chụp từ xa"
+
+#: openpilot/selfdrive/ui/widgets/ssh_key.py
+msgid "Request timed out"
+msgstr "Hết thời gian yêu cầu"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Reset"
+msgstr "Đặt lại"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Reset Calibration"
+msgstr "Đặt lại hiệu chỉnh"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Review Training Guide"
+msgstr "Xem hướng dẫn"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Review the rules, features, and limitations of sunnypilot"
+msgstr "Xem quy tắc, tính năng và giới hạn của sunnypilot"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "SELECT"
+msgstr "CHỌN"
+
+#: openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "SSH Keys"
+msgstr "Khóa SSH"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Scan the QR code to login to your GitHub account"
+msgstr "Quét mã QR để đăng nhập GitHub"
+
+#: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
+msgid "Scan the QR code to visit sunnyhaibin's GitHub Sponsors page"
+msgstr "Quét mã QR để mở trang GitHub Sponsors của sunnyhaibin"
+
+#: system/ui/widgets/network.py
+msgid "Scanning Wi-Fi networks..."
+msgstr "Đang quét mạng Wi-Fi..."
+
+#: system/ui/sunnypilot/widgets/tree_dialog.py
+msgid "Search"
+msgstr "Tìm kiếm"
+
+#: system/ui/widgets/option_dialog.py
+msgid "Select"
+msgstr "Chọn"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Select a branch"
+msgstr "Chọn nhánh"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Select a language"
+msgstr "Chọn ngôn ngữ"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "Serial"
+msgstr "Số serial"
+
+#: openpilot/selfdrive/ui/widgets/offroad_alerts.py
+msgid "Snooze Update"
+msgstr "Hoãn cập nhật"
+
+#: openpilot/selfdrive/ui/layouts/settings/settings.py
+msgid "Software"
+msgstr "Phần mềm"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Standard"
+msgstr "Tiêu chuẩn"
+
+#: openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "System Unresponsive"
+msgstr "Hệ thống không phản hồi"
+
+#: openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "TAKE CONTROL IMMEDIATELY"
+msgstr "HÃY CẦM LÁI NGAY"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "TEMP"
+msgstr "NHIỆT"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Target Branch"
+msgstr "Nhánh đích"
+
+#: system/ui/widgets/network.py
+msgid "Tethering Password"
+msgstr "Mật khẩu phát Wi-Fi"
+
+#: openpilot/selfdrive/ui/layouts/settings/settings.py
+msgid "Toggles"
+msgstr "Tùy chọn"
+
+#: openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "UI Debug Mode"
+msgstr "Chế độ debug UI"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "UNINSTALL"
+msgstr "GỠ"
+
+#: openpilot/selfdrive/ui/layouts/home.py
+msgid "UPDATE"
+msgstr "CẬP NHẬT"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Uninstall"
+msgstr "Gỡ cài đặt"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "Unknown"
+msgstr "Không rõ"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "Updates are only downloaded while the car is off."
+msgstr "Bản cập nhật chỉ được tải khi xe tắt máy."
+
+#: openpilot/selfdrive/ui/widgets/prime.py
+msgid "Upgrade Now"
+msgstr "Nâng cấp ngay"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Upload data from the driver facing camera and help improve the driver monitoring algorithm."
+msgstr "Tải dữ liệu camera tài xế để cải thiện thuật toán giám sát tài xế."
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "Use Metric System"
+msgstr "Dùng hệ mét"
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "VEHICLE"
+msgstr "XE"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "VIEW"
+msgstr "XEM"
+
+#: openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "Waiting to start"
+msgstr "Đang chờ khởi động"
+
+#: openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "Welcome to sunnypilot"
+msgstr "Chào mừng đến sunnypilot"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "When enabled, pressing the accelerator pedal will disengage sunnypilot."
+msgstr "Khi bật, đạp ga sẽ ngắt sunnypilot."
+
+#: openpilot/selfdrive/ui/layouts/sidebar.py
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+#: system/ui/widgets/network.py
+msgid "Wi-Fi Network Metered"
+msgstr "Wi-Fi tính cước"
+
+#: system/ui/widgets/network.py
+msgid "Wrong password"
+msgstr "Sai mật khẩu"
+
+#: openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "You must accept the Terms of Service in order to use sunnypilot."
+msgstr "Bạn phải chấp nhận Điều khoản dịch vụ để dùng sunnypilot."
+
+#: openpilot/selfdrive/ui/layouts/onboarding.py
+msgid "You must accept the Terms of Service to use sunnypilot. Read the latest terms at https://sunnypilot.ai/terms before continuing."
+msgstr "Bạn phải chấp nhận Điều khoản dịch vụ để dùng sunnypilot. Đọc bản mới nhất tại https://sunnypilot.ai/terms trước khi tiếp tục."
+
+#: openpilot/selfdrive/ui/onroad/driver_camera_dialog.py
+msgid "camera starting"
+msgstr "đang bật camera"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "checking..."
+msgstr "đang kiểm tra..."
+
+#: openpilot/selfdrive/ui/widgets/prime.py
+msgid "comma prime"
+msgstr "comma prime"
+
+#: system/ui/widgets/network.py
+msgid "default"
+msgstr "mặc định"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "down"
+msgstr "xuống"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "downloading..."
+msgstr "đang tải..."
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "failed to check for update"
+msgstr "không kiểm tra được bản cập nhật"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "finalizing update..."
+msgstr "đang hoàn tất cập nhật..."
+
+#: system/ui/widgets/network.py
+msgid "for \"{}\""
+msgstr "cho \"{}\""
+
+#: openpilot/selfdrive/ui/onroad/hud_renderer.py
+msgid "km/h"
+msgstr "km/h"
+
+#: system/ui/widgets/network.py
+msgid "leave blank for automatic configuration"
+msgstr "để trống để cấu hình tự động"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "left"
+msgstr "trái"
+
+#: system/ui/widgets/network.py
+msgid "metered"
+msgstr "tính cước"
+
+#: openpilot/selfdrive/ui/onroad/hud_renderer.py
+msgid "mph"
+msgstr "mph"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "never"
+msgstr "chưa bao giờ"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "now"
+msgstr "bây giờ"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "right"
+msgstr "phải"
+
+#: openpilot/selfdrive/ui/layouts/settings/developer.py
+msgid "sunnypilot Longitudinal Control (Alpha)"
+msgstr "Điều khiển dọc sunnypilot (Alpha)"
+
+#: openpilot/selfdrive/ui/onroad/alert_renderer.py
+msgid "sunnypilot Unavailable"
+msgstr "sunnypilot không khả dụng"
+
+#: openpilot/selfdrive/ui/layouts/settings/toggles.py
+msgid "sunnypilot longitudinal control may come in a future update."
+msgstr "Điều khiển dọc sunnypilot có thể có ở bản cập nhật sau."
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "sunnypilot requires the device to be mounted within 4° left or right and within 5° up or 9° down."
+msgstr "sunnypilot yêu cầu gắn thiết bị lệch không quá 4° trái/phải, 5° lên hoặc 9° xuống."
+
+#: system/ui/widgets/network.py
+msgid "unmetered"
+msgstr "không tính cước"
+
+#: openpilot/selfdrive/ui/layouts/settings/device.py
+msgid "up"
+msgstr "lên"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "up to date, last checked never"
+msgstr "đã mới nhất, chưa từng kiểm tra"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "up to date, last checked {}"
+msgstr "đã mới nhất, kiểm tra lần cuối {}"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "update available"
+msgstr "có bản cập nhật"
+
+#: openpilot/selfdrive/ui/layouts/home.py
+msgid "{} ALERT"
+msgid_plural "{} ALERTS"
+msgstr[0] "{} CẢNH BÁO"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "{} day ago"
+msgid_plural "{} days ago"
+msgstr[0] "{} ngày trước"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "{} hour ago"
+msgid_plural "{} hours ago"
+msgstr[0] "{} giờ trước"
+
+#: openpilot/selfdrive/ui/layouts/settings/software.py
+msgid "{} minute ago"
+msgid_plural "{} minutes ago"
+msgstr[0] "{} phút trước"
+
+#: openpilot/selfdrive/ui/layouts/settings/firehose.py
+msgid "{} segment of your driving is in the training dataset so far."
+msgid_plural "{} segments of your driving is in the training dataset so far."
+msgstr[0] "Hiện có {} đoạn hành trình của bạn trong tập dữ liệu huấn luyện."
+
+#: openpilot/selfdrive/ui/widgets/prime.py
+msgid "✓ SUBSCRIBED"
+msgstr "✓ ĐÃ ĐĂNG KÝ"
+
+#: openpilot/selfdrive/ui/widgets/setup.py
+msgid "🔥 Firehose Mode 🔥"
+msgstr "🔥 Chế độ Firehose 🔥"
