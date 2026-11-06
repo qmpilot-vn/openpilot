@@ -1,0 +1,47 @@
+.cache/
+/build/
+# Private VinFast safety — keep only on flash/build machines (see vinfast_stub.h).
+opendbc/safety/modes/vinfast.h
+opendbc/safety/modes/vinfast_common.h
+opendbc/safety/modes/vinfast_vf6.h
+*.pyc
+*.os
+*.o
+*.so
+*.a
+*.tmp
+*.dylib
+.*.swp
+.DS_Store
+.hypothesis
+*.egg-info/
+*.html
+*.gcda
+*.gcno
+*.dump
+*.gcov
+/dist/
+.vscode/
+__pycache__/
+# VinFast car native extensions (shipped alongside shims for pull-and-run)
+!opendbc/car/vinfast/*_impl*.so
+!opendbc/dbc/vinfast_dbc_impl*.so
+*.profraw
+opendbc/can/build/
+opendbc/can/obj/
+opendbc/dbc/*_generated.dbc
+
+cppcheck-addon-ctu-file-list
+opendbc/safety/tests/coverage-out
+
+.mull/
+
+# VinFast DBC tables ship only inside vinfast_dbc_impl*.so
+opendbc/dbc/vinfast_vf6_*.dbc
+opendbc/dbc/vinfast_vf8_*.dbc
+opendbc/dbc/vinfast_*.dbc.cache
+
+# VinFast dev tests (not shipped on vf-release)
+opendbc/car/vinfast/tests/
+opendbc/can/tests/test_vinfast_dbc_cache.py
+opendbc/safety/tests/test_vinfast_vf6.py
