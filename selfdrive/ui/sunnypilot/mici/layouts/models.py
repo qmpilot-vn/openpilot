@@ -1,0 +1,279 @@
+"""
+Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
+
+This file is part of sunnypilot and is licensed under the MIT License.
+See the LICENSE.md file in the root directory for more details.
+"""
+from collections.abc import Callable
+import pyray as rl
+
+from cereal import custom
+from openpilot.sunnypilot.models.default_model import DEFAULT_MODEL
+from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigMultiToggle
+from openpilot.selfdrive.ui.sunnypilot.accelerator_link import LINK_MODES, LINK_PARAM, link_mode, link_toggle_meaningful
+from openpilot.selfdrive.ui.sunnypilot.layouts.settings.models import ModelsLayout
+from openpilot.selfdrive.ui.ui_state import ui_state, device
+from openpilot.system.ui.lib.application import FontWeight, gui_app
+from openpilot.system.ui.lib.multilang import tr
+from openpilot.system.ui.lib.text_measure import measure_text_cached
+from openpilot.system.ui.widgets import Widget
+from openpilot.system.ui.widgets.label import UnifiedLabel
+from openpilot.system.ui.widgets.scroller import NavScroller
+
+
+class FitLabel(UnifiedLabel):
+  """Single-line label that shrinks its font so translated headers stay within max_width."""
+  def __init__(self, text: str, font_size: int, min_font_size: int = 28, **kwargs):
+    self._base_font_size = font_size
+    self._min_font_size = min_font_size
+    self._fitted_text: str | None = None
+    super().__init__(text, font_size, wrap_text=False, **kwargs)
+    self.set_text(text)
+
+  def set_text(self, text):
+    if text != self._fitted_text:
+      self._fitted_text = text
+      size = self._base_font_size
+      while size > self._min_font_size and self._max_width and \
+            measure_text_cached(self._font, text, size, size * self._letter_spacing).x > self._max_width:
+        size -= 2
+      self.set_font_size(size)
+    super().set_text(text)
+
+class CurrentModelInfo(Widget):
+  def __init__(self):
+    super().__init__()
+
+    self.set_rect(rl.Rectangle(0, 0, 360, 180))
+
+    header_color = rl.Color(255, 255, 255, int(255 * 0.9))
+    subheader_color = rl.Color(255, 255, 255, int(255 * 0.9 * 0.65))
+    max_width = int(self._rect.width - 20)
+    self.current_model_header = FitLabel(tr("active model"), 48, max_width=max_width, text_color=header_color, font_weight=FontWeight.DISPLAY)
+    default_text = f"{DEFAULT_MODEL} (Default)".lower()
+    self.current_model_text = UnifiedLabel(default_text, 32, max_width=max_width, text_color=subheader_color, font_weight=FontWeight.ROMAN, scroll=True)
+
+    self.info_header = FitLabel(tr("cache size"), 48, max_width=max_width, text_color=header_color, font_weight=FontWeight.DISPLAY)
+    self.info_text = UnifiedLabel("0 mb", 32, max_width=max_width, text_color=subheader_color, font_weight=FontWeight.ROMAN)
+
+  def _render(self, _):
+    self.current_model_header.set_position(self._rect.x + 20, self._rect.y - 10)
+    self.current_model_header.render()
+
+    self.current_model_text.set_position(self._rect.x + 20, self._rect.y + 68 - 25)
+    self.current_model_text.render()
+
+    self.info_header.set_position(self._rect.x + 20, self._rect.y + 114 - 30)
+    self.info_header.render()
+
+    self.info_text.set_position(self._rect.x + 20, self._rect.y + 161 - 25)
+    self.info_text.render()
+
+LINK_MODE_LABELS = {"off": "off", "usb": "usb", "ios": "iOS"}
+
+
+class AcceleratorLinkToggle(BigMultiToggle):
+  """Off / USB / iOS. Cycles on tap; only parked."""
+
+  def __init__(self):
+    super().__init__(tr("jetlink"), [tr(LINK_MODE_LABELS[m]) for m in LINK_MODES])
+    self._mode = link_mode()
+    self._show()
+    self.set_enabled(lambda: ui_state.is_offroad())
+
+  def _show(self) -> None:
+    value = self._options[LINK_MODES.index(self._mode)]
+    if value != self.get_value():
+      self.set_value(value)
+
+  def _handle_mouse_release(self, mouse_pos) -> None:
+    BigButton._handle_mouse_release(self, mouse_pos)
+    if self.enabled:
+      self._mode = LINK_MODES[(LINK_MODES.index(self._mode) + 1) % len(LINK_MODES)]
+      ui_state.params.put(LINK_PARAM, LINK_MODES.index(self._mode), block=True)
+    self._show()
+
+  def refresh(self) -> None:
+    self._mode = link_mode()
+    self._show()
+
+
+class ModelsLayoutMici(NavScroller):
+  def __init__(self, back_callback: Callable):
+    super().__init__()
+    self.set_back_callback(back_callback)
+    self.original_back_callback = back_callback
+    self.focused_widget = None
+
+    self.current_model_info = CurrentModelInfo()
+    self._download_progress = "."
+    self._download_frame = 0
+    self._was_downloading = False
+
+    self.select_model_btn = BigButton(tr("select model"))
+    self.select_model_btn.set_click_callback(self._show_folders)
+
+    self.jetlink_toggle = AcceleratorLinkToggle()
+
+    self.cancel_download_btn = BigButton(tr("cancel download"))
+    self.cancel_download_btn.set_click_callback(lambda: ui_state.params.remove("ModelManager_DownloadIndex"))
+
+    self.main_items = [self.current_model_info, self.select_model_btn, self.jetlink_toggle, self.cancel_download_btn]
+    self._scroller.add_widgets(self.main_items)
+
+  @property
+  def model_manager(self):
+    return ui_state.sm["modelManagerSP"]
+
+  def _get_grouped_bundles(self, favorites = None):
+    bundles = self.model_manager.availableBundles
+    folders = {}
+    for bundle in bundles:
+      folder = next((override.value for override in bundle.overrides if override.key == "folder"), "")
+      folders.setdefault(folder, []).append(bundle)
+
+    if favorites:
+      for fav_bundle in [bundle for bundle in bundles if bundle.ref in favorites]:
+        folders.setdefault("favorites", []).append(fav_bundle)
+
+    return folders
+
+  def _show_selection_view(self, items, back_callback: Callable):
+    self._scroller._items = items
+    for item in items:
+      item.set_touch_valid_callback(lambda: self._scroller.scroll_panel.is_touch_valid() and self._scroller.enabled)
+    self._scroller.scroll_panel.set_offset(0)
+    self.set_back_callback(back_callback)
+
+  def _show_folders(self):
+    self.focused_widget = self.select_model_btn
+
+    favs = ui_state.params.get("ModelManager_Favs")
+    favorites = set(favs.split(';')) if favs else set()
+
+    folders = self._get_grouped_bundles(favorites)
+    folder_buttons = []
+    default_btn = BigButton(f"{DEFAULT_MODEL} (Default)".lower())
+    default_btn.set_click_callback(self._select_default)
+    folder_buttons.append(default_btn)
+
+    for folder in sorted(folders.keys(), key=lambda f: max((bundle.index for bundle in folders[f]), default=-1), reverse=True):
+      if folder.lower() in ["release models", "master models", "favorites"]:
+        btn = BigButton(folder.lower())
+        btn.set_click_callback(lambda f=folder: self._select_folder(f))
+        if folder.lower() == "favorites":
+          folder_buttons.insert(0, btn)
+        else:
+          folder_buttons.append(btn)
+    self._show_selection_view(folder_buttons, self._reset_main_view)
+
+  def _select_model(self, bundle):
+    ui_state.params.put("ModelManager_DownloadIndex", bundle.index)
+    self._reset_main_view()
+
+  def _select_default(self):
+    ui_state.params.remove("ModelManager_ActiveBundle")
+    self._reset_main_view()
+
+  def _select_folder(self, folder_name):
+    favs = ui_state.params.get("ModelManager_Favs")
+    favorites = set(favs.split(';')) if favs else set()
+
+    folders = self._get_grouped_bundles(favorites)
+    bundles = sorted(folders.get(folder_name, []), key=lambda b: b.index, reverse=True)
+
+    btns = []
+    for bundle in bundles:
+      txt = bundle.displayName.lower()
+      btn = BigButton(txt)
+      btn.set_click_callback(lambda b=bundle: self._select_model(b))
+      btns.append(btn)
+    self._show_selection_view(btns, self._show_folders)
+
+  def _reset_main_view(self):
+    self._scroller._items = self.main_items
+    self.set_back_callback(self.original_back_callback)
+    self._scroller.scroll_panel.set_offset(0)
+    self._scroller.scroll_to(0)
+
+  def hide_event(self):
+    super().hide_event()
+    if self._was_downloading:
+      device.set_override_interactive_timeout(None)
+      self._was_downloading = False
+
+  def _update_state(self):
+    super()._update_state()
+
+    self.select_model_btn.set_enabled(ui_state.is_offroad())
+    self.jetlink_toggle.set_visible(link_toggle_meaningful())
+    self.jetlink_toggle.refresh()
+    self.cancel_download_btn.set_visible(False)
+    self.current_model_info.current_model_header._shimmer = False
+    self.current_model_info.info_header._shimmer = False
+
+    manager = self.model_manager
+    self._download_frame += 1
+    should_update = self._download_frame % (gui_app.target_fps / 2) == 0
+    if should_update:
+      self._download_progress = self._download_progress + "." if len(self._download_progress) < 3 else ""
+
+    is_downloading = (manager.selectedBundle
+                      and manager.selectedBundle.status == custom.ModelManagerSP.DownloadStatus.downloading)
+    if self._was_downloading and not is_downloading:
+      device.set_override_interactive_timeout(None)
+    self._was_downloading = is_downloading
+
+    self.current_model_info.current_model_header.set_text(tr("active model"))
+    model_text = manager.activeBundle.displayName.lower() if manager.activeBundle.ref else f"{DEFAULT_MODEL} (Default)".lower()
+    self.current_model_info.current_model_text.set_text(model_text)
+    self.current_model_info.info_header.set_text(tr("cache size"))
+    self.current_model_info.info_text.set_text(f"{ModelsLayout.calculate_cache_size():.2f} MB")
+
+    jetlink = None if ui_state.chestnut_present else ui_state.jetlink
+    if jetlink is not None and (jetlink.enabled or jetlink.present or jetlink.progress):
+      name = (jetlink.active_model or jetlink.model or jetlink.default_model or "").lower()
+      if name:
+        self.current_model_info.current_model_text.set_text(name)
+      progress = jetlink.progress or {}
+      stage = str(progress.get("stage") or "")
+      msg = str(progress.get("msg") or "")
+      if jetlink.present and (stage in ("", "ready") and jetlink.ready):
+        self.current_model_info.info_header.set_text(tr("jetlink"))
+        self.current_model_info.info_text.set_text(tr("connected, engine ready"))
+      elif stage:
+        self.current_model_info.info_header.set_text(tr("jetlink") + self._download_progress)
+        self.current_model_info.info_text.set_text(msg or stage)
+        self.current_model_info.info_header._shimmer = True
+      elif jetlink.present:
+        self.current_model_info.info_header.set_text(tr("jetlink"))
+        self.current_model_info.info_text.set_text(tr("connected"))
+      else:
+        self.current_model_info.info_header.set_text(tr("jetlink"))
+        self.current_model_info.info_text.set_text(tr("waiting for host"))
+
+    if manager.selectedBundle and manager.selectedBundle.status == custom.ModelManagerSP.DownloadStatus.failed:
+      self.current_model_info.info_header.set_text(tr("error") + self._download_progress)
+      self.current_model_info.info_text.set_text(tr("download failed"))
+
+    elif manager.selectedBundle and manager.selectedBundle.status == custom.ModelManagerSP.DownloadStatus.downloading:
+      self.cancel_download_btn.set_visible(True)
+      device.set_override_interactive_timeout(5)
+      progress = 0.0
+      count = 0
+      for model in manager.selectedBundle.models:
+        count += 1
+        p = model.artifact.downloadProgress
+        if p.status == custom.ModelManagerSP.DownloadStatus.downloading:
+          progress += p.progress
+        elif p.status in (custom.ModelManagerSP.DownloadStatus.downloaded,
+                          custom.ModelManagerSP.DownloadStatus.cached):
+          progress += 100.0
+
+      self.current_model_info.current_model_header.set_text(tr("downloading"))
+      self.current_model_info.current_model_header._shimmer = True
+      self.current_model_info.current_model_text.set_text(f"{manager.selectedBundle.internalName.lower()}")
+      self.current_model_info.info_header.set_text(tr("progress") + self._download_progress)
+      self.current_model_info.info_header._shimmer = True
+      self.current_model_info.info_text.set_text(f"{progress/count:.2f}%")
+

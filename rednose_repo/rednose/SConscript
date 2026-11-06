@@ -1,0 +1,4 @@
+# Minimal stub for pandad-only / partial-tree builds. Full openpilot uses generated EKF libs here.
+Import('env')
+rednose = []
+Export('rednose')
