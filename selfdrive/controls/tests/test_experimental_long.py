@@ -42,6 +42,15 @@ def test_highway_climb_ramps_instead_of_stepping():
   assert slew_highway_accel(a, -0.4, 0.05, snap=True) == -0.4
 
 
+def test_highway_lets_go_of_a_brake_quickly():
+  # A held -3.5 climbing at 0.5 m/s^3 braked an open road for 7 s.
+  a, frames = -3.5, 0
+  while a < 0.0:
+    a = slew_highway_accel(a, 0.3, 0.05, snap=False)
+    frames += 1
+  assert frames * 0.05 <= 1.5
+
+
 def test_above_set_speed_still_follows_cruise_brake():
   assert blend_experimental_accel(0.2, -0.4, **HIGHWAY) == -0.4
   assert blend_experimental_accel(0.2, -0.4, **CITY) == -0.4
@@ -179,9 +188,14 @@ def test_vinfast_highway_cruise_brake_is_capped():
   # 100 km/h, set speed well below. The cruise plan wants about -1.2; publish a light brake.
   assert limit_vf_highway_cruise_brake(-2.0, 28.0, vinfast=True, cruise=True,
                                         should_stop=False, fcw=False, red_light=False) == pytest.approx(-0.8)
-  # Under 65 km/h, and any lead, stop, or non-VinFast car, the hard request stands.
-  assert limit_vf_highway_cruise_brake(-2.0, 15.0, vinfast=True, cruise=True,
-                                        should_stop=False, fcw=False, red_light=False) == -2.0
+  # Under 65 km/h the floor eases to the full limit at 30 km/h, with no step. City is unchanged.
+  assert limit_vf_highway_cruise_brake(-3.5, 65. / 3.6, vinfast=True, cruise=True,
+                                        should_stop=False, fcw=False, red_light=False) == pytest.approx(-1.2)
+  assert limit_vf_highway_cruise_brake(-3.5, 15.0, vinfast=True, cruise=True,
+                                        should_stop=False, fcw=False, red_light=False) == pytest.approx(-1.92, abs=0.01)
+  assert limit_vf_highway_cruise_brake(-3.5, 5.0, vinfast=True, cruise=True,
+                                        should_stop=False, fcw=False, red_light=False) == -3.5
+  # Any lead, stop, or non-VinFast car, the hard request stands.
   assert limit_vf_highway_cruise_brake(-2.0, 28.0, vinfast=True, cruise=False,
                                         should_stop=False, fcw=False, red_light=False) == -2.0
   assert limit_vf_highway_cruise_brake(-2.0, 28.0, vinfast=False, cruise=True,

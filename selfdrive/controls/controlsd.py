@@ -22,7 +22,7 @@ from openpilot.selfdrive.controls.lib.latcontrol_pid import LatControlPID
 from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle, STEER_ANGLE_SATURATION_THRESHOLD
 from openpilot.selfdrive.controls.lib.latcontrol_torque import LatControlTorque
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl
-from openpilot.selfdrive.controls.lib.radar_path_nudge import RadarPathNudge
+from openpilot.selfdrive.controls.lib.radar_path_nudge import RadarPathNudge, lanes_from_model
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
 
 from openpilot.sunnypilot.modeld_v2.modeld_base import ModelStateBase
@@ -260,6 +260,7 @@ class Controls(ControlsExt, ModelStateBase):
           points, CS.vEgo, float(new_desired_curvature),
           path_x=path_x, path_y=path_y,
           lat_active=CC.latActive, lane_changing=lane_changing,
+          lanes=lanes_from_model(model_v2) if self.radar_nudge.infocan else None,
         )
       new_desired_curvature = new_desired_curvature + radar_nudge_kappa
 
