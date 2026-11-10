@@ -26,7 +26,9 @@
 // - Consecutive pandas will be sorted based on panda type, and then serial number
 // Connecting:
 // - If a panda connection is dropped, pandad will reconnect to all pandas
-// - If a panda is added, we will only reconnect when we are offroad
+// - If a panda is added, reconnect while offroad. Also for the first 20s after
+//   start: a slow OTG dongle enumerates after the first list, and a cold boot
+//   often already has CAN ignition, so the offroad rescan would never run.
 // CAN buses:
 // - Each panda will have its block of 4 buses. E.g.: the second panda will use
 //   bus numbers 4, 5, 6 and 7
@@ -361,6 +363,22 @@ void send_peripheral_state(Panda *panda, PubMaster *pm) {
   pm->send("peripheralState", msg);
 }
 
+// After this, a panda plugged in mid-drive waits for offroad, so the bus
+// numbers do not change under an active controller.
+static constexpr double USB_PANDA_STARTUP_WINDOW_MS = 20000.0;
+static constexpr double USB_PANDA_STARTUP_SCAN_PERIOD_MS = 500.0;
+
+static bool reconnect_if_new_usb_panda(const std::vector<std::string> &connected_serials) {
+  for (std::string &s : Panda::list(true)) {
+    if (!std::count(connected_serials.begin(), connected_serials.end(), s)) {
+      LOGW("Reconnecting to new panda: %s", s.c_str());
+      do_exit = true;
+      return true;
+    }
+  }
+  return false;
+}
+
 void process_panda_state(std::vector<Panda *> &pandas, PubMaster *pm, bool engaged, bool engaged_mads, bool close_relay, bool spoofing_started, bool always_offroad, bool mask_vinfast_harness_ignition) {
   std::vector<std::string> connected_serials;
   for (Panda *p : pandas) {
@@ -386,14 +404,18 @@ void process_panda_state(std::vector<Panda *> &pandas, PubMaster *pm, bool engag
         do_exit = true;
 
       } else {
-        // check for new pandas
-        for (std::string &s : Panda::list(true)) {
-          if (!std::count(connected_serials.begin(), connected_serials.end(), s)) {
-            LOGW("Reconnecting to new panda: %s", s.c_str());
-            do_exit = true;
-            break;
-          }
-        }
+        reconnect_if_new_usb_panda(connected_serials);
+      }
+    } else {
+      static double startup_scan_until = -1.0;
+      static double next_startup_scan = 0.0;
+      const double now = millis_since_boot();
+      if (startup_scan_until < 0.0) {
+        startup_scan_until = now + USB_PANDA_STARTUP_WINDOW_MS;
+      }
+      if (now < startup_scan_until && now >= next_startup_scan) {
+        next_startup_scan = now + USB_PANDA_STARTUP_SCAN_PERIOD_MS;
+        reconnect_if_new_usb_panda(connected_serials);
       }
     }
 

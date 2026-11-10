@@ -1080,6 +1080,12 @@ msgstr "Chế độ thử nghiệm"
 msgid "Experimental Mode Switched"
 msgstr "Đã chuyển chế độ thử nghiệm"
 
+msgid "Experimental Mode On"
+msgstr "Đã bật chế độ thử nghiệm"
+
+msgid "Experimental Mode Off"
+msgstr "Đã tắt chế độ thử nghiệm"
+
 #: ../pythonpath/openpilot/selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/subaru.py
 msgid "Experimental feature to enable auto-resume during stop-and-go for certain supported Subaru platforms."
 msgstr "Tính năng thử nghiệm cho phép tự chạy lại khi dừng-đi trên một số dòng Subaru được hỗ trợ."
