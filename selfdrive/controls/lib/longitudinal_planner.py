@@ -15,6 +15,8 @@ from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import T_IDX
 from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_from_plan
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
 from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_min_follow_m
+from openpilot.selfdrive.controls.lib.vf_departure import DEPART_FINGERPRINTS, VfDeparture
+from openpilot.selfdrive.controls.lib.vf_brake_shaping import VfBrakeShaper
 from openpilot.common.swaglog import cloudlog
 
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlannerSP
@@ -78,10 +80,12 @@ VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7", "VINFAST_VF8", "VINFAST_
 VF_HIGHWAY_ACCEL_BP = [65. * CV.KPH_TO_MS, 72. * CV.KPH_TO_MS]
 VF_HIGHWAY_ACCEL_V = [1.0, 0.4]
 # Cruise-only brake. A lead, a stop, or FCW still uses the full decel limit.
-# -1.2 matches CRUISE_MIN_ACCEL at the start of the ramp, so city and 65 km/h
-# are unchanged. Above 72 km/h a set-speed correction stays at a light brake.
-VF_HIGHWAY_DECEL_BP = VF_HIGHWAY_ACCEL_BP
-VF_HIGHWAY_DECEL_V = [-1.2, -0.8]
+# -1.2 matches CRUISE_MIN_ACCEL at 65 km/h. Above 72 km/h a set-speed correction
+# stays at a light brake. Below 65 km/h the floor eases to the full limit at 30 km/h
+# instead of ending: ending it let a held -3 through (VF6 567ee85c1955eff0 000003fd
+# seg 77 at 64.7 km/h, and an engage at 64 km/h with a 35 km/h set speed in seg 12).
+VF_HIGHWAY_DECEL_BP = [30. * CV.KPH_TO_MS, *VF_HIGHWAY_ACCEL_BP]
+VF_HIGHWAY_DECEL_V = [ACCEL_MIN, -1.2, -0.8]
 
 # Set False to restore personality-only T_FOLLOW (no Thông tư 38/2024 floor).
 VN_LEGAL_FOLLOW = True
@@ -121,8 +125,6 @@ def limit_vf_highway_cruise_brake(a_target: float, v_ego: float, *, vinfast: boo
   Lead following, a stop request, FCW, and a committed red light are unchanged.
   """
   if not vinfast or not cruise or should_stop or fcw or red_light or a_target >= 0.0:
-    return float(a_target)
-  if v_ego <= VF_HIGHWAY_DECEL_BP[0]:
     return float(a_target)
   floor = float(np.interp(v_ego, VF_HIGHWAY_DECEL_BP, VF_HIGHWAY_DECEL_V))
   return float(max(a_target, floor))
@@ -214,6 +216,9 @@ HIGHWAY_MODEL_BRAKE = -0.15
 # Rise toward the cruise plan, and ease off it, without a step.
 HIGHWAY_CLIMB_SLEW = 0.5   # m/s^2 per second
 HIGHWAY_RELEASE_SLEW = 1.0
+# Letting go of a brake. At the climb rate a four-frame -3.5 took 7 s to clear and
+# braked an open road (VF6 567ee85c1955eff0 000003fd segs 51, 77). ISO 15622 jerk at 20 m/s.
+HIGHWAY_BRAKE_RELEASE_SLEW = 2.5
 
 
 def blend_experimental_accel(e2e_accel: float, mpc_accel: float, *, v_ego: float,
@@ -233,7 +238,8 @@ def slew_highway_accel(previous: float, target: float, dt: float, *, snap: bool)
   if snap:
     return float(target)
   if target >= previous:
-    return float(min(target, previous + HIGHWAY_CLIMB_SLEW * dt))
+    rate = HIGHWAY_BRAKE_RELEASE_SLEW if previous < 0.0 else HIGHWAY_CLIMB_SLEW
+    return float(min(target, previous + rate * dt))
   return float(max(target, previous - HIGHWAY_RELEASE_SLEW * dt))
 
 
@@ -324,6 +330,8 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.vf_redlight_hold = 0
     self.vn_follow_m = None
     self.vf_radar_launch = VfRadarLaunch() if CP.carFingerprint in VF_RADAR_LAUNCH_FINGERPRINTS else None
+    self.vf_departure = VfDeparture(dt) if CP.carFingerprint in DEPART_FINGERPRINTS else None
+    self.vf_brake = VfBrakeShaper() if CP.brand == "vinfast" else None
 
     self.v_desired_trajectory = np.zeros(CONTROL_N)
     self.a_desired_trajectory = np.zeros(CONTROL_N)
@@ -400,6 +408,9 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       self.v_desired_filter.x = v_ego
       # Clip aEgo to cruise limits to prevent large accelerations when becoming active
       self.a_desired = np.clip(sm['carState'].aEgo, accel_clip[0], accel_clip[1])
+      if self.vf_brake is not None:
+        self.highway_accel = float(self.a_desired)
+        self.vf_brake.reset(self.a_desired)
 
     # Prevent divergence, smooth in current v_ego
     self.v_desired_filter.x = max(0.0, self.v_desired_filter.update(v_ego))
@@ -459,16 +470,24 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     output_should_stop_e2e = sm['modelV2'].action.shouldStop
 
     if self.is_e2e(sm):
+      lead = sm['radarState'].leadOne
+      departing = False
+      if self.vf_departure is not None:
+        departing = self.vf_departure.update(
+          long_active=not long_control_off, standstill=sm['carState'].standstill, v_ego=v_ego, lead=lead,
+          model_should_stop=output_should_stop_e2e, model_accel=float(output_a_target_e2e))
       # Inside the legal gap, and whenever the model is braking, keep the lower
       # accel. On an open highway the cruise plan is what reaches the set speed.
-      self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
-      lead = sm['radarState'].leadOne
+      self.output_should_stop = (output_should_stop_e2e and not departing) or output_should_stop_mpc
       lead_limiting = self.mpc.source in (LongitudinalPlanSource.lead0, LongitudinalPlanSource.lead1)
       if self.vn_follow_m is not None and lead.status and float(lead.dRel) < self.vn_follow_m:
         lead_limiting = True
       target = blend_experimental_accel(
         output_a_target_e2e, output_a_target_mpc, v_ego=v_ego,
         should_stop=self.output_should_stop, lead_limiting=lead_limiting)
+      if self.vf_departure is not None and self.vf_departure.weight > 0.0:
+        w = self.vf_departure.weight
+        target = w * float(output_a_target_mpc) + (1.0 - w) * target
       # A timid model still climbs. A lead, a stop, city speed, or a real brake snaps.
       climbing = (v_ego >= HIGHWAY_EXPERIMENTAL_V and not self.output_should_stop and not lead_limiting
                   and float(output_a_target_e2e) >= HIGHWAY_MODEL_BRAKE)
@@ -493,10 +512,24 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       output_a_target, v_ego, vinfast=self.CP.brand == "vinfast",
       cruise=self.mpc.source == LongitudinalPlanSource.cruise,
       should_stop=self.output_should_stop, fcw=self.fcw, red_light=red_light)
+    if self.vf_brake is not None:
+      shaped = self.vf_brake.update(
+        output_a_target, v_ego=v_ego, source=self.mpc.source,
+        lead_one=sm['radarState'].leadOne, lead_two=sm['radarState'].leadTwo,
+        vn_active=self.vn_follow_m is not None, t_follow=get_T_FOLLOW(sm['selfdriveState'].personality),
+        fcw=self.fcw, should_stop=self.output_should_stop, dt=self.dt)
+      if shaped > output_a_target:
+        # The MPC carries its own accel forward. Keep it on what is published, or a
+        # brake that was never applied comes back on the next frames.
+        self.a_desired = max(self.a_desired, shaped)
+      output_a_target = shaped
 
     for idx in range(2):
       accel_clip[idx] = np.clip(accel_clip[idx], self.prev_accel_clip[idx] - 0.05, self.prev_accel_clip[idx] + 0.05)
     self.output_a_target = np.clip(output_a_target, accel_clip[0], accel_clip[1])
+    if self.vf_brake is not None and math.isfinite(self.output_a_target):
+      self.vf_brake.commit(self.output_a_target)
+      self.highway_accel = float(self.output_a_target)
     self.prev_accel_clip = accel_clip
 
   def publish(self, sm, pm):

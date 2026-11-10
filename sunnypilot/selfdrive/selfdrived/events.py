@@ -26,6 +26,15 @@ EVENT_NAME_SP = {v: k for k, v in EventNameSP.schema.enumerants.items()}
 IS_MICI = HARDWARE.get_device_type() == 'mici'
 
 
+def experimental_mode_switched_text(enabled: bool) -> str:
+  return "Experimental Mode On" if enabled else "Experimental Mode Off"
+
+
+def experimental_mode_switched_alert(CP: car.CarParams, CS: car.CarState, sm: messaging.SubMaster, metric: bool, soft_disable_time: int, personality) -> Alert:
+  from openpilot.sunnypilot.selfdrive.car.cruise_helpers import toggled_experimental_mode
+  return NormalPermanentAlert(experimental_mode_switched_text(toggled_experimental_mode), duration=1.5)
+
+
 def speed_limit_adjust_alert(CP: car.CarParams, CS: car.CarState, sm: messaging.SubMaster, metric: bool, soft_disable_time: int, personality) -> Alert:
   speedLimit = sm['longitudinalPlanSP'].speedLimit.resolver.speedLimit
   speed = round(speedLimit * (CV.MS_TO_KPH if metric else CV.MS_TO_MPH))
@@ -181,7 +190,7 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
   },
 
   EventNameSP.experimentalModeSwitched: {
-    ET.WARNING: NormalPermanentAlert("Experimental Mode Switched", duration=1.5)
+    ET.WARNING: experimental_mode_switched_alert,
   },
 
   EventNameSP.wrongCarModeAlertOnly: {
