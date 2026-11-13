@@ -234,22 +234,6 @@ def main() -> None:
 
     first_run = False
 
-    if not os.environ.get("SINGLE_PANDA"):
-      deadline = time.monotonic() + 5.0
-      usb_now = Panda.usb_list()
-      if not usb_now:
-        cloudlog.warning("No USB panda in %s, waiting for enumeration", panda_serials)
-        while not do_exit and not usb_now and time.monotonic() < deadline:
-          time.sleep(0.25)
-          usb_now = Panda.usb_list()
-      usb_serials = [s for s in usb_now if s not in panda_serials]
-      if usb_serials:
-        # Internal panda stays first so it keeps buses 0-3. USB panda is bus 4+.
-        panda_serials = [*panda_serials, *usb_serials]
-        cloudlog.warning("USB panda ready, connecting %s", panda_serials)
-      elif not usb_now:
-        cloudlog.warning("USB panda still absent, connecting %s", panda_serials)
-
     # run pandad with all connected serials as arguments
     os.environ['MANAGER_DAEMON'] = 'pandad'
     # C++ swaglog defaults to suppressing LOGW on stdout for pandad; enable with Params or env (see launch_env.sh).

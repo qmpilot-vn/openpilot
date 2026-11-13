@@ -16,8 +16,7 @@ from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
 from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_min_follow_m
 from openpilot.selfdrive.controls.lib.vf_departure import DEPART_FINGERPRINTS, VfDeparture
-from openpilot.selfdrive.controls.lib.vf_stop_follow import FOLLOW_FINGERPRINTS, VfStopFollow
-from openpilot.selfdrive.controls.lib.vf_brake_shaping import VfBrakeShaper, brake_floor_gain
+from openpilot.selfdrive.controls.lib.vf_brake_shaping import VfBrakeShaper
 from openpilot.common.swaglog import cloudlog
 
 from openpilot.sunnypilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPlannerSP
@@ -63,19 +62,17 @@ VF_MILD_DECEL_SCALE = 0.93
 VF_MILD_SOFTEN_START = 0.4  # [m/s²] full softening below this decel
 VF_MILD_DECEL_FLOOR = -1.6  # [m/s²] no softening at or beyond this decel
 
-# VinFast ACC standstill gap behind a stopped lead (radar range), by personality. The MPC keeps
-# STOP_DISTANCE 6.0 m and the planner shifts the stopped lead so it settles here; it lets go
-# once the lead is past it, so a long gap is also a late launch. 4 m sat on a moto at a red
-# light. Over 84 clean stops the MPC raised the stop at 7.1-7.7 m on VF6/VF8/VF9 (the
-# personality never reached the table: see vf_stop_lead_gap_m), while after creep the cars
-# already rested under 5 m in 38/100 (VF6), 27/104 (VF8) and 8/48 (VF9) stops. 5.5 m on
-# aggressive is the VF8/VF9 creep gap; at 5 m a VF8 Plus braking from 90 km/h onto a stopped
-# car bottomed out at 3.9 m in the closed-loop test, under the 4 m that sat on a moto.
+# VinFast ACC standstill gap behind a stopped lead (camera-frame).
+# MPC STOP_DISTANCE is 6.0 m; personality matches the moving T_FOLLOW characteristic.
+# Shared VF6–VF9: 4 m sits on a moto at a red light. Sit at stock 6 m even on
+# aggressive, and give standard/relaxed extra room.
 VF_STOP_LEAD_GAP_M = {
-  int(log.LongitudinalPersonality.aggressive): 5.5,
-  int(log.LongitudinalPersonality.standard): 6.5,
-  int(log.LongitudinalPersonality.relaxed): 7.5,
+  int(log.LongitudinalPersonality.aggressive): 6.0,
+  int(log.LongitudinalPersonality.standard): 7.0,
+  int(log.LongitudinalPersonality.relaxed): 8.0,
 }
+VF67_STOP_LEAD_GAP_M = VF_STOP_LEAD_GAP_M
+VF67_STOP_FINGERPRINTS = {"VINFAST_VF6", "VINFAST_VF7", "VINFAST_VF8", "VINFAST_VF8_PLUS", "VINFAST_VF8_ECO", "VINFAST_VF9"}
 
 # VinFast: above ~70 km/h the car delivers ~0.3-0.35 m/s² of a larger request and surges around it
 # (VF6 00000069 70-100 km/h: +0.90 asked, +0.33 delivered, 0.2 s accel std 0.59-0.74 against 0.12
@@ -95,13 +92,12 @@ VN_LEGAL_FOLLOW = True
 
 
 def vf_stop_lead_gap_m(personality, fingerprint=None) -> float:
-  # selfdriveState.personality is a capnp enum: int() raises on it, so read .raw. Before, every
-  # car on the road fell back to standard here.
   try:
-    key = int(getattr(personality, "raw", personality))
+    key = int(personality)
   except (TypeError, ValueError):
     key = int(log.LongitudinalPersonality.standard)
-  return VF_STOP_LEAD_GAP_M.get(key, VF_STOP_LEAD_GAP_M[int(log.LongitudinalPersonality.standard)])
+  table = VF67_STOP_LEAD_GAP_M if fingerprint in VF67_STOP_FINGERPRINTS else VF_STOP_LEAD_GAP_M
+  return table.get(key, table[int(log.LongitudinalPersonality.standard)])
 
 
 def vf_stop_lead_adjust_m(personality, fingerprint=None) -> float:
@@ -109,8 +105,8 @@ def vf_stop_lead_adjust_m(personality, fingerprint=None) -> float:
 
   The MPC subtracts this from the obstacle position and settles where
   `obstacle - x_ego == STOP_DISTANCE`, so the gap it holds is
-  `STOP_DISTANCE + adjust`. The sign therefore follows the room wanted beyond
-  STOP_DISTANCE: -0.5 m on aggressive, +1.5 m on relaxed.
+  `STOP_DISTANCE + adjust`. The sign therefore follows the extra room wanted
+  beyond STOP_DISTANCE: 0 m on aggressive, +2 m on relaxed.
   """
   return vf_stop_lead_gap_m(personality, fingerprint) - STOP_DISTANCE
 
@@ -335,7 +331,6 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.vn_follow_m = None
     self.vf_radar_launch = VfRadarLaunch() if CP.carFingerprint in VF_RADAR_LAUNCH_FINGERPRINTS else None
     self.vf_departure = VfDeparture(dt) if CP.carFingerprint in DEPART_FINGERPRINTS else None
-    self.vf_follow = VfStopFollow(dt, CP.carFingerprint) if CP.carFingerprint in FOLLOW_FINGERPRINTS else None
     self.vf_brake = VfBrakeShaper() if CP.brand == "vinfast" else None
 
     self.v_desired_trajectory = np.zeros(CONTROL_N)
@@ -510,20 +505,6 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       self.highway_accel = output_a_target
       self.output_should_stop = output_should_stop_mpc
 
-    if self.vf_follow is not None:
-      following = self.vf_follow.update(
-        long_active=not long_control_off, standstill=sm['carState'].standstill, v_ego=v_ego,
-        lead=sm['radarState'].leadOne, model_should_stop=bool(sm['modelV2'].action.shouldStop),
-        model_accel=float(sm['modelV2'].action.desiredAcceleration),
-        personality=sm['selfdriveState'].personality,
-        mpc_gap=vf_stop_lead_gap_m(sm['selfdriveState'].personality, self.CP.carFingerprint))
-      if following:
-        self.output_should_stop = False
-      if self.vf_follow.weight > 0.0:
-        w = self.vf_follow.weight
-        output_a_target = w * self.vf_follow.accel + (1.0 - w) * output_a_target
-        self.highway_accel = output_a_target
-
     # VF8/VF9: delay the onset of braking; small boost only on committed red-light stops.
     red_light = self.vf_red_light_committed(sm)
     output_a_target = apply_vf_late_brake(sm, self.CP, output_a_target, red_light)
@@ -536,9 +517,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
         output_a_target, v_ego=v_ego, source=self.mpc.source,
         lead_one=sm['radarState'].leadOne, lead_two=sm['radarState'].leadTwo,
         vn_active=self.vn_follow_m is not None, t_follow=get_T_FOLLOW(sm['selfdriveState'].personality),
-        fcw=self.fcw, should_stop=self.output_should_stop, dt=self.dt,
-        floor_gain=brake_floor_gain(sm['selfdriveState'].personality, self.CP.carFingerprint),
-        stop_gap=vf_stop_lead_gap_m(sm['selfdriveState'].personality, self.CP.carFingerprint))
+        fcw=self.fcw, should_stop=self.output_should_stop, dt=self.dt)
       if shaped > output_a_target:
         # The MPC carries its own accel forward. Keep it on what is published, or a
         # brake that was never applied comes back on the next frames.
