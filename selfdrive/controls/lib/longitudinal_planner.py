@@ -16,6 +16,7 @@ from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
 from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_min_follow_m
 from openpilot.selfdrive.controls.lib.vf_departure import DEPART_FINGERPRINTS, VfDeparture
+from openpilot.selfdrive.controls.lib.vf_stop_follow import FOLLOW_FINGERPRINTS, VfStopFollow
 from openpilot.selfdrive.controls.lib.vf_brake_shaping import VfBrakeShaper, brake_floor_gain
 from openpilot.common.swaglog import cloudlog
 
@@ -334,6 +335,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.vn_follow_m = None
     self.vf_radar_launch = VfRadarLaunch() if CP.carFingerprint in VF_RADAR_LAUNCH_FINGERPRINTS else None
     self.vf_departure = VfDeparture(dt) if CP.carFingerprint in DEPART_FINGERPRINTS else None
+    self.vf_follow = VfStopFollow(dt, CP.carFingerprint) if CP.carFingerprint in FOLLOW_FINGERPRINTS else None
     self.vf_brake = VfBrakeShaper() if CP.brand == "vinfast" else None
 
     self.v_desired_trajectory = np.zeros(CONTROL_N)
@@ -507,6 +509,20 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       output_a_target = output_a_target_mpc
       self.highway_accel = output_a_target
       self.output_should_stop = output_should_stop_mpc
+
+    if self.vf_follow is not None:
+      following = self.vf_follow.update(
+        long_active=not long_control_off, standstill=sm['carState'].standstill, v_ego=v_ego,
+        lead=sm['radarState'].leadOne, model_should_stop=bool(sm['modelV2'].action.shouldStop),
+        model_accel=float(sm['modelV2'].action.desiredAcceleration),
+        personality=sm['selfdriveState'].personality,
+        mpc_gap=vf_stop_lead_gap_m(sm['selfdriveState'].personality, self.CP.carFingerprint))
+      if following:
+        self.output_should_stop = False
+      if self.vf_follow.weight > 0.0:
+        w = self.vf_follow.weight
+        output_a_target = w * self.vf_follow.accel + (1.0 - w) * output_a_target
+        self.highway_accel = output_a_target
 
     # VF8/VF9: delay the onset of braking; small boost only on committed red-light stops.
     red_light = self.vf_red_light_committed(sm)
