@@ -11,8 +11,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"AlwaysOnDM", {PERSISTENT | BACKUP, BOOL}},
     {"ApiCache_Device", {PERSISTENT, STRING}},
     {"ApiCache_FirehoseStats", {PERSISTENT, JSON}},
-    {"ApiHost", {PERSISTENT | BACKUP, STRING}},  // qmpilot-connect host (no trailing slash). Comma Connect stays api.commadotai.com.
-    {"QmpilotApiKey", {PERSISTENT | DONT_LOG, STRING}},  // device API key for qmpilot-connect. With ApiHost, selects that uploader.
+    {"ApiHost", {PERSISTENT | BACKUP, STRING}},  // qmpilot-server / custom upload API host (no trailing slash)
+    {"QmpilotApiKey", {PERSISTENT | DONT_LOG, STRING}},  // device API key for qmpilot-server
     {"AssistNowToken", {PERSISTENT, STRING}},
     {"AthenadPid", {PERSISTENT, INT}},
     {"AthenadUploadQueue", {PERSISTENT, JSON}},
@@ -132,7 +132,6 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"UpdaterState", {CLEAR_ON_MANAGER_START, STRING}},
     {"UpdaterTargetBranch", {CLEAR_ON_MANAGER_START, STRING}},
     {"UpdaterLastFetchTime", {PERSISTENT, TIME}},
-    {"UploadBackend", {PERSISTENT | BACKUP, INT, "0"}},  // 0 comma, 1 qmpilot
     {"UptimeOffroad", {PERSISTENT, FLOAT, "0.0"}},
     {"UptimeOnroad", {PERSISTENT, FLOAT, "0.0"}},
     {"Version", {PERSISTENT, STRING}},
@@ -238,9 +237,6 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"LagdValueCache", {PERSISTENT, FLOAT, "0.2"}},
     {"LaneTurnDesire", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"LaneTurnValue", {PERSISTENT | BACKUP, FLOAT, "19.0"}},
-    {"LaneCentering", {PERSISTENT | BACKUP, BOOL, "0"}},
-    {"LaneCenterOffset", {PERSISTENT | BACKUP, FLOAT, "0.0"}},
-    {"LaneCenteringE2EAuthority", {PERSISTENT | BACKUP, FLOAT, "1.0"}},
     {"PlanplusControl", {PERSISTENT | BACKUP, FLOAT, "1.0"}},
 
     // mapd
