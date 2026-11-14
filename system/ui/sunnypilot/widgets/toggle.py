@@ -7,7 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 from collections.abc import Callable
 
 import pyray as rl
-from openpilot.common.params import Params
+from openpilot.common.params import Params, UnknownKeyName
 from openpilot.system.ui.lib.application import MousePos
 from openpilot.system.ui.widgets.toggle import Toggle
 from openpilot.system.ui.sunnypilot.lib.styles import style
@@ -20,16 +20,23 @@ class ToggleSP(Toggle):
   def __init__(self, initial_state=False, callback: Callable[[bool], None] | None = None, param: str | None = None):
     self.param_key = param
     self.params = Params()
+    self._param_known = True
     if self.param_key:
-      initial_state = self.params.get_bool(self.param_key)
+      try:
+        initial_state = self.params.get_bool(self.param_key)
+      except UnknownKeyName:
+        # The running params module has no such key. Stay off and do not write it.
+        self._param_known = False
     Toggle.__init__(self, initial_state, callback)
+    if not self._param_known:
+      self._enabled = False
 
   def set_rect(self, rect: rl.Rectangle):
     self._rect = rl.Rectangle(rect.x, rect.y, style.TOGGLE_WIDTH, style.TOGGLE_HEIGHT)
 
   def _handle_mouse_release(self, mouse_pos: MousePos):
     super()._handle_mouse_release(mouse_pos)
-    if self._enabled and self.param_key:
+    if self._enabled and self.param_key and self._param_known:
       self.params.put_bool(self.param_key, self._state)
 
   def _render(self, rect: rl.Rectangle):
