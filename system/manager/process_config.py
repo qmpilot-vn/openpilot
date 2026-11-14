@@ -11,6 +11,7 @@ from openpilot.system.hardware.hw import Paths
 from openpilot.sunnypilot.mapd.mapd_manager import MAPD_PATH
 
 from openpilot.sunnypilot.models.helpers import get_active_model_runner
+from openpilot.common.api.comma_connect import comma_backend_selected, qmpilot_backend_selected
 from openpilot.sunnypilot.sunnylink.utils import sunnylink_need_register, sunnylink_ready, use_sunnylink_uploader
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
@@ -86,6 +87,18 @@ def use_sunnylink_uploader_shim(started, params, CP: car.CarParams) -> bool:
   """Shim for use_sunnylink_uploader to match the process manager signature."""
   return use_sunnylink_uploader(params)
 
+def use_comma_uploader(started, params, CP: car.CarParams) -> bool:
+  """Comma Connect uploader. Off when the Device toggle is qmpilot only."""
+  return comma_backend_selected()
+
+def use_qmpilot_uploader(started, params, CP: car.CarParams) -> bool:
+  """qmpilot-connect uploader. On only when the Device toggle is qmpilot and the key is set."""
+  return qmpilot_backend_selected()
+
+def use_qmpilot_athena(started, params, CP: car.CarParams) -> bool:
+  """Live qmpilot session. Same gate as the uploader, and it also runs onroad."""
+  return qmpilot_backend_selected()
+
 def is_tinygrad_model(started, params, CP: car.CarParams) -> bool:
   """Check if the active model runner is SNPE."""
   return bool(get_active_model_runner(params, not started) == custom.ModelManagerSP.Runner.tinygrad)
@@ -151,11 +164,13 @@ procs = [
   PythonProcess("plannerd", "selfdrive.controls.plannerd", not_long_maneuver),
   PythonProcess("maneuversd", "tools.longitudinal_maneuvers.maneuversd", long_maneuver),
   PythonProcess("lateral_maneuversd", "tools.lateral_maneuvers.lateral_maneuversd", lat_maneuver),
-  PythonProcess("radard", "selfdrive.controls.radard", only_onroad),
+  PythonProcess("radard", "selfdrive.controls.radard", only_onroad, restart_if_crash=True),
   PythonProcess("hardwared", "system.hardware.hardwared", always_run),
   PythonProcess("tombstoned", "system.tombstoned", always_run, enabled=not PC),
   PythonProcess("updated", "system.updated.updated", only_offroad, enabled=not PC),
-  PythonProcess("uploader", "system.loggerd.uploader", uploader_ready),
+  PythonProcess("uploader", "system.loggerd.uploader", and_(uploader_ready, use_comma_uploader)),
+  PythonProcess("qmpilot_uploader", "system.loggerd.qmpilot_uploader", and_(uploader_ready, use_qmpilot_uploader), restart_if_crash=True),
+  PythonProcess("qmpilotd", "system.athena.qmpilotd", use_qmpilot_athena, restart_if_crash=True),
   PythonProcess("statsd", "system.statsd", always_run),
   PythonProcess("beep", "selfdrive.selfdrived.beep", always_run),
   PythonProcess("feedbackd", "selfdrive.ui.feedback.feedbackd", only_onroad),

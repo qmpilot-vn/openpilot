@@ -13,6 +13,11 @@ ButtonType = car.CarState.ButtonEvent.Type
 EventNameSP = custom.OnroadEventSP.EventName
 
 DISTANCE_LONG_PRESS = 50
+# VinFast sends the gap - button at 1 Hz plus a frame on each change, so a missed release
+# frame can hold a tap for up to 1 s. The hold must outlast that.
+VINFAST_DISTANCE_LONG_PRESS = 150
+# put_bool does not block, so the banner in this control step reads this instead of the param.
+toggled_experimental_mode = False
 
 
 class CruiseHelper:
@@ -20,6 +25,7 @@ class CruiseHelper:
     self.CP = CP
     self.params = Params()
 
+    self.distance_long_press = VINFAST_DISTANCE_LONG_PRESS if CP.brand == "vinfast" else DISTANCE_LONG_PRESS
     self.button_frame_counts = {ButtonType.gapAdjustCruise: 0}
     self._experimental_mode = False
     self.experimental_mode_switched = False
@@ -43,8 +49,10 @@ class CruiseHelper:
         self.button_frame_counts[button] = int(button_event.pressed)
 
   def update_experimental_mode(self, events, experimental_mode) -> None:
-    if self.button_frame_counts[ButtonType.gapAdjustCruise] >= DISTANCE_LONG_PRESS and not self.experimental_mode_switched:
+    global toggled_experimental_mode
+    if self.button_frame_counts[ButtonType.gapAdjustCruise] >= self.distance_long_press and not self.experimental_mode_switched:
       self._experimental_mode = not experimental_mode
+      toggled_experimental_mode = self._experimental_mode
       self.params.put_bool_nonblocking("ExperimentalMode", self._experimental_mode)
       events.add(EventNameSP.experimentalModeSwitched)
       self.experimental_mode_switched = True

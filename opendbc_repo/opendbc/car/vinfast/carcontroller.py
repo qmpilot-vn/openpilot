@@ -36,4 +36,3 @@ _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
 
-from opendbc.car.vinfast import carcontroller_host as _host  # noqa: F401,E402

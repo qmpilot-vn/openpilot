@@ -21,9 +21,40 @@ fi
 
 export STAGING_ROOT="/data/safe_staging"
 
-# qmpilot-server upload target (force — do not keep stale mr-one API_HOST)
-# API key: set QMPILOT_API_KEY or put it in /data/qmpilot/QmpilotApiKey (do not commit secrets)
-export API_HOST="https://qmpilot-connect.com"
+# Settings → Device → backend. 1 is qmpilot connect. Anything else is comma connect.
+# The key stays in the param file. Manager logs the environment, so it is not exported.
+# A C3XL that already saved QmpilotApiKey and never stored UploadBackend stays on qmpilot.
+_read_saved() {
+  local name="$1" f val
+  for f in "/data/params/d/$name" "/data/qmpilot/$name" "/persist/qmpilot/$name"; do
+    if [ -f "$f" ]; then
+      val=$(tr -d '\r\n' < "$f")
+      if [ -n "$val" ]; then
+        printf '%s' "$val"
+        return 0
+      fi
+    fi
+  done
+}
+
+_backend=$(_read_saved UploadBackend)
+_host=$(_read_saved ApiHost)
+_host=${_host%/}
+_key=$(_read_saved QmpilotApiKey)
+if [ -z "$_backend" ] && [ -n "$_key" ] && { [ -z "$_host" ] || [ "$_host" != "https://api.commadotai.com" ]; }; then
+  _backend=1
+  if [ -z "$_host" ]; then
+    _host="https://qmpilot-connect.com"
+  fi
+fi
+if [ "$_backend" = "1" ] && [ -n "$_host" ] && [ "$_host" != "https://api.commadotai.com" ] && [ -n "$_key" ]; then
+  export API_HOST="$_host"
+else
+  export API_HOST="https://api.commadotai.com"
+fi
+unset QMPILOT_API_KEY
+unset _backend _host _key
+unset -f _read_saved
 
 # Normal C3X: use real panda (pandad enabled). Manager skips pandad if NOBOARD is set
 # to any value — it must be unset, not 0. Bench mode overrides via bench_env.sh below.

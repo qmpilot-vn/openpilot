@@ -16,12 +16,13 @@ from openpilot.common.swaglog import cloudlog
 from opendbc.car.car_helpers import interfaces
 from opendbc.car.vehicle_model import VehicleModel
 from openpilot.selfdrive.controls.lib.drive_helpers import clip_curvature
+from openpilot.selfdrive.controls.lib.lane_centering import LaneCenteringController
 from openpilot.selfdrive.controls.lib.latcontrol import LatControl
 from openpilot.selfdrive.controls.lib.latcontrol_pid import LatControlPID
 from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle, STEER_ANGLE_SATURATION_THRESHOLD
 from openpilot.selfdrive.controls.lib.latcontrol_torque import LatControlTorque
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl
-from openpilot.selfdrive.controls.lib.radar_path_nudge import RadarPathNudge
+from openpilot.selfdrive.controls.lib.radar_path_nudge import RadarPathNudge, lanes_from_model
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
 
 from openpilot.sunnypilot.modeld_v2.modeld_base import ModelStateBase
@@ -94,6 +95,7 @@ class Controls(ControlsExt, ModelStateBase):
     self.steer_limited_by_safety = False
     self.curvature = 0.0
     self.desired_curvature = 0.0
+    self.lane_centering = LaneCenteringController()
 
     active_bundle = get_active_bundle(self.params)
     tune_name = active_bundle.internalName if active_bundle is not None else None
@@ -177,6 +179,7 @@ class Controls(ControlsExt, ModelStateBase):
 
     if not CC.latActive:
       self.LaC.reset()
+      self.lane_centering.reset()
     if not CC.longActive:
       self.LoC.reset()
 
@@ -202,9 +205,19 @@ class Controls(ControlsExt, ModelStateBase):
         self.winding_curvature_boost,
       )
 
+    new_desired_curvature = self.lane_centering.update(
+      new_desired_curvature, model_v2, CS.vEgo,
+      self.lane_centering_enabled,
+      self.lane_center_offset,
+      self.lane_centering_e2e_authority,
+      CC.latActive,
+      bool(self.sm.all_checks(['modelV2'])),
+    )
+
     # Apply lateral offset adjustment for VinFast to shift path left
     # Negative curvature = turn left (shift path left), Positive = turn right (shift path right)
-    if self.CP.brand == "vinfast" and CC.latActive and not self.use_curvature_tune_model:
+    # Skip when vision lane centering is on so the two biases do not fight.
+    if self.CP.brand == "vinfast" and CC.latActive and not self.use_curvature_tune_model and not self.lane_centering_enabled:
       v_ego = max(float(CS.vEgo), 0.0)
       v_ego_kph = v_ego * CV.MS_TO_KPH  # Convert to km/h for threshold checks
       
@@ -251,6 +264,7 @@ class Controls(ControlsExt, ModelStateBase):
           points, CS.vEgo, float(new_desired_curvature),
           path_x=path_x, path_y=path_y,
           lat_active=CC.latActive, lane_changing=lane_changing,
+          lanes=lanes_from_model(model_v2) if self.radar_nudge.infocan else None,
         )
       new_desired_curvature = new_desired_curvature + radar_nudge_kappa
 

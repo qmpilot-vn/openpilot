@@ -493,6 +493,9 @@ int set_safety_hooks(uint16_t mode, uint16_t param) {
       current_safety_config.rx_checks[j].status = (RxStatus){0};
     }
   }
+  // Host sets altExp before the car safety mode; apply MADS here so
+  // system_enabled survives set_safety_hooks (0000033a never armed lat).
+  mads_set_alternative_experience(&alternative_experience);
   return set_status;
 }
 

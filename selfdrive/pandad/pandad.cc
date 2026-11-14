@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cerrno>
 #include <cmath>
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <thread>
@@ -26,7 +27,9 @@
 // - Consecutive pandas will be sorted based on panda type, and then serial number
 // Connecting:
 // - If a panda connection is dropped, pandad will reconnect to all pandas
-// - If a panda is added, we will only reconnect when we are offroad
+// - If a panda is added, reconnect while offroad, and onroad while nothing is
+//   engaged: a cold boot already has CAN ignition, and the OTG dongle can
+//   enumerate a minute or more after the first list.
 // CAN buses:
 // - Each panda will have its block of 4 buses. E.g.: the second panda will use
 //   bus numbers 4, 5, 6 and 7
@@ -391,6 +394,50 @@ void send_peripheral_state(Panda *panda, PubMaster *pm) {
   pm->send("peripheralState", msg);
 }
 
+// 683068420a0d15ba 00000077/7b/7c: the dongle was still absent 90 s after boot and
+// appeared at the offroad rescan. While nothing is engaged, a restart costs no control.
+static constexpr double USB_PANDA_ONROAD_SCAN_PERIOD_MS = 500.0;
+// pandad.py can drop a panda that Panda::list() still reports, so every restart would
+// find it again. The stamp outlives this process, so that loop runs at most this often.
+static constexpr double USB_PANDA_ONROAD_RECONNECT_MIN_MS = 30000.0;
+static const char USB_PANDA_RECONNECT_STAMP[] = "/dev/shm/pandad_usb_reconnect";
+
+static bool reconnect_if_new_usb_panda(const std::vector<std::string> &connected_serials) {
+  for (std::string &s : Panda::list(true)) {
+    if (!std::count(connected_serials.begin(), connected_serials.end(), s)) {
+      LOGW("Reconnecting to new panda: %s", s.c_str());
+      do_exit = true;
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool onroad_reconnect_allowed(double now) {
+  const std::string stamp = util::read_file(USB_PANDA_RECONNECT_STAMP);
+  if (stamp.empty()) {
+    return true;
+  }
+  const double last = std::atof(stamp.c_str());
+  return last > now || now - last >= USB_PANDA_ONROAD_RECONNECT_MIN_MS;
+}
+
+static void onroad_scan_for_usb_panda(const std::vector<std::string> &connected_serials) {
+  static double next_scan = 0.0;
+  const double now = millis_since_boot();
+  if (now < next_scan) {
+    return;
+  }
+  next_scan = now + USB_PANDA_ONROAD_SCAN_PERIOD_MS;
+  if (!onroad_reconnect_allowed(now)) {
+    return;
+  }
+  if (reconnect_if_new_usb_panda(connected_serials)) {
+    const std::string stamp = std::to_string(now);
+    util::write_file(USB_PANDA_RECONNECT_STAMP, stamp.data(), stamp.size(), O_WRONLY | O_CREAT | O_TRUNC);
+  }
+}
+
 void process_panda_state(std::vector<Panda *> &pandas, PubMaster *pm, bool engaged, bool engaged_mads, bool close_relay, bool spoofing_started, bool always_offroad, bool mask_vinfast_harness_ignition) {
   std::vector<std::string> connected_serials;
   for (Panda *p : pandas) {
@@ -416,15 +463,10 @@ void process_panda_state(std::vector<Panda *> &pandas, PubMaster *pm, bool engag
         do_exit = true;
 
       } else {
-        // check for new pandas
-        for (std::string &s : Panda::list(true)) {
-          if (!std::count(connected_serials.begin(), connected_serials.end(), s)) {
-            LOGW("Reconnecting to new panda: %s", s.c_str());
-            do_exit = true;
-            break;
-          }
-        }
+        reconnect_if_new_usb_panda(connected_serials);
       }
+    } else if (!engaged && !engaged_mads) {
+      onroad_scan_for_usb_panda(connected_serials);
     }
 
     for (const auto &panda : pandas) {

@@ -1,4 +1,4 @@
-from openpilot.common.api.comma_connect import CommaConnectApi, get_api_host, get_qmpilot_api_key
+from openpilot.common.api.comma_connect import CommaConnectApi, comma_backend_selected, get_api_host, get_qmpilot_api_host, get_qmpilot_api_key, qmpilot_backend_selected
 
 
 class Api:

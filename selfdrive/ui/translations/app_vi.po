@@ -84,6 +84,31 @@ msgstr "VinFast - Tự khởi hành"
 msgid "Automatically resume after a full stop in traffic when the car ahead starts moving. Turn this off if you want to press Resume / ACC yourself. The car will stay stopped at a light until you resume."
 msgstr "Tự động chạy tiếp sau khi dừng hẳn trong kẹt xe, khi xe phía trước bắt đầu đi. Tắt nếu bạn muốn tự bấm Resume / ACC. Xe sẽ đứng yên ở đèn đỏ cho đến khi bạn resume."
 
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering.py
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_centering_settings.py
+msgid "Lane Centering"
+msgstr "Giữ giữa làn"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_centering_settings.py
+msgid "Bias the model command toward the detected lane center. Requires two confident lane lines and stays inside normal curvature and jerk limits."
+msgstr "Kéo lệnh lái của mô hình về giữa làn đã nhận diện. Cần thấy rõ cả hai vạch làn, và vẫn nằm trong giới hạn độ cong và độ giật thông thường."
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_centering_settings.py
+msgid "Lane Center Offset"
+msgstr "Lệch tâm làn"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_centering_settings.py
+msgid "Shift the lane target left or right. The controller reduces this offset automatically when the detected lane is narrow."
+msgstr "Dời điểm giữa làn sang trái hoặc phải. Bộ điều khiển tự giảm độ lệch này khi làn nhận diện được hẹp."
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_centering_settings.py
+msgid "E2E Override Strength"
+msgstr "Mức ưu tiên E2E"
+
+#: openpilot/selfdrive/ui/sunnypilot/layouts/settings/steering_sub_layouts/lane_centering_settings.py
+msgid "How strongly a confident end-to-end path can override lane centering when it deliberately leaves the lane target. 1.0 gives the model full authority; 0.0 disables break-in."
+msgstr "Mức đường đi end-to-end tự tin được phép lấn quyền giữ giữa làn khi nó chủ động rời điểm giữa làn. 1.0 cho mô hình toàn quyền; 0.0 tắt việc lấn quyền."
+
 #: openpilot/selfdrive/ui/layouts/settings/device.py
 msgid "Are you sure you want to power off?"
 msgstr "Bạn có chắc muốn tắt nguồn?"
@@ -349,6 +374,16 @@ msgstr "Lỗi"
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
 msgid "Experimental Mode"
 msgstr "Chế độ thử nghiệm"
+
+#: sunnypilot/selfdrive/selfdrived/events.py
+msgid "Experimental Mode Switched"
+msgstr "Đã chuyển chế độ thử nghiệm"
+
+msgid "Experimental Mode On"
+msgstr "Đã bật chế độ thử nghiệm"
+
+msgid "Experimental Mode Off"
+msgstr "Đã tắt chế độ thử nghiệm"
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
 msgid "Experimental mode is currently unavailable on this car since the car's stock ACC is used for longitudinal control."

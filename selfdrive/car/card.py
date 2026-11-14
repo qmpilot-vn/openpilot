@@ -28,10 +28,26 @@ REPLAY = "REPLAY" in os.environ
 
 EventName = log.OnroadEvent.EventName
 
-# The car port allows the EPS's full authority (VF8 ±470°, VF9 ±180°), far more angle
-# than the planner should ever ask for on the road. Tightening the packaged limits here
-# works because the controller re-reads ANGLE_LIMITS on every cycle.
-VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 100.0, "VINFAST_VF8_ECO": 100.0, "VINFAST_VF9": 100.0}
+# This tree's VF8 port packages STEER_ANGLE_MAX at 100°. Modified VF8 (non-production
+# C3XL) EPS has full authority of ±470°. The controller re-reads ANGLE_LIMITS every cycle.
+VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 100.0, "VINFAST_VF8_ECO": 100.0}
+# Modified VF8 (non-production C3XL): keep this line active for EPS full ±470°.
+# Comment it out (#) on a stock production VF8 to stay at 100°.
+VINFAST_STEER_ANGLE_MAX["VINFAST_VF8"] = 470.0
+VINFAST_STEER_ANGLE_MAX["VINFAST_VF8_ECO"] = 470.0
+
+# LongControl stop-hold only. 30% softer than the stock -2.0 m/s² floor and
+# 0.8 m/s²/s ramp, same as vf-dev-c4. Re-engage keeps its own curve.
+VINFAST_STOP_ACCEL = {
+  "VINFAST_VF6": -1.4, "VINFAST_VF7_PLUS": -1.4,
+  "VINFAST_VF8": -1.4, "VINFAST_VF8_PLUS": -1.4, "VINFAST_VF8_ECO": -1.4,
+  "VINFAST_VF9": -1.4,
+}
+VINFAST_STOPPING_DECEL_RATE = {
+  "VINFAST_VF6": 0.56, "VINFAST_VF7_PLUS": 0.56,
+  "VINFAST_VF8": 0.56, "VINFAST_VF8_PLUS": 0.56, "VINFAST_VF8_ECO": 0.56,
+  "VINFAST_VF9": 0.56,
+}
 
 # forward
 carlog.addHandler(ForwardingHandler(cloudlog))
@@ -75,9 +91,23 @@ def apply_vinfast_steer_limits(CP: car.CarParams, CI: CarInterfaceBase) -> None:
   if limits is None:
     return
 
-  if angle_max is not None and limits.STEER_ANGLE_MAX > angle_max:
-    cloudlog.warning(f"{CP.carFingerprint}: limiting steering angle to {angle_max} deg (port allows {limits.STEER_ANGLE_MAX})")
+  if limits.STEER_ANGLE_MAX != angle_max:
+    cloudlog.warning(f"{CP.carFingerprint}: steering angle {limits.STEER_ANGLE_MAX} -> {angle_max} deg")
     limits.STEER_ANGLE_MAX = angle_max
+
+
+def apply_vinfast_stop_hold(CP: car.CarParams) -> None:
+  """Soften the LongControl stopping ramp and floor. Does not change re-engage."""
+  stop_accel = VINFAST_STOP_ACCEL.get(CP.carFingerprint)
+  stop_rate = VINFAST_STOPPING_DECEL_RATE.get(CP.carFingerprint)
+  if stop_accel is None and stop_rate is None:
+    return
+  if stop_accel is not None:
+    cloudlog.warning(f"{CP.carFingerprint}: stopAccel {CP.stopAccel} -> {stop_accel}")
+    CP.stopAccel = stop_accel
+  if stop_rate is not None:
+    cloudlog.warning(f"{CP.carFingerprint}: stoppingDecelRate {CP.stoppingDecelRate} -> {stop_rate}")
+    CP.stoppingDecelRate = stop_rate
 
 
 class Car:
@@ -145,6 +175,7 @@ class Car:
     set_alternative_experience(self.CP, self.CP_SP, self.params)
     set_car_specific_params(self.CP, self.CP_SP, self.params)
     apply_vinfast_steer_limits(self.CP, self.CI)
+    apply_vinfast_stop_hold(self.CP)
 
     # Dynamic Experimental Control
     self.dynamic_experimental_control = self.params.get_bool("DynamicExperimentalControl")
