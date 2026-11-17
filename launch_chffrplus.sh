@@ -17,99 +17,16 @@ function agnos_init {
   sudo chgrp gpu /dev/adsprpc-smd /dev/ion /dev/kgsl-3d0
   sudo chmod 660 /dev/adsprpc-smd /dev/ion /dev/kgsl-3d0
 
-  # /VERSION differs. The OS updater stays on "waiting for internet" until a
-  # 2s request to openpilot.comma.ai succeeds. The images are on
-  # commadist.azureedge.net, so flash once that host answers. The updater
-  # screen is only for picking Wi-Fi, and it is stopped before a flash.
-  if [ $(< /VERSION) != "$AGNOS_VERSION" ]; then
+  # Flash only an older AGNOS. A newer release stays on the device.
+  device_ver=$(tr -d '[:space:]' < /VERSION)
+  oldest=$(printf '%s\n%s\n' "$device_ver" "$AGNOS_VERSION" | sort -V | head -n 1)
+  if [ "$device_ver" != "$AGNOS_VERSION" ] && [ "$oldest" = "$device_ver" ]; then
     AGNOS_PY="$DIR/system/hardware/tici/agnos.py"
     MANIFEST="$DIR/system/hardware/tici/agnos.json"
-    UPDATER="/usr/comma/updater"
-    if [ ! -x "$UPDATER" ]; then
-      UPDATER="$DIR/system/hardware/tici/updater"
-    fi
     if $AGNOS_PY --verify $MANIFEST; then
       sudo reboot
-      sleep infinity
     fi
-
-    sudo systemctl start systemd-timesyncd 2>/dev/null || true
-    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-      [ "$(date +%Y)" -ge 2025 ] && break
-      sleep 1
-    done
-
-    agnos_images_reachable() {
-      MANIFEST="$MANIFEST" python3 - << 'PY'
-import json, os, sys, urllib.request
-url = json.load(open(os.environ["MANIFEST"]))[0]["url"]
-req = urllib.request.Request(url, headers={"Range": "bytes=0-0"})
-try:
-  with urllib.request.urlopen(req, timeout=20) as resp:
-    resp.read(1)
-except Exception:
-  sys.exit(1)
-PY
-    }
-
-    UPDATER_PID=""
-    swap_in_progress() {
-      pgrep -f "agnos.py --swap" >/dev/null
-    }
-    stop_updater() {
-      if [ -n "$UPDATER_PID" ] && kill -0 "$UPDATER_PID" 2>/dev/null; then
-        kill "$UPDATER_PID" 2>/dev/null || true
-        for _ in 1 2 3 4 5; do
-          kill -0 "$UPDATER_PID" 2>/dev/null || break
-          sleep 1
-        done
-        kill -KILL "$UPDATER_PID" 2>/dev/null || true
-        wait "$UPDATER_PID" 2>/dev/null || true
-      fi
-      UPDATER_PID=""
-    }
-
-    MISSES=0
-    while true; do
-      if swap_in_progress; then
-        sleep 5
-        continue
-      fi
-      if $AGNOS_PY --verify $MANIFEST; then
-        stop_updater
-        sudo reboot
-        sleep infinity
-      fi
-      if agnos_images_reachable; then
-        if swap_in_progress; then
-          sleep 5
-          continue
-        fi
-        echo "AGNOS image host reachable, flashing inactive slot" >&2
-        stop_updater
-        if swap_in_progress; then
-          sleep 5
-          continue
-        fi
-        if $AGNOS_PY --swap $MANIFEST; then
-          sudo reboot
-          sleep infinity
-        fi
-        sleep 10
-        continue
-      fi
-      # Wi-Fi often associates a few seconds after boot. Stay off the updater
-      # screen until the image host has failed more than once.
-      MISSES=$((MISSES + 1))
-      if [ "$MISSES" -ge 2 ]; then
-        if [ -z "$UPDATER_PID" ] || ! kill -0 "$UPDATER_PID" 2>/dev/null; then
-          echo "AGNOS image host unreachable, opening Wi-Fi screen" >&2
-          "$UPDATER" "$AGNOS_PY" "$MANIFEST" >/tmp/agnos_updater.log 2>&1 &
-          UPDATER_PID=$!
-        fi
-      fi
-      sleep 5
-    done
+    $DIR/system/hardware/tici/updater $AGNOS_PY $MANIFEST
   fi
 }
 
