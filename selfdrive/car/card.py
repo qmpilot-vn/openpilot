@@ -26,8 +26,6 @@ from openpilot.selfdrive.car.helpers import convert_carControlSP, convert_to_cap
 from openpilot.sunnypilot.mads.helpers import set_alternative_experience, set_car_specific_params
 from openpilot.sunnypilot.selfdrive.car import interfaces as sunnypilot_interfaces
 
-from opendbc.safety import ALTERNATIVE_EXPERIENCE
-
 REPLAY = "REPLAY" in os.environ
 
 EventName = log.OnroadEvent.EventName
@@ -213,16 +211,6 @@ class Car:
     set_car_specific_params(self.CP, self.CP_SP, self.params)
     apply_vinfast_steer_limits(self.CP, self.CI)
     apply_vinfast_stop_hold(self.CP)
-
-    # VinFast: MADS is not used; force off so CarParams/Panda match (no ENABLE_MADS=1024 in selfdrived).
-    if self.CP.brand == "vinfast":
-      self.params.put_bool("Mads", False)
-      _mads_mask = (
-        ALTERNATIVE_EXPERIENCE.ENABLE_MADS
-        | ALTERNATIVE_EXPERIENCE.MADS_DISENGAGE_LATERAL_ON_BRAKE
-        | ALTERNATIVE_EXPERIENCE.MADS_PAUSE_LATERAL_ON_BRAKE
-      )
-      self.CP.alternativeExperience &= ~_mads_mask
 
     # Dynamic Experimental Control
     self.dynamic_experimental_control = self.params.get_bool("DynamicExperimentalControl")
