@@ -30,6 +30,7 @@ function agnos_init {
     fi
     if $AGNOS_PY --verify $MANIFEST; then
       sudo reboot
+      sleep infinity
     fi
 
     sudo systemctl start systemd-timesyncd 2>/dev/null || true
@@ -52,36 +53,60 @@ PY
     }
 
     UPDATER_PID=""
+    swap_in_progress() {
+      pgrep -f "agnos.py --swap" >/dev/null
+    }
     stop_updater() {
       if [ -n "$UPDATER_PID" ] && kill -0 "$UPDATER_PID" 2>/dev/null; then
         kill "$UPDATER_PID" 2>/dev/null || true
+        for _ in 1 2 3 4 5; do
+          kill -0 "$UPDATER_PID" 2>/dev/null || break
+          sleep 1
+        done
+        kill -KILL "$UPDATER_PID" 2>/dev/null || true
         wait "$UPDATER_PID" 2>/dev/null || true
       fi
       UPDATER_PID=""
     }
 
+    MISSES=0
     while true; do
-      if pgrep -f "agnos.py --swap" >/dev/null; then
+      if swap_in_progress; then
         sleep 5
         continue
       fi
       if $AGNOS_PY --verify $MANIFEST; then
         stop_updater
         sudo reboot
+        sleep infinity
       fi
       if agnos_images_reachable; then
+        if swap_in_progress; then
+          sleep 5
+          continue
+        fi
         echo "AGNOS image host reachable, flashing inactive slot" >&2
         stop_updater
+        if swap_in_progress; then
+          sleep 5
+          continue
+        fi
         if $AGNOS_PY --swap $MANIFEST; then
           sudo reboot
+          sleep infinity
         fi
         sleep 10
         continue
       fi
-      if [ -z "$UPDATER_PID" ] || ! kill -0 "$UPDATER_PID" 2>/dev/null; then
-        echo "AGNOS image host unreachable, opening Wi-Fi screen" >&2
-        setsid "$UPDATER" "$AGNOS_PY" "$MANIFEST" >/tmp/agnos_updater.log 2>&1 &
-        UPDATER_PID=$!
+      # Wi-Fi often associates a few seconds after boot. Stay off the updater
+      # screen until the image host has failed more than once.
+      MISSES=$((MISSES + 1))
+      if [ "$MISSES" -ge 2 ]; then
+        if [ -z "$UPDATER_PID" ] || ! kill -0 "$UPDATER_PID" 2>/dev/null; then
+          echo "AGNOS image host unreachable, opening Wi-Fi screen" >&2
+          "$UPDATER" "$AGNOS_PY" "$MANIFEST" >/tmp/agnos_updater.log 2>&1 &
+          UPDATER_PID=$!
+        fi
       fi
       sleep 5
     done
