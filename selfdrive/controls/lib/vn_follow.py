@@ -3,10 +3,19 @@
 Steady MPC gap is T_FOLLOW * v + STOP_DISTANCE (6 m). These helpers return the
 meter floor and the equivalent t_follow so VinFast alpha long never sits closer
 than the dry-road table above 60 km/h. Personality may still command a longer gap.
+
+The floor is on unless VinFastVnFollow is 0. The on-device params blob does not
+know that key, and manager clearAll deletes unknown files under /data/params/d,
+so the choice is stored in /persist/qmpilot like the other qmpilot settings.
 """
+
+from pathlib import Path
 
 # Matches openpilot.common.constants.CV.MS_TO_KPH (kept numeric to stay import-light).
 MS_TO_KPH = 3.6
+
+PARAM = "VinFastVnFollow"
+PERSIST_PATH = Path("/persist/qmpilot") / PARAM
 
 # Must match long_mpc.STOP_DISTANCE.
 STOP_DISTANCE = 6.0
@@ -69,6 +78,55 @@ def vn_t_follow_floor(v_ego, d_vn, stop_distance=STOP_DISTANCE):
     return None
   v = max(float(v_ego), 0.1)
   return max(0.0, (float(d_vn) - stop_distance) / v)
+
+
+def _parse_on(val):
+  if val is None:
+    return None
+  if isinstance(val, bool):
+    return val
+  if isinstance(val, bytes):
+    val = val.decode()
+  text = str(val).strip().lower()
+  if text in ("1", "true"):
+    return True
+  if text in ("0", "false"):
+    return False
+  return None
+
+
+def vn_follow_enabled(path=None) -> bool:
+  """Default on. A missing choice keeps the legal floor."""
+  dest = PERSIST_PATH if path is None else Path(path)
+  try:
+    parsed = _parse_on(dest.read_text(encoding="utf-8"))
+    if parsed is not None:
+      return parsed
+  except OSError:
+    pass
+  try:
+    from openpilot.common.params import Params
+    params = Params()
+    if params.check_key(PARAM):
+      parsed = _parse_on(params.get(PARAM, return_default=True))
+      if parsed is not None:
+        return parsed
+  except Exception:
+    pass
+  return True
+
+
+def set_vn_follow(on: bool, path=None) -> None:
+  dest = PERSIST_PATH if path is None else Path(path)
+  try:
+    from openpilot.common.params import Params
+    params = Params()
+    if params.check_key(PARAM):
+      params.put_bool(PARAM, bool(on))
+  except Exception:
+    pass
+  dest.parent.mkdir(parents=True, exist_ok=True)
+  dest.write_text("1" if on else "0", encoding="utf-8")
 
 
 def effective_t_follow(v_ego, t_personality, d_vn=None, stop_distance=STOP_DISTANCE):

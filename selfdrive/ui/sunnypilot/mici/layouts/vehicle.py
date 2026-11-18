@@ -9,6 +9,7 @@ from collections.abc import Callable
 from functools import cache
 
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigToggle, GreyBigButton
+from openpilot.selfdrive.controls.lib.vn_follow import set_vn_follow, vn_follow_enabled
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.vinfast import _reengage_enabled, _set_reengage
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.platform_selector import CAR_LIST_JSON_OUT
 from openpilot.selfdrive.ui.ui_state import ui_state
@@ -114,6 +115,8 @@ class VehicleLayoutMici(NavScroller):
 
     self._reengage_toggle = BigToggle(tr("auto reengage"), initial_state=_reengage_enabled(), toggle_callback=_set_reengage)
     self._reengage_toggle.set_enabled(lambda: not ui_state.engaged)
+    self._follow_toggle = BigToggle(tr("vn follow"), initial_state=vn_follow_enabled(), toggle_callback=set_vn_follow)
+    self._follow_toggle.set_enabled(lambda: not ui_state.engaged)
 
     self._status_card = GreyBigButton(tr("car model"), "")
 
@@ -121,11 +124,12 @@ class VehicleLayoutMici(NavScroller):
     self._vinfast_btn = BigButton(tr("vinfast"), "")
     self._vinfast_btn.set_click_callback(lambda: gui_app.push_widget(self._picker))
 
-    self._scroller.add_widgets([self._reengage_toggle, self._status_card, self._vinfast_btn])
+    self._scroller.add_widgets([self._reengage_toggle, self._follow_toggle, self._status_card, self._vinfast_btn])
 
   def show_event(self):
     super().show_event()
     self._reengage_toggle.set_checked(_reengage_enabled())
+    self._follow_toggle.set_checked(vn_follow_enabled())
 
   def _status_text(self, selected: str | None, offroad: bool) -> str:
     platforms = vinfast_platforms()
@@ -143,6 +147,7 @@ class VehicleLayoutMici(NavScroller):
     selected = (ui_state.params.get("CarPlatformBundle") or {}).get("name")
 
     self._reengage_toggle.set_value(tr("on") if self._reengage_toggle._checked else tr("off"))
+    self._follow_toggle.set_value(tr("on") if self._follow_toggle._checked else tr("off"))
 
     status = self._status_text(selected, offroad)
     if self._status_card.get_value() != status:

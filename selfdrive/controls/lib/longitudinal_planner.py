@@ -14,7 +14,7 @@ from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import Longi
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import T_IDXS as T_IDXS_MPC
 from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_from_plan
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
-from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_min_follow_m
+from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_follow_enabled, vn_min_follow_m
 from openpilot.selfdrive.controls.lib.vf_departure import DEPART_FINGERPRINTS, VfDeparture
 from openpilot.selfdrive.controls.lib.vf_stop_follow import FOLLOW_FINGERPRINTS, VfStopFollow
 from openpilot.selfdrive.controls.lib.vf_brake_shaping import VfBrakeShaper, brake_floor_gain
@@ -441,7 +441,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       else:
         self.mpc.stop_lead_obstacle_adjust_m = vf_stop_lead_adjust_m(
           sm['selfdriveState'].personality, self.CP.carFingerprint)
-      if VN_LEGAL_FOLLOW:
+      if VN_LEGAL_FOLLOW and vn_follow_enabled():
         # Highway floor: max(personality T_FOLLOW, legal 35/55/70/100 m). No-op below 60 km/h.
         self.vn_follow_m = vn_min_follow_m(v_ego, self.vn_follow_m)
         t_follow = effective_t_follow(v_ego, get_T_FOLLOW(sm['selfdriveState'].personality), self.vn_follow_m)
