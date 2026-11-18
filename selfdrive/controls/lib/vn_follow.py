@@ -5,17 +5,21 @@ meter floor and the equivalent t_follow so VinFast alpha long never sits closer
 than the dry-road table above 60 km/h. Personality may still command a longer gap.
 
 The floor is on unless VinFastVnFollow is 0. The on-device params blob does not
-know that key, and manager clearAll deletes unknown files under /data/params/d,
-so the choice is stored in /persist/qmpilot like the other qmpilot settings.
+know that key, and manager clearAll deletes unknown files under /data/params/d.
+/persist is read-only on the comma 4, so the choice is stored in /data/qmpilot,
+the same place as the other qmpilot settings.
 """
 
+import os
 from pathlib import Path
 
 # Matches openpilot.common.constants.CV.MS_TO_KPH (kept numeric to stay import-light).
 MS_TO_KPH = 3.6
 
 PARAM = "VinFastVnFollow"
-PERSIST_PATH = Path("/persist/qmpilot") / PARAM
+# /data/qmpilot is writable. /persist/qmpilot is kept for a device where it is not read-only.
+STORE_DIRS = (Path("/data/qmpilot"), Path("/persist/qmpilot"))
+_params_known = None
 
 # Must match long_mpc.STOP_DISTANCE.
 STOP_DISTANCE = 6.0
@@ -95,38 +99,72 @@ def _parse_on(val):
   return None
 
 
-def vn_follow_enabled(path=None) -> bool:
-  """Default on. A missing choice keeps the legal floor."""
-  dest = PERSIST_PATH if path is None else Path(path)
-  try:
-    parsed = _parse_on(dest.read_text(encoding="utf-8"))
-    if parsed is not None:
-      return parsed
-  except OSError:
-    pass
+def _choice_paths(path=None):
+  if path is not None:
+    return [Path(path)]
+  return [directory / PARAM for directory in STORE_DIRS]
+
+
+def _stored_param():
+  """Read the key once. The shipped params blob does not have it, and Params() takes the params lock."""
+  global _params_known
+  if _params_known is False:
+    return None
   try:
     from openpilot.common.params import Params
     params = Params()
-    if params.check_key(PARAM):
-      parsed = _parse_on(params.get(PARAM, return_default=True))
-      if parsed is not None:
-        return parsed
+    if _params_known is None:
+      _params_known = bool(params.check_key(PARAM))
+    if not _params_known:
+      return None
+    return _parse_on(params.get(PARAM, return_default=True))
   except Exception:
-    pass
+    _params_known = False
+    return None
+
+
+def _atomic_write(dest: Path, text: str) -> bool:
+  try:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_name(dest.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, dest)
+    return True
+  except OSError:
+    return False
+
+
+def vn_follow_enabled(path=None) -> bool:
+  """Default on. A missing or unreadable choice keeps the legal floor."""
+  for dest in _choice_paths(path):
+    try:
+      parsed = _parse_on(dest.read_text(encoding="utf-8"))
+    except Exception:
+      continue
+    if parsed is not None:
+      return parsed
+  if path is None:
+    parsed = _stored_param()
+    if parsed is not None:
+      return parsed
   return True
 
 
 def set_vn_follow(on: bool, path=None) -> None:
-  dest = PERSIST_PATH if path is None else Path(path)
-  try:
-    from openpilot.common.params import Params
-    params = Params()
-    if params.check_key(PARAM):
-      params.put_bool(PARAM, bool(on))
-  except Exception:
-    pass
-  dest.parent.mkdir(parents=True, exist_ok=True)
-  dest.write_text("1" if on else "0", encoding="utf-8")
+  global _params_known
+  text = "1" if on else "0"
+  if path is None and _params_known is not False:
+    try:
+      from openpilot.common.params import Params
+      params = Params()
+      if params.check_key(PARAM):
+        params.put_bool(PARAM, bool(on))
+      else:
+        _params_known = False
+    except Exception:
+      pass
+  for dest in _choice_paths(path):
+    _atomic_write(dest, text)
 
 
 def effective_t_follow(v_ego, t_personality, d_vn=None, stop_distance=STOP_DISTANCE):
