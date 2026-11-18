@@ -35,8 +35,3 @@ _mod.__file__ = str(_so)
 _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
-
-# The VF8 lead brake floor is an accel request on the MRR car. Eco is that car.
-_floors = getattr(_mod, "BRAKE_FLOOR_FINGERPRINTS", None)
-if isinstance(_floors, set):
-  _floors.add("VINFAST_VF8_ECO")

@@ -26,15 +26,15 @@ from openpilot.selfdrive.car.helpers import convert_carControlSP, convert_to_cap
 from openpilot.sunnypilot.mads.helpers import set_alternative_experience, set_car_specific_params
 from openpilot.sunnypilot.selfdrive.car import interfaces as sunnypilot_interfaces
 
+from opendbc.safety import ALTERNATIVE_EXPERIENCE
+
 REPLAY = "REPLAY" in os.environ
 
 EventName = log.OnroadEvent.EventName
 
-# The car port allows the EPS's full authority (VF8 ±470° non-production, VF9 ±90°),
-# far more angle than the planner should ever ask for on the road. VF8 Plus uses the
-# VF6/VF7 speed-dependent angle (180° @0 → 40° @100+ km/h), so it is not capped here.
-# VF8 Eco is the production VF8 body and uses the same 100° cap.
-VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 100.0, "VINFAST_VF8_ECO": 100.0, "VINFAST_VF9": 100.0}
+# Production VF8/VF9 are capped at 90°. The port allows more on non-production VF8.
+# VF8 Plus uses the VF6/VF7 speed-dependent angle (180° @0 → 40° @100+ km/h), so it is not capped here.
+VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 90.0, "VINFAST_VF9": 90.0}
 
 # VF9 is packaged with a 7/5/3 deg-per-step slew (~700 deg/s at standstill), which chases
 # the plan more abruptly than the car needs. deg/step at 100 Hz, keyed by speed in m/s.
@@ -44,11 +44,11 @@ VINFAST_STEER_ANGLE_RATE = {"VINFAST_VF9": ([0., 20., 40.], [1.5, 1.0, 0.6])}
 # same last-meter ramp as VF8/VF9 so VF6/VF7 do not get a second brake poke.
 VINFAST_STOP_ACCEL = {
   "VINFAST_VF6": -1.4, "VINFAST_VF7": -1.4,
-  "VINFAST_VF8": -1.4, "VINFAST_VF8_PLUS": -1.4, "VINFAST_VF8_ECO": -1.4, "VINFAST_VF9": -1.4,
+  "VINFAST_VF8": -1.4, "VINFAST_VF8_PLUS": -1.4, "VINFAST_VF9": -1.4,
 }
 VINFAST_STOPPING_DECEL_RATE = {
   "VINFAST_VF6": 0.56, "VINFAST_VF7": 0.56,
-  "VINFAST_VF8": 0.56, "VINFAST_VF8_PLUS": 0.56, "VINFAST_VF8_ECO": 0.56, "VINFAST_VF9": 0.56,
+  "VINFAST_VF8": 0.56, "VINFAST_VF8_PLUS": 0.56, "VINFAST_VF9": 0.56,
 }
 
 # Wheel-speed vEgo reads low vs MHU at highway speed. Add this offset so
@@ -180,7 +180,7 @@ class Car:
         fixed_fingerprint = VINFAST_CAR.VINFAST_VF9.name
         cloudlog.warning(f"No CarPlatformBundle.platform; using default fixed fingerprint {fixed_fingerprint}")
       # VF9: default alpha longitudinal so Experimental mode and OP long are available without dev settings.
-      if fixed_fingerprint in (VINFAST_CAR.VINFAST_VF8.name, VINFAST_CAR.VINFAST_VF8_PLUS.name, VINFAST_CAR.VINFAST_VF8_ECO.name, VINFAST_CAR.VINFAST_VF9.name) and self.params.get("AlphaLongitudinalEnabled") is None:
+      if fixed_fingerprint in (VINFAST_CAR.VINFAST_VF8.name, VINFAST_CAR.VINFAST_VF8_PLUS.name, VINFAST_CAR.VINFAST_VF9.name) and self.params.get("AlphaLongitudinalEnabled") is None:
         self.params.put_bool("AlphaLongitudinalEnabled", True)
       alpha_long_allowed = self.params.get_bool("AlphaLongitudinalEnabled")
 
@@ -211,6 +211,16 @@ class Car:
     set_car_specific_params(self.CP, self.CP_SP, self.params)
     apply_vinfast_steer_limits(self.CP, self.CI)
     apply_vinfast_stop_hold(self.CP)
+
+    # VinFast: MADS is not used; force off so CarParams/Panda match (no ENABLE_MADS=1024 in selfdrived).
+    if self.CP.brand == "vinfast":
+      self.params.put_bool("Mads", False)
+      _mads_mask = (
+        ALTERNATIVE_EXPERIENCE.ENABLE_MADS
+        | ALTERNATIVE_EXPERIENCE.MADS_DISENGAGE_LATERAL_ON_BRAKE
+        | ALTERNATIVE_EXPERIENCE.MADS_PAUSE_LATERAL_ON_BRAKE
+      )
+      self.CP.alternativeExperience &= ~_mads_mask
 
     # Dynamic Experimental Control
     self.dynamic_experimental_control = self.params.get_bool("DynamicExperimentalControl")

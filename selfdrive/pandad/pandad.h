@@ -20,7 +20,6 @@ class PandaSafety {
 public:
   PandaSafety(const std::vector<Panda *> &pandas);
   void configureSafetyMode(bool is_onroad);
-  void applyCanFdFromStoredParams();
   bool getOffroadMode();
 
 private:

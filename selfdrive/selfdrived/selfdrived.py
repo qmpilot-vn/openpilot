@@ -642,7 +642,6 @@ class SelfdriveD(CruiseHelper):
   def step(self):
     CS = self.data_sample()
     self.update_events(CS)
-    self.mads.suppress_vinfast_long_engage(self.events, CS)
     if not self.CP.passive and self.initialized:
       self.enabled, self.active = self.state_machine.update(self.events)
     if not self.CP.notCar:

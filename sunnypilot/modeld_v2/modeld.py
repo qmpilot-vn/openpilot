@@ -382,8 +382,11 @@ def main(demo=False):
       small_model = None
   if model is None:
     model = small_model
-  if (joined := jetlink_adapter.attach(small_model, vipc_client_main.width, vipc_client_main.height)) is not None:
-    model = joined
+  joined = None
+  # chestnut owns the big model; jetlink must not replace it
+  if not CHESTNUT:
+    if (joined := jetlink_adapter.attach(small_model, vipc_client_main.width, vipc_client_main.height)) is not None:
+      model = joined
   params.put_bool("ChestnutLoading", False)
   assert model is not None
   cloudlog.warning(f"models loaded in {time.monotonic() - st:.1f}s, modeld starting")

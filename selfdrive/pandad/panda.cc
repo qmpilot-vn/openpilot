@@ -64,30 +64,8 @@ std::vector<std::string> Panda::list(bool usb_only) {
   return serials;
 }
 
-void Panda::apply_canfd_restore() {
-  if (canfd_restore_bus_ < 0 || canfd_restore_data_kbps_ == 0) {
-    return;
-  }
-  set_can_speed_kbps((uint16_t)canfd_restore_bus_, canfd_restore_arb_kbps_);
-  set_data_speed_kbps((uint16_t)canfd_restore_bus_, canfd_restore_data_kbps_);
-}
-
-void Panda::set_canfd_restore(uint16_t bus, uint16_t arb_kbps, uint16_t data_kbps) {
-  const bool changed = canfd_restore_bus_ != (int)bus ||
-                       canfd_restore_arb_kbps_ != arb_kbps ||
-                       canfd_restore_data_kbps_ != data_kbps;
-  canfd_restore_bus_ = bus;
-  canfd_restore_arb_kbps_ = arb_kbps;
-  canfd_restore_data_kbps_ = data_kbps;
-  if (changed) {
-    LOGW("CAN-FD restore bus %d %d/%d kbps", bus, arb_kbps, data_kbps);
-    apply_canfd_restore();
-  }
-}
-
 void Panda::set_safety_model(cereal::CarParams::SafetyModel safety_model, uint16_t safety_param) {
   handle->control_write(0xdc, (uint16_t)safety_model, safety_param);
-  apply_canfd_restore();
 }
 
 void Panda::set_alternative_experience(uint16_t alternative_experience, uint16_t safety_param_sp) {

@@ -11,10 +11,11 @@ import ctypes
 from functools import wraps, partial
 from itertools import accumulate
 
+import opendbc
 from opendbc.car.structs import CarParams
 
 from .base import BaseHandle
-from .constants import BASEDIR, FW_PATH, McuType
+from .constants import BASEDIR, FW_PATH, McuType, compute_version_hash
 from .dfu import PandaDFU
 from .spi import PandaSpiHandle, PandaSpiException, PandaProtocolMismatch
 from .usb import PandaUsbHandle
@@ -50,14 +51,6 @@ def _parse_c_struct(path, name):
   if not all(fields):
     raise ValueError(f"unsupported {name} layout in {path}")
   return struct.Struct("<" + "".join(type_to_format[m[1]] for m in fields))
-
-def _header_define(path, name):
-  with open(path) as f:
-    for line in f:
-      parts = line.split()
-      if len(parts) >= 3 and parts[0] == "#define" and parts[1] == name:
-        return int(parts[2])
-  raise RuntimeError(f"{name} missing from {path}")
 
 def pack_can_buffer(arr, chunk=False, fd=False):
   snds = [bytearray(), ]
@@ -143,11 +136,9 @@ class Panda:
   HW_TYPE_CUATRO = b'\x0a'
   HW_TYPE_BODY = b'\xb1'
 
-  # Same integers the H7 firmware returns on control request 0xdd.
-  _health_h = os.path.join(BASEDIR, "board/health.h")
-  CAN_PACKET_VERSION = _header_define(_health_h, "CAN_PACKET_VERSION")
-  HEALTH_PACKET_VERSION = _header_define(_health_h, "HEALTH_PACKET_VERSION")
-  HEALTH_STRUCT = _parse_c_struct(_health_h, "health_t")
+  CAN_PACKET_VERSION = compute_version_hash(os.path.join(opendbc.INCLUDE_PATH, "opendbc/safety/can.h"))
+  HEALTH_PACKET_VERSION = compute_version_hash(os.path.join(BASEDIR, "board/health.h"))
+  HEALTH_STRUCT = _parse_c_struct(os.path.join(BASEDIR, "board/health.h"), "health_t")
   CAN_HEALTH_STRUCT = struct.Struct("<BIBBBBBBBBIIIIIIIHHBBBIIII")
 
   H7_DEVICES = [HW_TYPE_RED_PANDA, HW_TYPE_TRES, HW_TYPE_CUATRO, HW_TYPE_BODY]
@@ -548,11 +539,12 @@ class Panda:
       "fan_power": a[19],
       "safety_rx_checks_invalid": a[20],
       "spi_error_count": a[21],
-      "fan_stall_count": a[22],
-      "sbu1_voltage_mV": a[23],
-      "sbu2_voltage_mV": a[24],
-      "som_reset_triggered": a[25],
+      "sbu1_voltage_mV": a[22],
+      "sbu2_voltage_mV": a[23],
+      "som_reset_triggered": a[24],
+      "sound_output_level": a[25],
       "controls_allowed_lateral": a[26],
+      "controls_allowed_longitudinal": a[27],
     }
 
   @ensure_health_packet_version
@@ -621,9 +613,6 @@ class Panda:
     dat = self._handle.controlRead(Panda.REQUEST_IN, 0xdd, 0, 0, 8)
     if dat and len(dat) == 8:
       return struct.unpack("<II", dat)
-    # DEV-f80185ba firmware returns three uint8 versions: health, CAN, CAN health.
-    if dat and len(dat) >= 2:
-      return dat[0], dat[1]
     return (0, 0)
 
   def is_internal(self):

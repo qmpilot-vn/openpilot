@@ -50,36 +50,6 @@
 
 ExitHandler do_exit;
 
-static bool fingerprint_is_vinfast(const std::string &fp) {
-  return fp.rfind("VINFAST_", 0) == 0;
-}
-
-static bool car_params_blob_is_vinfast(const std::string &blob) {
-  if (blob.size() < 8) {
-    return false;
-  }
-  try {
-    AlignedBuffer aligned_buf;
-    capnp::FlatArrayMessageReader cmsg(aligned_buf.align(blob.data(), blob.size()));
-    return fingerprint_is_vinfast(cmsg.getRoot<cereal::CarParams>().getCarFingerprint().cStr());
-  } catch (...) {
-    return false;
-  }
-}
-
-static bool vinfast_harness_from_params(Params &params) {
-  const std::string bundle = params.get("CarPlatformBundle");
-  if (bundle.find("VINFAST_") != std::string::npos || bundle.find("vinfast") != std::string::npos) {
-    return true;
-  }
-  for (const char *key : {"CarParams", "CarParamsCache", "CarParamsPersistent", "CarParamsPrevRoute"}) {
-    if (car_params_blob_is_vinfast(params.get(key))) {
-      return true;
-    }
-  }
-  return false;
-}
-
 bool check_all_connected(const std::vector<Panda *> &pandas) {
   for (const auto& panda : pandas) {
     if (!panda->connected()) {
@@ -206,7 +176,6 @@ void fill_panda_state(cereal::PandaState::Builder &ps, cereal::PandaState::Panda
   ps.setIgnitionLine(health.ignition_line_pkt);
   ps.setIgnitionCan(health.ignition_can_pkt);
   ps.setControlsAllowed(health.controls_allowed_pkt);
-  ps.setControlsAllowedLateral(health.controls_allowed_lateral_pkt);
   ps.setTxBufferOverflow(health.tx_buffer_overflow_pkt);
   ps.setRxBufferOverflow(health.rx_buffer_overflow_pkt);
   ps.setPandaType(hw_type);
@@ -545,7 +514,6 @@ void pandad_run(std::vector<Panda *> &pandas) {
   SubMaster sm({"selfdriveState", "selfdriveStateSP", "carParams", "carParamsSP", "deviceState"});
   PubMaster pm({"can", "pandaStates", "peripheralState"});
   PandaSafety panda_safety(pandas);
-  panda_safety.applyCanFdFromStoredParams();
   Panda *peripheral_panda = pandas[0];
   bool engaged = false;
   bool engaged_mads = false;
@@ -579,10 +547,9 @@ void pandad_run(std::vector<Panda *> &pandas) {
 
       bool mask_vinfast_harness_ignition = false;
       if (sm.allAliveAndValid({"carParams"})) {
-        mask_vinfast_harness_ignition = fingerprint_is_vinfast(sm["carParams"].getCarParams().getCarFingerprint().cStr());
-      }
-      if (!mask_vinfast_harness_ignition) {
-        mask_vinfast_harness_ignition = vinfast_harness_from_params(params);
+        const auto cp = sm["carParams"].getCarParams();
+        const std::string fingerprint = cp.getCarFingerprint().cStr();
+        mask_vinfast_harness_ignition = fingerprint.rfind("VINFAST_", 0) == 0;
       }
 
       process_panda_state(pandas, &pm, engaged, engaged_mads, close_relay, spoofing_started, always_offroad, mask_vinfast_harness_ignition);

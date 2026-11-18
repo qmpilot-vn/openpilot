@@ -38,7 +38,7 @@ _A_TOTAL_MAX_BP = [20., 40.]
 # Thresholds still need committed stop intent so green/coast approaches do not
 # brake early, but they must trigger during the approach: while this reads False
 # the softening below is what is applied instead.
-VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF8_PLUS", "VINFAST_VF8_ECO", "VINFAST_VF9"}
+VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF8_PLUS", "VINFAST_VF9"}
 VF_REDLIGHT_ACCEL_SCALE = 1.03
 VF_REDLIGHT_BRAKE_PROB = 0.60
 # The model path is "short" relative to where a free-driving prediction would end,
@@ -251,7 +251,7 @@ def slew_highway_accel(previous: float, target: float, dt: float, *, snap: bool)
 # (683068420a0d15ba 00000012/18: green light, lead rolled at 46 s, MRR had it 3 m out and
 # at 1.2 m/s by 52 s, the model released at 56.3 s). Once MRR confirms the same track has
 # left and the MPC is not stopping, the model gets this long to agree before the MPC goes.
-VF_RADAR_LAUNCH_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF8_ECO", "VINFAST_VF9"}
+VF_RADAR_LAUNCH_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF9"}
 VF_RADAR_LAUNCH_MOVED_M = 3.0      # [m] same track, from the closest range seen at this stop
 VF_RADAR_LAUNCH_VLEAD = 0.8        # [m/s]
 VF_RADAR_LAUNCH_HOLD_S = 1.5       # [s] model still stopping after that
