@@ -106,7 +106,7 @@ class TestMonitoring:
     s = d_status.settings
     assert alert_lvls[int(s._VISION_POLICY_ALERT_1_TIMEOUT / 2 / DT_DMON)] == 0
     assert alert_lvls[int((s._VISION_POLICY_ALERT_1_TIMEOUT + \
-                    (s._VISION_POLICY_ALERT_2_TIMEOUT - s._VISION_POLICY_ALERT_1_TIMEOUT) / 2) / DT_DMON)] == 0
+                    (s._VISION_POLICY_ALERT_2_TIMEOUT - s._VISION_POLICY_ALERT_1_TIMEOUT) / 2) / DT_DMON)] == 1
     assert alert_lvls[int((s._VISION_POLICY_ALERT_2_TIMEOUT + \
                     (s._VISION_POLICY_ALERT_3_TIMEOUT - s._VISION_POLICY_ALERT_2_TIMEOUT) / 2) / DT_DMON)] == 2
     assert alert_lvls[int((s._VISION_POLICY_ALERT_3_TIMEOUT + \
@@ -119,7 +119,7 @@ class TestMonitoring:
     s = d_status.settings
     assert alert_lvls[int(s._WHEELTOUCH_POLICY_ALERT_1_TIMEOUT / 2 / DT_DMON)] == 0
     assert alert_lvls[int((s._WHEELTOUCH_POLICY_ALERT_1_TIMEOUT + \
-                    (s._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT - s._WHEELTOUCH_POLICY_ALERT_1_TIMEOUT) / 2) / DT_DMON)] == 0
+                    (s._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT - s._WHEELTOUCH_POLICY_ALERT_1_TIMEOUT) / 2) / DT_DMON)] == 1
     assert alert_lvls[int((s._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT + \
                     (s._WHEELTOUCH_POLICY_ALERT_3_TIMEOUT - s._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT) / 2) / DT_DMON)] == 2
     assert alert_lvls[int((s._WHEELTOUCH_POLICY_ALERT_3_TIMEOUT + \
@@ -136,7 +136,9 @@ class TestMonitoring:
     interaction_vector = [car_interaction_NOT_DETECTED] * int(DISTRACTED_SECONDS_TO_ORANGE*3/DT_DMON) + \
                          [car_interaction_DETECTED] * (int(TEST_TIMESPAN/DT_DMON)-int(DISTRACTED_SECONDS_TO_ORANGE*3/DT_DMON))
     alert_lvls, _ = self._run_seq(ds_vector, interaction_vector, always_true, always_false)
-    assert alert_lvls[int(DISTRACTED_SECONDS_TO_ORANGE*0.5/DT_DMON)] == 0
+    # silent green from VISION_POLICY_ALERT_1_TIMEOUT, nothing before it
+    assert alert_lvls[int((dm_settings._VISION_POLICY_ALERT_1_TIMEOUT-1)/DT_DMON)] == 0
+    assert alert_lvls[int((dm_settings._VISION_POLICY_ALERT_1_TIMEOUT+1)/DT_DMON)] == 1
     assert alert_lvls[int((DISTRACTED_SECONDS_TO_ORANGE-0.1)/DT_DMON)] == 2
     assert alert_lvls[int(DISTRACTED_SECONDS_TO_ORANGE*1.5/DT_DMON)] == 0
     assert alert_lvls[int((DISTRACTED_SECONDS_TO_ORANGE*3-0.1)/DT_DMON)] == 2
@@ -219,7 +221,7 @@ class TestMonitoring:
     s = d_status.settings
     assert alert_lvls[int((_redlight_time-0.1)/DT_DMON)] == 0
     _alert_1_to_2 = s._VISION_POLICY_ALERT_2_TIMEOUT - s._VISION_POLICY_ALERT_1_TIMEOUT
-    assert alert_lvls[int((_redlight_time+0.5)/DT_DMON)] == 0
+    assert alert_lvls[int((_redlight_time+0.5)/DT_DMON)] == 1
     assert alert_lvls[int((_redlight_time+_alert_1_to_2+0.5)/DT_DMON)] == 2
 
   # engaged, distracted while moving, then car stops after reaching orange
@@ -231,7 +233,8 @@ class TestMonitoring:
     alert_lvls, _ = self._run_seq(always_distracted, always_false, always_true, standstill_vector)
     # just before and briefly after stopping: orange alert; goes away quickly after stopped
     assert alert_lvls[int((_stop_time+0.1)/DT_DMON)] == 2
-    assert alert_lvls[int((_stop_time+0.5)/DT_DMON)] == 0
+    # half the tai standstill recovery boost: clears in 0.6 s instead of 0.5 s
+    assert alert_lvls[int((_stop_time+0.8)/DT_DMON)] == 0
 
   # engaged, model is somehow uncertain and driver is distracted
   #  - should fall back to wheel touch after uncertain alert
@@ -241,12 +244,17 @@ class TestMonitoring:
     alert_lvls, d_status = self._run_seq(ds_vector, interaction_vector, always_true, always_false)
     s = d_status.settings
     t_fb = DT_DMON * s._HI_STD_FALLBACK_TIME + s._FACE_OFF_FRAMES * DT_DMON
-    assert alert_lvls[int((t_fb + s._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT - 2) / DT_DMON)] == 0
+    assert alert_lvls[int((t_fb + s._WHEELTOUCH_POLICY_ALERT_1_TIMEOUT - 2) / DT_DMON)] == 0
+    assert alert_lvls[int((t_fb + s._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT - 2) / DT_DMON)] == 1
     assert alert_lvls[int((t_fb + s._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT + 2) / DT_DMON)] == 2
     assert alert_lvls[int((t_fb + s._WHEELTOUCH_POLICY_ALERT_3_TIMEOUT + 2) / DT_DMON)] == 3
 
 
-class TestDmNerf:
+STOCK = dict(wheel=(15., 24., 30.), vision=(3., 5., 11.))
+TAI = dict(wheel=(30., 55., 90.), vision=(20., 40., 80.))
+
+
+class TestDmMiddle:
   def _run(self, msgs, interaction=None, engaged=None, standstill=None):
     n = len(msgs)
     interaction = always_false[:n] if interaction is None else interaction
@@ -254,12 +262,24 @@ class TestDmNerf:
     standstill = always_false[:n] if standstill is None else standstill
     return TestMonitoring()._run_seq(msgs, interaction, engaged, standstill)
 
-  def test_never_emits_silent_green(self):
+  def test_timeouts_sit_between_stock_and_tai(self):
+    s = DRIVER_MONITOR_SETTINGS()
+    wheel = (s._WHEELTOUCH_POLICY_ALERT_1_TIMEOUT, s._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT, s._WHEELTOUCH_POLICY_ALERT_3_TIMEOUT)
+    vision = (s._VISION_POLICY_ALERT_1_TIMEOUT, s._VISION_POLICY_ALERT_2_TIMEOUT, s._VISION_POLICY_ALERT_3_TIMEOUT)
+    for got, lo, hi in zip(wheel + vision, STOCK['wheel'] + STOCK['vision'], TAI['wheel'] + TAI['vision']):
+      assert lo < got < hi
+    assert not s._SKIP_ALERT_1
+
+  def test_silent_green_comes_before_orange(self):
+    s = DRIVER_MONITOR_SETTINGS()
     alert_lvls, _ = self._run(always_distracted)
-    assert 1 not in [int(a) for a in alert_lvls]
+    lv = [int(a) for a in alert_lvls]
+    assert lv[int((s._VISION_POLICY_ALERT_1_TIMEOUT - 1) / DT_DMON)] == 0
+    assert lv[int((s._VISION_POLICY_ALERT_1_TIMEOUT + 2) / DT_DMON)] == 1
+    assert lv.index(1) < lv.index(2) < lv.index(3)
 
   def test_cluster_pose_stays_quiet(self):
-    # stock yaw trip was ~0.40 rad; cluster glance must not nag
+    # stock yaw trip was ~0.40 rad; a cluster glance must not nag
     msgs = [make_msg(True, yaw=0.40)] * int(60 / DT_DMON)
     alert_lvls, dm = self._run(msgs)
     assert all(int(a) == 0 for a in alert_lvls)
@@ -271,48 +291,48 @@ class TestDmNerf:
     assert all(int(a) == 0 for a in alert_lvls)
     assert not dm.distracted_types['eye']
 
-  def test_phone_still_reaches_orange(self):
-    msgs = [make_msg(True, phone=0.85)] * int(50 / DT_DMON)
+  def test_phone_reaches_orange_on_the_vision_timeouts(self):
+    s = DRIVER_MONITOR_SETTINGS()
+    msgs = [make_msg(True, phone=0.85)] * int((s._VISION_POLICY_ALERT_2_TIMEOUT + 6) / DT_DMON)
     alert_lvls, dm = self._run(msgs)
     assert dm.distracted_types['phone']
-    assert int(alert_lvls[int(15 / DT_DMON)]) == 0
-    assert int(alert_lvls[int(43 / DT_DMON)]) == 2
+    assert int(alert_lvls[int((s._VISION_POLICY_ALERT_1_TIMEOUT - 1) / DT_DMON)]) == 0
+    assert int(alert_lvls[int((s._VISION_POLICY_ALERT_2_TIMEOUT + 3) / DT_DMON)]) == 2
 
-  def test_extreme_pose_still_reaches_orange(self):
-    msgs = [make_msg(True, yaw=2.0)] * int(50 / DT_DMON)
+  def test_extreme_pose_reaches_orange(self):
+    s = DRIVER_MONITOR_SETTINGS()
+    msgs = [make_msg(True, yaw=2.0)] * int((s._VISION_POLICY_ALERT_2_TIMEOUT + 6) / DT_DMON)
     alert_lvls, dm = self._run(msgs)
     assert dm.distracted_types['pose']
-    assert int(alert_lvls[int(43 / DT_DMON)]) == 2
+    assert int(alert_lvls[int((s._VISION_POLICY_ALERT_2_TIMEOUT + 3) / DT_DMON)]) == 2
 
-  def test_face_prob_flicker_stays_latched(self):
+  def test_face_prob_flicker_stays_latched_through_the_hold(self):
     s = DRIVER_MONITOR_SETTINGS()
-    msgs = []
-    msgs += [make_msg(True, face_prob=0.85)] * int(2 / DT_DMON)
-    # 1.0s in the old 0.7 deadband — must stay seen
-    msgs += [make_msg(True, face_prob=0.55)] * int(1.0 / DT_DMON)
-    # 1.0s below off threshold — still inside 1.5s hold
-    msgs += [make_msg(True, face_prob=0.20)] * int(1.0 / DT_DMON)
+    hold = s._FACE_OFF_FRAMES * DT_DMON
+    msgs = [make_msg(True, face_prob=0.85)] * int(2 / DT_DMON)
+    # between the off and on thresholds: stays seen
+    msgs += [make_msg(True, face_prob=(s._FACE_OFF_THRESHOLD + s._FACE_THRESHOLD) / 2)] * int(1.0 / DT_DMON)
+    # below the off threshold, one frame short of the hold
+    msgs += [make_msg(True, face_prob=0.20)] * (s._FACE_OFF_FRAMES - 1)
     dm = DriverMonitoring()
     for i, msg in enumerate(msgs):
       dm._update_states(msg, [0, 0, 0], 0, True, False)
       dm._update_events(False, True, False, 0)
       assert dm.face_detected, f"lost face at t={i * DT_DMON:.2f}s"
-    # 1.6s more below off threshold — now drop
-    for _ in range(int(1.6 / DT_DMON)):
-      dm._update_states(make_msg(False, face_prob=0.20), [0, 0, 0], 0, True, False)
-      dm._update_events(False, True, False, 0)
+    dm._update_states(make_msg(False, face_prob=0.20), [0, 0, 0], 0, True, False)
     assert not dm.face_detected
-    assert s._FACE_OFF_FRAMES == int(1.5 / DT_DMON)
+    assert hold == pytest.approx(0.75, abs=DT_DMON)
 
   def test_alert_hold_blocks_brief_lookback(self):
+    s = DRIVER_MONITOR_SETTINGS()
     n_dist = int(DISTRACTED_SECONDS_TO_ORANGE / DT_DMON)
-    n_look = int(1.0 / DT_DMON)
+    n_look = s._ALERT_CLEAR_FRAMES // 2
     msgs = [msg_DISTRACTED] * n_dist + [msg_ATTENTIVE] * n_look
     alert_lvls, _ = self._run(msgs)
     assert int(alert_lvls[n_dist - 1]) == 2
     assert int(alert_lvls[n_dist + n_look - 1]) == 2
 
-  def test_alert_hold_clears_after_two_seconds(self):
+  def test_alert_hold_clears_after_looking_back(self):
     n_dist = int(DISTRACTED_SECONDS_TO_ORANGE / DT_DMON)
     n_look = int(3.5 / DT_DMON)
     msgs = [msg_DISTRACTED] * n_dist + [msg_ATTENTIVE] * n_look
@@ -321,21 +341,21 @@ class TestDmNerf:
     assert int(alert_lvls[-1]) == 0
 
   def test_brief_face_after_wheel_orange_does_not_clear(self):
+    s = DRIVER_MONITOR_SETTINGS()
     n_inv = int(INVISIBLE_SECONDS_TO_ORANGE / DT_DMON)
-    n_face = int(0.5 / DT_DMON)
+    n_face = s._POLICY_VISION_ENTER_FRAMES // 2
     msgs = [msg_NO_FACE_DETECTED] * n_inv + [msg_ATTENTIVE] * n_face
     alert_lvls, dm = self._run(msgs)
     assert int(alert_lvls[n_inv - 1]) == 2
     assert int(alert_lvls[-1]) == 2
     assert dm.active_policy == log.DriverMonitoringState.MonitoringPolicy.wheeltouch
 
-  def test_look_away_look_back_does_not_ping_pong(self):
-    # 8s blink / 4s eyes-on, 90s total — never 40s continuous, must stay quiet
+  def test_look_away_look_back_never_reaches_orange(self):
+    # 8 s away / 4 s eyes-on for 90 s: never as long as the orange timeout in one go
     cycle = [msg_DISTRACTED] * int(8 / DT_DMON) + [msg_ATTENTIVE] * int(4 / DT_DMON)
     msgs = (cycle * 8)[:int(90 / DT_DMON)]
     alert_lvls, _ = self._run(msgs)
-    levels = {int(a) for a in alert_lvls}
-    assert levels == {0}, f"ping-pong levels={levels}"
+    assert max(int(a) for a in alert_lvls) <= 1
 
   def test_face_threshold_flicker_does_not_flip_policy(self):
     msgs = []
