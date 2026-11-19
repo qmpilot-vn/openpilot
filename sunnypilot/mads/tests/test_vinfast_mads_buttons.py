@@ -147,19 +147,25 @@ def test_set_buttons_do_not_toggle_mads_while_acc_controls(mads_for, fingerprint
 
 
 @pytest.mark.parametrize("fingerprint", ["VINFAST_VF6", "VINFAST_VF8"])
-def test_acc_status_appearing_does_not_arm_mads_and_dropping_cancels(mads_for, fingerprint):
+def test_acc_main_rising_does_not_arm_mads(mads_for, fingerprint):
   mads = mads_for(fingerprint)
   mads.selfdrive.CS_prev.cruiseState.available = False
   _step(mads, _car_state(True, False))
   assert not mads.selfdrive.events_sp.has(EventNameSP.lkasEnable)
   assert not mads.enabled
 
-  _step(mads, _car_state(True, False, ButtonType.accelCruise, True))
+
+@pytest.mark.parametrize("fingerprint", ["VINFAST_VF6", "VINFAST_VF8"])
+def test_spd_plus_arms_without_acc_main_and_main_drop_keeps_mads(mads_for, fingerprint):
+  mads = mads_for(fingerprint)
+  mads.selfdrive.CS_prev.cruiseState.available = False
+  _step(mads, _car_state(False, False, ButtonType.accelCruise, True))
+  assert mads.selfdrive.events_sp.has(EventNameSP.lkasEnable)
   assert mads.enabled
 
   _step(mads, _car_state(False, False))
-  assert mads.selfdrive.events_sp.has(EventNameSP.lkasDisable)
-  assert not mads.enabled
+  assert not mads.selfdrive.events_sp.has(EventNameSP.lkasDisable)
+  assert mads.enabled
 
 
 @pytest.mark.parametrize("fingerprint", ["VINFAST_VF6", "VINFAST_VF8"])
