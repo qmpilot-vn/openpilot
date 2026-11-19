@@ -36,13 +36,22 @@ _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
 
-# Plaintext carstate / steer_press.py (same latch as vf-dev-c3xl).
-_mod.CarControllerParams.STEER_DRIVER_PRESS_NM = 2.0
+# Plaintext steer_press.py + carcontroller yield/reclaim (same as vf-dev-c3xl-mads).
 _mod.CarControllerParams.STEER_DRIVER_RELEASE_NM = 0.8
-_mod.CarControllerParams.STEER_PRESSED_MIN_COUNT = 5
 _mod.CarControllerParams.STEER_RELEASE_MIN_COUNT = 50
-_mod.CarControllerParams.STEER_PRESS_RATE_GAIN = 0.02
-_mod.CarControllerParams.STEER_PRESS_NM_MAX = 4.0
+_mod.CarControllerParams.STEER_SELF_TQ_VF6 = (0.0005, 0.003)
+_mod.CarControllerParams.STEER_SELF_TQ_VF8 = (0.0003, 0.012)
+_mod.CarControllerParams.STEER_YIELD_START_NM = 1.2
+_mod.CarControllerParams.STEER_YIELD_FULL_NM = 2.2
+_mod.CarControllerParams.STEER_YIELD_PERSIST_FRAMES = 4
+_mod.CarControllerParams.STEER_TAKEOVER_NM = 1.5
+_mod.CarControllerParams.STEER_TAKEOVER_NM_CAP = 3.5
+_mod.CarControllerParams.STEER_TAKEOVER_IMPULSE_NMS = 0.12
+_mod.CarControllerParams.STEER_YIELD_ARM_BLEND = 0.3
+_mod.CarControllerParams.STEER_YIELD_ARM_FRAMES = 5
+_mod.CarControllerParams.STEER_RECLAIM_FRAMES = 200
+_mod.CarControllerParams.STEER_RECLAIM_RATE_MIN = 0.08
+
 
 # VF8 Plus 2025-26: VF8 specs, VF6/VF7 DBC and steer limits, VF6 safety and InfoCAN.
 from opendbc.car.lateral import AngleSteeringLimits

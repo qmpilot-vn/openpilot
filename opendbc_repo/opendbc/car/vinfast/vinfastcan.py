@@ -36,8 +36,8 @@ _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
 
-# Host overlay: vf-dev-c3xl angle-based ADAS_EPS_Torq_Fact_Req. The packaged
-# .so sends a flat 0.6 on VF6 (not enough at 180 deg).
+# Host overlay: angle-based Torq_Fact_Req, scaled down while the driver yield
+# blend is up (same as vf-dev-c3xl-mads / vf-dev-c4).
 from opendbc.car.vinfast.steer_torque import torque_factor as _torque_factor
 from opendbc.car.vinfast.values import CANBUS as _CANBUS
 
@@ -49,18 +49,28 @@ def _apply_checksum(packer, msg_name, bus, checksum_field, values):
   return packer.make_can_msg(msg_name, bus, values)
 
 
-def create_steering_control(packer, CP, frame, apply_angle, lat_active):
+def scale_torque_factor(factor: float, yield_blend: float) -> float:
+  """Move Torq_Fact_Req toward its 0.5 floor as yield_blend goes 0..1."""
+  blend = min(1.0, max(0.0, float(yield_blend)))
+  return float(factor) + (0.5 - float(factor)) * blend
+
+
+def create_steering_control(packer, CP, frame, apply_angle, lat_active, yield_blend=0.0):
   alive = frame % 15
+  factor = _torque_factor(apply_angle, lat_active, CP.carFingerprint)
+  if lat_active:
+    factor = scale_torque_factor(factor, yield_blend)
   values = {
     "CHKSM_ADAS_EPS_LATE_CON": 0,
     "ALV_ADAS_EPS_LATE_CON": alive,
     "ADAS_EPS_StrWhe_TOLAct": 0,
     "ADAS_EPS_StrWhe_AOLAct": 1 if lat_active else 0,
     "ADAS_EPS_AOLReq": apply_angle if lat_active else 0.0,
-    "ADAS_EPS_Torq_Fact_Req": _torque_factor(apply_angle, lat_active, CP.carFingerprint),
+    "ADAS_EPS_Torq_Fact_Req": factor,
     "SECCAN_ADAS_EPS_LATE_CON": 0,
   }
   return _apply_checksum(packer, "ADAS_EPS_LATE_CON", _CANBUS.chassis, "CHKSM_ADAS_EPS_LATE_CON", values)
 
 
+_mod.scale_torque_factor = scale_torque_factor
 _mod.create_steering_control = create_steering_control
