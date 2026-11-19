@@ -1,14 +1,12 @@
 """
-VinFast MADS is independent of ACC main. The wheel HWA button is stock
-hands-on highway assist — do not map it to ButtonType.lkas.
+VinFast MADS is ACC-main only. The wheel HWA button is stock hands-on
+highway assist — do not map it to ButtonType.lkas.
 
-SPD± = MFS_CruiseSpeedIncrease/Decrease (raw paddles, work with ACC off)
-     OR ADAS_ACC_SpdSet_*_Feed (ACC HUD echo, mainly while ACC controlling).
-
-While ACC is not controlling (ADAS_ACC_Mode != 4):
-  SPD+ while MADS is off → ENABLE
-  SPD- while MADS is on → USER_DISABLE
-While ACC is controlling, SPD± only change set speed (MADS ignores them).
+SET+ arms, SET- disarms, and only while ACC is not controlling:
+  long off + SET+ while MADS is off → ENABLE
+  long off + SET- while MADS is on → USER_DISABLE
+  long on  + SET+ or SET- → speed only, MADS stays
+  disabled + SET- → no-op
 """
 
 ENABLE = "enable"
