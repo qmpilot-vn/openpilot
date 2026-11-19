@@ -141,7 +141,8 @@ class ModularAssistiveDrivingSystem:
     # When the safety and selfdrived do not agree on controls_allowed_lateral
     # we want to disengage sunnypilot. However the status from the panda goes through
     # another socket other than the CAN messages and one can arrive earlier than the other.
-    # Therefore we allow a mismatch for two samples, then we trigger the disengagement.
+    # VinFast: host can enable from MFS SPD+ a few hundred ms before the panda latches
+    # via heartbeat (InfoCAN is often on the other panda). Allow ~1s before mismatch.
     if not self.active or self.selfdrive.enabled:
       self.lateral_mismatch_counter = 0
     elif any(not ps.controlsAllowedLateral for ps in self.selfdrive.sm['pandaStates']
@@ -253,7 +254,10 @@ class ModularAssistiveDrivingSystem:
       if self.state_machine.state == State.paused:
         self.events_sp.add(EventNameSP.silentLkasEnable)
 
-    if self.lateral_mismatch_counter >= 200:
+    # Default ~2s (200 @ 100Hz). VinFast needs longer: panda often latches lateral
+    # from the host MADS heartbeat only after InfoCAN/SPD+ is seen on the other panda.
+    mismatch_limit = 500 if self.CP.brand == "vinfast" else 200
+    if self.lateral_mismatch_counter >= mismatch_limit:
       self.events_sp.add(EventNameSP.controlsMismatchLateral)
 
     self.events.remove(EventName.pcmDisable)
