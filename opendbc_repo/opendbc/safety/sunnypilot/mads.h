@@ -20,6 +20,7 @@ bool controls_allowed_lateral = false;
 
 // state for mads controls_allowed_lateral timeout logic
 bool heartbeat_engaged_mads = false;  // MADS enabled, passed in heartbeat USB command
+bool heartbeat_engaged_mads_prev = false;
 uint32_t heartbeat_engaged_mads_mismatches = 0U;  // count of mismatches between heartbeat_engaged_mads and controls_allowed_lateral
 
 // ===============================
@@ -61,6 +62,7 @@ inline void m_mads_state_init(void) {
 
   m_mads_state.controls_requested_lateral = false;
   controls_allowed_lateral = false;
+  heartbeat_engaged_mads_prev = false;
 }
 
 inline void m_update_button_state(ButtonStateTracking *button_state) {
@@ -134,6 +136,17 @@ inline void m_update_control_state(void) {
 }
 
 inline void mads_heartbeat_engaged_check(void) {
+  // Host MADS engaged while safety lateral is still off (VinFast InfoCAN on the
+  // other panda, or ACC main forced false in rx_hook): re-arm on heartbeat rising
+  // without requiring acc_main.current.
+  if (heartbeat_engaged_mads && !heartbeat_engaged_mads_prev) {
+    if (m_mads_state.system_enabled) {
+      m_mads_state.controls_requested_lateral = true;
+      m_update_control_state();
+    }
+  }
+  heartbeat_engaged_mads_prev = heartbeat_engaged_mads;
+
   if (controls_allowed_lateral && !heartbeat_engaged_mads) {
     heartbeat_engaged_mads_mismatches += 1U;
     if (heartbeat_engaged_mads_mismatches >= 3U) {
