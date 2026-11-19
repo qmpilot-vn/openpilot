@@ -10,6 +10,7 @@ from cereal import log, custom
 from opendbc.car import structs
 from opendbc.car.hyundai.values import HyundaiFlags
 from openpilot.common.params import Params
+from opendbc.sunnypilot.car.vinfast.mads import ENABLE as VF_ENABLE, DISABLE as VF_DISABLE, mads_button_action
 from openpilot.sunnypilot.mads.helpers import MadsSteeringModeOnBrake, read_steering_mode_param, MADS_NO_ACC_MAIN_BUTTON
 from openpilot.sunnypilot.mads.state import StateMachine, GEARS_ALLOW_PAUSED_SILENT
 
@@ -22,6 +23,18 @@ SafetyModel = structs.CarParams.SafetyModel
 
 SET_SPEED_BUTTONS = (ButtonType.accelCruise, ButtonType.resumeCruise, ButtonType.decelCruise, ButtonType.setCruise)
 IGNORED_SAFETY_MODES = (SafetyModel.silent, SafetyModel.noOutput)
+
+
+def spd_plus_arms_mads(brand, button_type, acc_controlling, mads_enabled, mads_toggle, long_suppressed):
+  """SPD+ gesture that brings lateral on, so it must not be treated as a cruise resume.
+
+  True for the press itself, while MADS is still off, and for the release frame
+  right after it, when MADS is already on but the long-engage suppress flag is
+  still set. A later SPD+ while MADS is already on is a real resume and returns
+  False, so the missing-set-speed block still applies to it.
+  """
+  return (brand == "vinfast" and button_type == ButtonType.accelCruise and mads_toggle
+          and not acc_controlling and (not mads_enabled or long_suppressed))
 
 
 class ModularAssistiveDrivingSystem:
@@ -56,8 +69,12 @@ class ModularAssistiveDrivingSystem:
     self.main_enabled_toggle = self.params.get_bool("MadsMainCruiseAllowed")
     self.steering_mode_on_brake = read_steering_mode_param(self.CP, self.CP_SP, self.params)
     self.unified_engagement_mode = self.params.get_bool("MadsUnifiedEngagementMode")
+    self._main_cruise_sync_pending = True
+    # SET+ press that arms MADS, or SET- while ACC is off, must not start OP long on release.
+    self._vf_suppress_long_release = False
 
   def read_params(self):
+    self.enabled_toggle = self.params.get_bool("Mads")
     self.main_enabled_toggle = self.params.get_bool("MadsMainCruiseAllowed")
     self.unified_engagement_mode = self.params.get_bool("MadsUnifiedEngagementMode")
 
@@ -77,11 +94,32 @@ class ModularAssistiveDrivingSystem:
 
     return True
 
-  def block_unified_engagement_mode(self) -> bool:
-    # VinFast: stock ACC → OP-long uses pcmEnable/buttonEnable from car; never strip those here.
-    if self.CP.brand == "vinfast":
-      return False
+  def suppress_vinfast_long_engage(self, events, CS: structs.CarState) -> None:
+    """Drop buttonEnable for the SET press that arms or cancels lateral.
 
+    selfdrived calls this before the longitudinal state machine. SET+ while MADS
+    is off, and SET- while ACC is not controlling, must not start openpilot
+    longitudinal on the button release. A later SET+ while MADS is already on
+    keeps buttonEnable so cruise can still engage.
+    """
+    if self.CP.brand != "vinfast" or not self.enabled_toggle:
+      return
+
+    if CS.cruiseState.enabled:
+      self._vf_suppress_long_release = False
+      return
+
+    for be in CS.buttonEvents:
+      if be.pressed and be.type == ButtonType.accelCruise and not self.enabled:
+        self._vf_suppress_long_release = True
+      elif be.pressed and be.type == ButtonType.decelCruise:
+        self._vf_suppress_long_release = True
+      elif (not be.pressed and self._vf_suppress_long_release and
+            be.type in (ButtonType.accelCruise, ButtonType.decelCruise)):
+        events.remove(EventName.buttonEnable)
+        self._vf_suppress_long_release = False
+
+  def block_unified_engagement_mode(self) -> bool:
     # UEM disabled
     if not self.unified_engagement_mode:
       return True
@@ -167,8 +205,28 @@ class ModularAssistiveDrivingSystem:
         self.events.remove(EventName.pcmEnable)
         self.events.remove(EventName.buttonEnable)
     else:
-      if self.main_enabled_toggle:
-        if CS.cruiseState.available and not self.selfdrive.CS_prev.cruiseState.available:
+      # VinFast arms only from SET+. Available rising is not a MADS button.
+      if self.main_enabled_toggle and self.CP.brand != "vinfast":
+        # Rising edge, or cruise already on when we first become ready
+        # (0000033b: available at 6s, MADS only saw a sticky-true later).
+        main_rising = CS.cruiseState.available and not self.selfdrive.CS_prev.cruiseState.available
+        main_already_on = CS.cruiseState.available and self._main_cruise_sync_pending and self.selfdrive.initialized
+        if main_rising or main_already_on:
+          self.events_sp.add(EventNameSP.lkasEnable)
+          self._main_cruise_sync_pending = False
+        elif self.selfdrive.initialized:
+          self._main_cruise_sync_pending = False
+
+    if self.CP.brand == "vinfast" and CS.cruiseState.available and not CS.cruiseState.enabled:
+      for be in CS.buttonEvents:
+        if not be.pressed or be.type not in (ButtonType.accelCruise, ButtonType.decelCruise):
+          continue
+        action = mads_button_action(self.enabled, self.selfdrive.enabled,
+                                    be.type == ButtonType.accelCruise,
+                                    be.type == ButtonType.decelCruise)
+        if action == VF_DISABLE:
+          self.events_sp.add(EventNameSP.lkasDisable)
+        elif action == VF_ENABLE:
           self.events_sp.add(EventNameSP.lkasEnable)
 
     for be in CS.buttonEvents:
@@ -212,7 +270,18 @@ class ModularAssistiveDrivingSystem:
     self.events.remove(EventName.wrongCruiseMode)
 
   def update(self, CS: structs.CarState):
+    self.read_params()
+
+    # Settings → Mads off is the VF6 quit (no unique ACC-off; cancel==resume).
     if not self.enabled_toggle:
+      if self.enabled:
+        self.events_sp.add(EventNameSP.lkasDisable)
+        if not self.CP.passive and self.selfdrive.initialized:
+          self.enabled, self.active = self.state_machine.update()
+        else:
+          self.enabled = False
+          self.active = False
+      self.selfdrive.enabled_prev = self.selfdrive.enabled
       return
 
     self.data_sample()

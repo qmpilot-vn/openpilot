@@ -46,6 +46,10 @@ struct can_frame {
 class Panda {
 private:
   std::unique_ptr<PandaCommsHandle> handle;
+  int canfd_restore_bus_ = -1;
+  uint16_t canfd_restore_arb_kbps_ = 0;
+  uint16_t canfd_restore_data_kbps_ = 0;
+  void apply_canfd_restore();
 
 public:
   Panda(std::string serial="", uint32_t bus_offset=0);
@@ -81,6 +85,8 @@ public:
   void set_can_speed_kbps(uint16_t bus, uint16_t speed);
   void set_can_fd_auto(uint16_t bus, bool enabled);
   void set_data_speed_kbps(uint16_t bus, uint16_t speed);
+  // Re-apply after set_safety_model — firmware can_init_all drops data bitrate.
+  void set_canfd_restore(uint16_t bus, uint16_t arb_kbps, uint16_t data_kbps);
   void set_canfd_non_iso(uint16_t bus, bool non_iso);
   void can_send(const capnp::List<cereal::CanData>::Reader &can_data_list);
   bool can_receive(std::vector<can_frame>& out_vec);

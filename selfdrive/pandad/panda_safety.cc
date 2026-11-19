@@ -2,6 +2,58 @@
 #include "cereal/gen/cpp/car.capnp.h"
 #include "cereal/messaging/messaging.h"
 #include "common/swaglog.h"
+#include "common/util.h"
+
+// Matches opendbc.car.vinfast.values.VinFastFlags (Honda/Hyundai style).
+static constexpr uint32_t VINFAST_FLAG_RADAR_CANFD = 1U;
+static constexpr uint32_t VINFAST_FLAG_RADAR_CANFD_SECOND = 2U;
+static constexpr uint16_t VINFAST_RADAR_BUS = 1;
+static constexpr uint16_t VINFAST_RADAR_ARB_KBPS = 500;
+static constexpr uint16_t VINFAST_RADAR_DATA_KBPS = 2000;
+
+static bool is_vinfast(const cereal::CarParams::Reader &cp) {
+  const std::string brand = cp.getBrand().cStr();
+  const std::string fp = cp.getCarFingerprint().cStr();
+  return brand == "vinfast" || fp.rfind("VINFAST_", 0) == 0;
+}
+
+// Radar is CAN-FD on bus 1; chassis/cam stay classic. 0xf9 after every
+// set_safety_model — panda firmware can_init_all drops the data bitrate.
+static void apply_vinfast_radar_canfd(const std::vector<Panda *> &pandas,
+                                      const cereal::CarParams::Reader &cp) {
+  if (pandas.empty() || !is_vinfast(cp)) {
+    return;
+  }
+  const uint32_t flags = cp.getFlags();
+  const std::string fp = cp.getCarFingerprint().cStr();
+  const bool src1 = (flags & VINFAST_FLAG_RADAR_CANFD) || fp.rfind("VINFAST_VF", 0) == 0;
+  const bool src5 = (flags & VINFAST_FLAG_RADAR_CANFD_SECOND) ||
+                    fp.rfind("VINFAST_VF6", 0) == 0 || fp.rfind("VINFAST_VF7", 0) == 0;
+  if (src1) {
+    pandas[0]->set_canfd_restore(VINFAST_RADAR_BUS, VINFAST_RADAR_ARB_KBPS, VINFAST_RADAR_DATA_KBPS);
+  }
+  if (src5 && pandas.size() > 1) {
+    pandas[1]->set_canfd_restore(VINFAST_RADAR_BUS, VINFAST_RADAR_ARB_KBPS, VINFAST_RADAR_DATA_KBPS);
+  }
+}
+
+static bool apply_vinfast_radar_canfd_blob(const std::vector<Panda *> &pandas, const std::string &blob) {
+  if (blob.size() < 8) {
+    return false;
+  }
+  try {
+    AlignedBuffer aligned_buf;
+    capnp::FlatArrayMessageReader cmsg(aligned_buf.align(blob.data(), blob.size()));
+    auto cp = cmsg.getRoot<cereal::CarParams>();
+    if (!is_vinfast(cp)) {
+      return false;
+    }
+    apply_vinfast_radar_canfd(pandas, cp);
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
 
 PandaSafety::PandaSafety(const std::vector<Panda *> &pandas) : pandas_(pandas) {
   cached_safety_.resize(pandas_.size());
@@ -18,6 +70,8 @@ void PandaSafety::applySafetyToPandas(const cereal::CarParams::Reader &car_param
   if (cached_safety_.size() != pandas_.size()) {
     cached_safety_.resize(pandas_.size());
   }
+
+  apply_vinfast_radar_canfd(pandas_, car_params);
 
   auto safety_configs = car_params.getSafetyConfigs();
   uint16_t alternative_experience = car_params.getAlternativeExperience();
@@ -153,6 +207,14 @@ void PandaSafety::setSafetyMode(const std::vector<std::string> &params_string) {
   cereal::CarParamsSP::Reader car_params_sp = cmsg_sp.getRoot<cereal::CarParamsSP>();
 
   applySafetyToPandas(car_params, &car_params_sp);
+}
+
+void PandaSafety::applyCanFdFromStoredParams() {
+  for (const char *key : {"CarParams", "CarParamsCache", "CarParamsPersistent", "CarParamsPrevRoute"}) {
+    if (apply_vinfast_radar_canfd_blob(pandas_, params_.get(key))) {
+      return;
+    }
+  }
 }
 
 bool PandaSafety::getOffroadMode() {

@@ -30,6 +30,31 @@ from opendbc.safety import ALTERNATIVE_EXPERIENCE
 
 REPLAY = "REPLAY" in os.environ
 
+# pandad exits and starts again when a USB panda enumerates. The red panda on
+# this harness shows up a few seconds in. The new process sends no MADS
+# heartbeat until carParams arrives on the socket, and the regular publish is
+# every 50s, so lateral stays off and the first engages report a mismatch.
+# Republish for a few seconds after that restart. One delivery keeps the
+# heartbeat alive for the rest of the drive.
+PANDA_RECONNECT_STAMP = "/dev/shm/pandad_usb_reconnect"
+PANDA_RECONNECT_REPUBLISH_S = 10.0
+
+
+def panda_reconnect_mtime(path: str = PANDA_RECONNECT_STAMP) -> float | None:
+  try:
+    return os.stat(path).st_mtime
+  except OSError:
+    return None
+
+
+def panda_reconnect_window(prev_mtime: float | None, mtime: float | None, now: float, until: float) -> tuple[float | None, float, bool]:
+  if mtime != prev_mtime:
+    prev_mtime = mtime
+    if mtime is not None:
+      until = now + PANDA_RECONNECT_REPUBLISH_S
+  return prev_mtime, until, now < until
+
+
 EventName = log.OnroadEvent.EventName
 
 # The car port allows the EPS's full authority (VF8 ±470° non-production, VF9 ±90°),
@@ -155,6 +180,10 @@ class Car:
     self.CS_prev = car.CarState.new_message()
     self.CS_SP_prev = custom.CarStateSP.new_message()
     self.initialized_prev = False
+    # Baseline is whatever stamp is already there, so a leftover from earlier
+    # in this boot does not look like a fresh pandad restart.
+    self._panda_reconnect_mtime = panda_reconnect_mtime()
+    self._panda_reconnect_until = 0.0
 
     self.last_actuators_output = structs.CarControl.Actuators()
 
@@ -326,8 +355,14 @@ class Car:
   def state_publish(self, CS: car.CarState, CS_SP: custom.CarStateSP, RD: structs.RadarDataT | None):
     """carState and carParams publish loop"""
 
-    # carParams - logged every 50 seconds (> 1 per segment)
-    if self.sm.frame % int(50. / DT_CTRL) == 0:
+    self._panda_reconnect_mtime, self._panda_reconnect_until, reconnecting = panda_reconnect_window(
+      self._panda_reconnect_mtime, panda_reconnect_mtime(), time.monotonic(), self._panda_reconnect_until)
+    # carParams is logged every 50 seconds, and also at 5 Hz for a few seconds
+    # after pandad restarts to attach a panda. See panda_reconnect_window.
+    publish_car_params = (self.sm.frame % int(50. / DT_CTRL) == 0 or
+                          (reconnecting and self.sm.frame % int(0.2 / DT_CTRL) == 0))
+
+    if publish_car_params:
       cp_send = messaging.new_message('carParams')
       cp_send.valid = True
       cp_send.carParams = self.CP
@@ -353,8 +388,7 @@ class Car:
       tracks_msg.liveTracks = RD
       self.pm.send('liveTracks', tracks_msg)
 
-    # carParamsSP - logged every 50 seconds (> 1 per segment)
-    if self.sm.frame % int(50. / DT_CTRL) == 0:
+    if publish_car_params:
       cp_sp_send = messaging.new_message('carParamsSP')
       cp_sp_send.valid = True
       cp_sp_send.carParamsSP = self.CP_SP_capnp
