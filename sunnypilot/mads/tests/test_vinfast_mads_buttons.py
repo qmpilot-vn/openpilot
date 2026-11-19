@@ -147,52 +147,19 @@ def test_set_buttons_do_not_toggle_mads_while_acc_controls(mads_for, fingerprint
 
 
 @pytest.mark.parametrize("fingerprint", ["VINFAST_VF6", "VINFAST_VF8"])
-def test_acc_main_rising_does_not_arm_mads(mads_for, fingerprint):
+def test_acc_status_appearing_does_not_arm_mads_and_dropping_cancels(mads_for, fingerprint):
   mads = mads_for(fingerprint)
   mads.selfdrive.CS_prev.cruiseState.available = False
   _step(mads, _car_state(True, False))
   assert not mads.selfdrive.events_sp.has(EventNameSP.lkasEnable)
   assert not mads.enabled
 
-
-@pytest.mark.parametrize("fingerprint", ["VINFAST_VF6", "VINFAST_VF8"])
-def test_spd_plus_arms_without_acc_main_and_main_drop_keeps_mads(mads_for, fingerprint):
-  mads = mads_for(fingerprint)
-  mads.selfdrive.CS_prev.cruiseState.available = False
-  _step(mads, _car_state(False, False, ButtonType.accelCruise, True))
-  assert mads.selfdrive.events_sp.has(EventNameSP.lkasEnable)
+  _step(mads, _car_state(True, False, ButtonType.accelCruise, True))
   assert mads.enabled
 
   _step(mads, _car_state(False, False))
-  assert not mads.selfdrive.events_sp.has(EventNameSP.lkasDisable)
-  assert mads.enabled
-
-
-@pytest.mark.parametrize("fingerprint", ["VINFAST_VF6", "VINFAST_VF8"])
-def test_mfs_set_arms_mads_cold_without_starting_long(mads_for, fingerprint):
-  # SpdSet feeds are often dead before the first OEM SET; MFS SET must arm MADS.
-  mads = mads_for(fingerprint)
-  press = _car_state(False, False, ButtonType.setCruise, True)
-  _step(mads, press)
-  assert mads.selfdrive.events_sp.has(EventNameSP.lkasEnable)
-  assert mads.enabled
-
-  release = _car_state(False, False, ButtonType.setCruise, False)
-  assert _step(mads, release, button_enable=True) is False
-  assert mads.enabled
-
-
-@pytest.mark.parametrize("fingerprint", ["VINFAST_VF6", "VINFAST_VF8"])
-def test_mfs_set_keeps_long_engage_after_mads_is_on(mads_for, fingerprint):
-  mads = mads_for(fingerprint)
-  _step(mads, _car_state(False, False, ButtonType.setCruise, True))
-  assert mads.enabled
-  _step(mads, _car_state(False, False, ButtonType.setCruise, False), button_enable=True)
-
-  _step(mads, _car_state(False, False, ButtonType.setCruise, True))
-  assert not mads.selfdrive.events_sp.has(EventNameSP.lkasDisable)
-  assert mads.enabled
-  assert _step(mads, _car_state(False, False, ButtonType.setCruise, False), button_enable=True) is True
+  assert mads.selfdrive.events_sp.has(EventNameSP.lkasDisable)
+  assert not mads.enabled
 
 
 @pytest.mark.parametrize("fingerprint", ["VINFAST_VF6", "VINFAST_VF8"])

@@ -49,9 +49,7 @@ class ModularAssistiveDrivingSystem:
     if self.CP.brand == "tesla":
       self.allow_always = True
 
-    if self.CP.brand in MADS_NO_ACC_MAIN_BUTTON or self.CP.brand == "vinfast":
-      # VinFast: SPD± arms/disarms lateral without ACC main. Panda already
-      # follows the host MADS heartbeat, not ADAS_ACC_Main_Mode.
+    if self.CP.brand in MADS_NO_ACC_MAIN_BUTTON:
       self.no_main_cruise = True
 
     # read params on init
@@ -85,11 +83,11 @@ class ModularAssistiveDrivingSystem:
     return True
 
   def suppress_vinfast_long_engage(self, events, CS: structs.CarState) -> None:
-    """Drop buttonEnable for the SPD press that arms or cancels lateral.
+    """Drop buttonEnable for the SET press that arms or cancels lateral.
 
-    selfdrived calls this before the longitudinal state machine. SPD+ while MADS
-    is off, and SPD- while ACC is not controlling, must not start openpilot
-    longitudinal on the button release. A later SPD+ while MADS is already on
+    selfdrived calls this before the longitudinal state machine. SET+ while MADS
+    is off, and SET- while ACC is not controlling, must not start openpilot
+    longitudinal on the button release. A later SET+ while MADS is already on
     keeps buttonEnable so cruise can still engage.
     """
     if self.CP.brand != "vinfast" or not self.enabled_toggle:
@@ -141,8 +139,7 @@ class ModularAssistiveDrivingSystem:
     # When the safety and selfdrived do not agree on controls_allowed_lateral
     # we want to disengage sunnypilot. However the status from the panda goes through
     # another socket other than the CAN messages and one can arrive earlier than the other.
-    # VinFast: host can enable from MFS SPD+ a few hundred ms before the panda latches
-    # via heartbeat (InfoCAN is often on the other panda). Allow ~1s before mismatch.
+    # Therefore we allow a mismatch for two samples, then we trigger the disengagement.
     if not self.active or self.selfdrive.enabled:
       self.lateral_mismatch_counter = 0
     elif any(not ps.controlsAllowedLateral for ps in self.selfdrive.sm['pandaStates']
@@ -208,9 +205,7 @@ class ModularAssistiveDrivingSystem:
         elif self.selfdrive.initialized:
           self._main_cruise_sync_pending = False
 
-    # VinFast: SPD± (MFS_CruiseSpeedIncrease/Decrease → accel/decelCruise) toggle
-    # lateral whenever ACC is not controlling. ACC main is not required.
-    if self.CP.brand == "vinfast" and not CS.cruiseState.enabled:
+    if self.CP.brand == "vinfast" and CS.cruiseState.available and not CS.cruiseState.enabled:
       for be in CS.buttonEvents:
         if not be.pressed or be.type not in (ButtonType.accelCruise, ButtonType.decelCruise):
           continue
@@ -254,10 +249,7 @@ class ModularAssistiveDrivingSystem:
       if self.state_machine.state == State.paused:
         self.events_sp.add(EventNameSP.silentLkasEnable)
 
-    # Default ~2s (200 @ 100Hz). VinFast needs longer: panda often latches lateral
-    # from the host MADS heartbeat only after InfoCAN/SPD+ is seen on the other panda.
-    mismatch_limit = 500 if self.CP.brand == "vinfast" else 200
-    if self.lateral_mismatch_counter >= mismatch_limit:
+    if self.lateral_mismatch_counter >= 200:
       self.events_sp.add(EventNameSP.controlsMismatchLateral)
 
     self.events.remove(EventName.pcmDisable)
