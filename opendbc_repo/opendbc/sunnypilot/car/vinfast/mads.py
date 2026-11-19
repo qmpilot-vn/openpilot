@@ -2,12 +2,13 @@
 VinFast MADS is independent of ACC main. The wheel HWA button is stock
 hands-on highway assist — do not map it to ButtonType.lkas.
 
-SPD+/SPD- arm and disarm lateral while ACC is not controlling. ACC main
-does not need to be on (first onroad can arm lane-keep before any set speed):
-  long off + SPD+ while MADS is off → ENABLE
-  long off + SPD- while MADS is on → USER_DISABLE
-  long on  + SPD+ or SPD- → speed only, MADS stays
-  disabled + SPD- → no-op
+While ACC is not controlling (ADAS_ACC_Mode != 4):
+  SPD+ (SpdSet_upper) or MFS SET (setCruise) while MADS is off → ENABLE
+  SPD- while MADS is on → USER_DISABLE
+  MFS SET while MADS is already on → leave for long engage
+While ACC is controlling, SPD± / SET change speed / long only.
+SpdSet feeds are often silent until the car has been SET once — that is why
+SET also arms MADS on the first onroad press.
 """
 
 ENABLE = "enable"

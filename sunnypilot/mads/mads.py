@@ -85,12 +85,12 @@ class ModularAssistiveDrivingSystem:
     return True
 
   def suppress_vinfast_long_engage(self, events, CS: structs.CarState) -> None:
-    """Drop buttonEnable for the SET press that arms or cancels lateral.
+    """Drop buttonEnable for the press that arms or cancels lateral.
 
-    selfdrived calls this before the longitudinal state machine. SET+ while MADS
-    is off, and SET- while ACC is not controlling, must not start openpilot
-    longitudinal on the button release. A later SET+ while MADS is already on
-    keeps buttonEnable so cruise can still engage.
+    selfdrived calls this before the longitudinal state machine. SPD+/SET while
+    MADS is off, and SPD- while ACC is not controlling, must not start
+    openpilot longitudinal on the button release. A later SPD+/SET while MADS
+    is already on keeps buttonEnable so cruise can still engage.
     """
     if self.CP.brand != "vinfast" or not self.enabled_toggle:
       return
@@ -100,12 +100,13 @@ class ModularAssistiveDrivingSystem:
       return
 
     for be in CS.buttonEvents:
-      if be.pressed and be.type == ButtonType.accelCruise and not self.enabled:
+      # SpdSet_upper and the MFS SET button (setCruise) both arm MADS cold.
+      if be.pressed and be.type in (ButtonType.accelCruise, ButtonType.setCruise) and not self.enabled:
         self._vf_suppress_long_release = True
       elif be.pressed and be.type == ButtonType.decelCruise:
         self._vf_suppress_long_release = True
       elif (not be.pressed and self._vf_suppress_long_release and
-            be.type in (ButtonType.accelCruise, ButtonType.decelCruise)):
+            be.type in (ButtonType.accelCruise, ButtonType.decelCruise, ButtonType.setCruise)):
         events.remove(EventName.buttonEnable)
         self._vf_suppress_long_release = False
 
@@ -207,11 +208,18 @@ class ModularAssistiveDrivingSystem:
         elif self.selfdrive.initialized:
           self._main_cruise_sync_pending = False
 
-    # VinFast: SPD± toggle lateral whenever ACC is not controlling. ACC main
-    # is not required — first onroad can arm lane-keep before any set speed.
+    # VinFast: toggle lateral whenever ACC is not controlling (mode != 4).
+    # SpdSet feeds often stay dead until the car has been SET once, so the MFS
+    # SET button (setCruise) also arms MADS on the first onroad press. While ACC
+    # is active, SPD±/SET stay on the speed/long path only.
     if self.CP.brand == "vinfast" and not CS.cruiseState.enabled:
       for be in CS.buttonEvents:
-        if not be.pressed or be.type not in (ButtonType.accelCruise, ButtonType.decelCruise):
+        if not be.pressed:
+          continue
+        if be.type == ButtonType.setCruise and not self.enabled:
+          self.events_sp.add(EventNameSP.lkasEnable)
+          continue
+        if be.type not in (ButtonType.accelCruise, ButtonType.decelCruise):
           continue
         action = mads_button_action(self.enabled, self.selfdrive.enabled,
                                     be.type == ButtonType.accelCruise,
