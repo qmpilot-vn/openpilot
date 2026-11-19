@@ -24,7 +24,7 @@ from openpilot.selfdrive.selfdrived.alertmanager import AlertManager, set_offroa
 from openpilot.system.version import get_build_metadata
 from openpilot.system.hardware import HARDWARE
 
-from openpilot.sunnypilot.mads.mads import ModularAssistiveDrivingSystem
+from openpilot.sunnypilot.mads.mads import ModularAssistiveDrivingSystem, spd_plus_arms_mads
 from openpilot.sunnypilot import get_sanitize_int_param
 from openpilot.sunnypilot.selfdrive.car.car_specific import CarSpecificEventsSP
 from openpilot.sunnypilot.selfdrive.car.cruise_helpers import CruiseHelper
@@ -242,7 +242,18 @@ class SelfdriveD(CruiseHelper):
       return
 
     # Block resume if cruise never previously enabled
-    resume_pressed = any(be.type in (ButtonType.accelCruise, ButtonType.resumeCruise) for be in CS.buttonEvents)
+    resume_pressed = False
+    for be in CS.buttonEvents:
+      if be.type not in (ButtonType.accelCruise, ButtonType.resumeCruise):
+        continue
+      # The SPD+ gesture that arms MADS is not a cruise resume. Treating it as
+      # one vetoes the arm, so a cold car demands SET before lateral can come on.
+      if spd_plus_arms_mads(self.CP.brand, be.type, CS.cruiseState.enabled,
+                            self.mads.enabled, self.mads.enabled_toggle,
+                            self.mads._vf_suppress_long_release):
+        continue
+      resume_pressed = True
+      break
     if not self.CP.pcmCruise and CS.vCruise > 250 and resume_pressed:
       self.events.add(EventName.resumeBlocked)
 
