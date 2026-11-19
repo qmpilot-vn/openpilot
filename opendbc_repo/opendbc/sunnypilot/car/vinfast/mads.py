@@ -2,13 +2,13 @@
 VinFast MADS is independent of ACC main. The wheel HWA button is stock
 hands-on highway assist — do not map it to ButtonType.lkas.
 
+SPD± = MFS_CruiseSpeedIncrease/Decrease (raw paddles, work with ACC off)
+     OR ADAS_ACC_SpdSet_*_Feed (ACC HUD echo, mainly while ACC controlling).
+
 While ACC is not controlling (ADAS_ACC_Mode != 4):
-  SPD+ (SpdSet_upper) or MFS SET (setCruise) while MADS is off → ENABLE
+  SPD+ while MADS is off → ENABLE
   SPD- while MADS is on → USER_DISABLE
-  MFS SET while MADS is already on → leave for long engage
-While ACC is controlling, SPD± / SET change speed / long only.
-SpdSet feeds are often silent until the car has been SET once — that is why
-SET also arms MADS on the first onroad press.
+While ACC is controlling, SPD± only change set speed (MADS ignores them).
 """
 
 ENABLE = "enable"
