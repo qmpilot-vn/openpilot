@@ -36,13 +36,21 @@ _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
 
-# Plaintext carstate / steer_press.py (same latch as vf-dev-c3xl).
-_mod.CarControllerParams.STEER_DRIVER_PRESS_NM = 2.0
+# Plaintext steer_press.py + carcontroller yield/reclaim (same as the tested staging pack).
 _mod.CarControllerParams.STEER_DRIVER_RELEASE_NM = 0.8
-_mod.CarControllerParams.STEER_PRESSED_MIN_COUNT = 5
 _mod.CarControllerParams.STEER_RELEASE_MIN_COUNT = 50
-_mod.CarControllerParams.STEER_PRESS_RATE_GAIN = 0.02
-_mod.CarControllerParams.STEER_PRESS_NM_MAX = 4.0
+_mod.CarControllerParams.STEER_SELF_TQ_VF6 = (0.0005, 0.003)
+_mod.CarControllerParams.STEER_SELF_TQ_VF8 = (0.0003, 0.012)
+_mod.CarControllerParams.STEER_YIELD_START_NM = 1.2
+_mod.CarControllerParams.STEER_YIELD_FULL_NM = 2.2
+_mod.CarControllerParams.STEER_YIELD_PERSIST_FRAMES = 4
+_mod.CarControllerParams.STEER_TAKEOVER_NM = 1.5
+_mod.CarControllerParams.STEER_TAKEOVER_NM_CAP = 3.5
+_mod.CarControllerParams.STEER_TAKEOVER_IMPULSE_NMS = 0.12
+_mod.CarControllerParams.STEER_YIELD_ARM_BLEND = 0.3
+_mod.CarControllerParams.STEER_YIELD_ARM_FRAMES = 5
+_mod.CarControllerParams.STEER_RECLAIM_FRAMES = 200
+_mod.CarControllerParams.STEER_RECLAIM_RATE_MIN = 0.08
 
 # VF8 Plus 2025-26: VF8 specs, VF6/VF7 DBC and steer limits, VF6 safety and InfoCAN.
 from opendbc.car.lateral import AngleSteeringLimits
@@ -71,6 +79,29 @@ else:
   _mod.CAR._member_names_.append(_VF8_PLUS)
   _mod.DBC[_plus] = _plus_cfg.dbc_dict
 
+# VF8 Eco 2023-24: VF8 body, DBC and MRR, Eco curb weight (2328 kg).
+_VF8_ECO = "VINFAST_VF8_ECO"
+if getattr(_mod.CAR, _VF8_ECO, None) is not None:
+  _eco = getattr(_mod.CAR, _VF8_ECO)
+else:
+  _vf8_for_eco = _mod.CAR.VINFAST_VF8.config
+  _eco_cfg = _vf8_for_eco.override(
+    car_docs=[_mod.VinFastCarDocs("VinFast VF8 Eco 2023-24", "All", car_parts=_vf8_for_eco.car_docs[0].car_parts)],
+    specs=_vf8_for_eco.specs.override(mass=2328.0),
+  )
+  _eco_cfg.platform_str = _VF8_ECO
+  _eco_cfg.freeze()
+  _eco = str.__new__(_mod.CAR, _VF8_ECO)
+  _eco._name_ = _VF8_ECO
+  _eco._value_ = _VF8_ECO
+  _eco.config = _eco_cfg
+  _eco._sort_order_ = len(_mod.CAR._member_names_)
+  setattr(_mod.CAR, _VF8_ECO, _eco)
+  _mod.CAR._member_map_[_VF8_ECO] = _eco
+  _mod.CAR._value2member_map_[_VF8_ECO] = _eco
+  _mod.CAR._member_names_.append(_VF8_ECO)
+  _mod.DBC[_eco] = _eco_cfg.dbc_dict
+
 _orig_is_vf6 = _mod.is_vf6_safety_platform
 
 def _is_vf6_safety_platform(candidate) -> bool:
@@ -95,3 +126,21 @@ def _params_init(self, CP):
   self.ANGLE_MAX_LOOKUP = (bp, _mod.VF6_STEER_ANGLE_MAX_V_DEG)
 
 _mod.CarControllerParams.__init__ = _params_init
+
+# Packed radard and radar_interface call mrr_half_width. Eco is the VF8 body.
+def _alias_vf8(table):
+  if isinstance(table, dict) and "VINFAST_VF8" in table and _VF8_ECO not in table:
+    table[_VF8_ECO] = table["VINFAST_VF8"]
+
+_alias_vf8(getattr(_mod, "MRR_WIDTH_M", None))
+_alias_vf8(getattr(_mod, "MRR_HALF_WIDTH", None))
+
+_orig_mrr_half = getattr(_mod, "mrr_half_width", None)
+if _orig_mrr_half is not None:
+  def _mrr_half_width(fingerprint):
+    name = fingerprint if isinstance(fingerprint, str) else getattr(fingerprint, "name", None)
+    if name == _VF8_ECO:
+      return _orig_mrr_half("VINFAST_VF8")
+    return _orig_mrr_half(fingerprint)
+
+  _mod.mrr_half_width = _mrr_half_width

@@ -35,3 +35,12 @@ _mod.__file__ = str(_so)
 _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
+
+# VF8 Eco is the VF8 body and MRR. The packed sets only name VINFAST_VF8 and VINFAST_VF9.
+_ECO = "VINFAST_VF8_ECO"
+_guards = getattr(_mod, "DOPPLER_GUARD_FINGERPRINTS", None)
+if isinstance(_guards, set):
+  _guards.add(_ECO)
+_vru = getattr(_mod, "VRU_SAME_OBJECT_RATIO", None)
+if isinstance(_vru, dict) and "VINFAST_VF8" in _vru and _ECO not in _vru:
+  _vru[_ECO] = _vru["VINFAST_VF8"]
