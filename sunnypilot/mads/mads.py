@@ -49,7 +49,9 @@ class ModularAssistiveDrivingSystem:
     if self.CP.brand == "tesla":
       self.allow_always = True
 
-    if self.CP.brand in MADS_NO_ACC_MAIN_BUTTON:
+    if self.CP.brand in MADS_NO_ACC_MAIN_BUTTON or self.CP.brand == "vinfast":
+      # VinFast: SPD± arms/disarms lateral without ACC main. Panda already
+      # follows the host MADS heartbeat, not ADAS_ACC_Main_Mode.
       self.no_main_cruise = True
 
     # read params on init
@@ -205,7 +207,9 @@ class ModularAssistiveDrivingSystem:
         elif self.selfdrive.initialized:
           self._main_cruise_sync_pending = False
 
-    if self.CP.brand == "vinfast" and CS.cruiseState.available and not CS.cruiseState.enabled:
+    # VinFast: SPD± toggle lateral whenever ACC is not controlling. ACC main
+    # is not required — first onroad can arm lane-keep before any set speed.
+    if self.CP.brand == "vinfast" and not CS.cruiseState.enabled:
       for be in CS.buttonEvents:
         if not be.pressed or be.type not in (ButtonType.accelCruise, ButtonType.decelCruise):
           continue

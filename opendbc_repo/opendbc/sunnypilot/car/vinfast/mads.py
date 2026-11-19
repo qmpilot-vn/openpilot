@@ -1,12 +1,13 @@
 """
-VinFast MADS is ACC-main only. The wheel HWA button is stock hands-on
-highway assist — do not map it to ButtonType.lkas.
+VinFast MADS is independent of ACC main. The wheel HWA button is stock
+hands-on highway assist — do not map it to ButtonType.lkas.
 
-SET+ arms, SET- disarms, and only while ACC is not controlling:
-  long off + SET+ while MADS is off → ENABLE
-  long off + SET- while MADS is on → USER_DISABLE
-  long on  + SET+ or SET- → speed only, MADS stays
-  disabled + SET- → no-op
+SPD+/SPD- arm and disarm lateral while ACC is not controlling. ACC main
+does not need to be on (first onroad can arm lane-keep before any set speed):
+  long off + SPD+ while MADS is off → ENABLE
+  long off + SPD- while MADS is on → USER_DISABLE
+  long on  + SPD+ or SPD- → speed only, MADS stays
+  disabled + SPD- → no-op
 """
 
 ENABLE = "enable"
