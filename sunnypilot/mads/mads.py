@@ -25,6 +25,18 @@ SET_SPEED_BUTTONS = (ButtonType.accelCruise, ButtonType.resumeCruise, ButtonType
 IGNORED_SAFETY_MODES = (SafetyModel.silent, SafetyModel.noOutput)
 
 
+def spd_plus_arms_mads(brand, button_type, acc_controlling, mads_enabled, mads_toggle, long_suppressed):
+  """SPD+ gesture that brings lateral on, so it must not be treated as a cruise resume.
+
+  True for the press itself, while MADS is still off, and for the release frame
+  right after it, when MADS is already on but the long-engage suppress flag is
+  still set. A later SPD+ while MADS is already on is a real resume and returns
+  False, so the missing-set-speed block still applies to it.
+  """
+  return (brand == "vinfast" and button_type == ButtonType.accelCruise and mads_toggle
+          and not acc_controlling and (not mads_enabled or long_suppressed))
+
+
 class ModularAssistiveDrivingSystem:
   def __init__(self, selfdrive):
     self.CP = selfdrive.CP

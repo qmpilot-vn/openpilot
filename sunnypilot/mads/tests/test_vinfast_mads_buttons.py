@@ -5,7 +5,7 @@ import pytest
 from cereal import log, custom
 from opendbc.car import structs
 from openpilot.selfdrive.selfdrived.events import Events
-from openpilot.sunnypilot.mads.mads import ModularAssistiveDrivingSystem
+from openpilot.sunnypilot.mads.mads import ModularAssistiveDrivingSystem, spd_plus_arms_mads
 from openpilot.sunnypilot.selfdrive.selfdrived.events import EventsSP
 
 ButtonType = structs.CarState.ButtonEvent.Type
@@ -170,3 +170,28 @@ def test_mads_off_keeps_set_buttons_on_the_long_path(mads_for, fingerprint):
   assert not mads.enabled
 
   assert _step(mads, _car_state(True, False, ButtonType.accelCruise, False), button_enable=True) is True
+
+
+def test_spd_plus_that_arms_mads_is_not_a_cruise_resume():
+  # Cold press, MADS still off.
+  assert spd_plus_arms_mads("vinfast", ButtonType.accelCruise, False, False, True, False)
+  # Release frame right after the arm: MADS is already on, but the long-engage
+  # suppress flag is still set, so this edge belongs to the same gesture.
+  assert spd_plus_arms_mads("vinfast", ButtonType.accelCruise, False, True, True, True)
+
+
+def test_spd_plus_once_mads_is_on_stays_a_cruise_resume():
+  assert not spd_plus_arms_mads("vinfast", ButtonType.accelCruise, False, True, True, False)
+
+
+def test_spd_plus_while_acc_is_controlling_stays_a_cruise_resume():
+  assert not spd_plus_arms_mads("vinfast", ButtonType.accelCruise, True, False, True, False)
+
+
+def test_spd_plus_with_mads_turned_off_stays_a_cruise_resume():
+  assert not spd_plus_arms_mads("vinfast", ButtonType.accelCruise, False, False, False, False)
+
+
+def test_resume_button_and_other_brands_stay_a_cruise_resume():
+  assert not spd_plus_arms_mads("vinfast", ButtonType.resumeCruise, False, False, True, False)
+  assert not spd_plus_arms_mads("toyota", ButtonType.accelCruise, False, False, True, False)
