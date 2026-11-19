@@ -36,7 +36,7 @@ _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
 
-# Plaintext steer_press.py + carcontroller yield/reclaim (same as the tested staging pack).
+# Plaintext steer_press.py + carcontroller yield/reclaim (same as vf-dev-c3xl-mads).
 _mod.CarControllerParams.STEER_DRIVER_RELEASE_NM = 0.8
 _mod.CarControllerParams.STEER_RELEASE_MIN_COUNT = 50
 _mod.CarControllerParams.STEER_SELF_TQ_VF6 = (0.0005, 0.003)
@@ -51,6 +51,7 @@ _mod.CarControllerParams.STEER_YIELD_ARM_BLEND = 0.3
 _mod.CarControllerParams.STEER_YIELD_ARM_FRAMES = 5
 _mod.CarControllerParams.STEER_RECLAIM_FRAMES = 200
 _mod.CarControllerParams.STEER_RECLAIM_RATE_MIN = 0.08
+
 
 # VF8 Plus 2025-26: VF8 specs, VF6/VF7 DBC and steer limits, VF6 safety and InfoCAN.
 from opendbc.car.lateral import AngleSteeringLimits
@@ -101,6 +102,7 @@ else:
   _mod.CAR._value2member_map_[_VF8_ECO] = _eco
   _mod.CAR._member_names_.append(_VF8_ECO)
   _mod.DBC[_eco] = _eco_cfg.dbc_dict
+
 
 _orig_is_vf6 = _mod.is_vf6_safety_platform
 

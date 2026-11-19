@@ -295,8 +295,11 @@ class VCruiseHelper(VCruiseHelperSP):
       return
 
     initial_experimental_mode = experimental_mode and not dynamic_experimental_control
-    if initial_experimental_mode:
-      initial = self.get_v_initial_experimental_mode() if self.CP.brand == "vinfast" else V_CRUISE_INITIAL_EXPERIMENTAL_MODE
+    if self.CP.brand == "vinfast":
+      # Experimental and alpha long both floor at 20 km/h on this release.
+      initial = self.get_v_initial_experimental_mode() if initial_experimental_mode else VINFAST_V_CRUISE_INITIAL_EXPERIMENTAL_MODE
+    elif initial_experimental_mode:
+      initial = V_CRUISE_INITIAL_EXPERIMENTAL_MODE
     else:
       initial = V_CRUISE_INITIAL
 

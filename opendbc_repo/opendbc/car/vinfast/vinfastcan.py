@@ -37,7 +37,7 @@ _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
 
 # Host overlay: angle-based Torq_Fact_Req, scaled down while the driver yield
-# blend is up (same as the tested staging pack).
+# blend is up (same as vf-dev-c3xl-mads / vf-dev-c4).
 from opendbc.car.vinfast.steer_torque import torque_factor as _torque_factor
 from opendbc.car.vinfast.values import CANBUS as _CANBUS
 

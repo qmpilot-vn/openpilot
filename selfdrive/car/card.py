@@ -26,8 +26,6 @@ from openpilot.selfdrive.car.helpers import convert_carControlSP, convert_to_cap
 from openpilot.sunnypilot.mads.helpers import set_alternative_experience, set_car_specific_params
 from openpilot.sunnypilot.selfdrive.car import interfaces as sunnypilot_interfaces
 
-from opendbc.safety import ALTERNATIVE_EXPERIENCE
-
 REPLAY = "REPLAY" in os.environ
 
 # pandad exits and starts again when a USB panda enumerates. The red panda on
@@ -60,6 +58,7 @@ EventName = log.OnroadEvent.EventName
 # The car port allows the EPS's full authority (VF8 ±470° non-production, VF9 ±90°),
 # far more angle than the planner should ever ask for on the road. VF8 Plus uses the
 # VF6/VF7 speed-dependent angle (180° @0 → 40° @100+ km/h), so it is not capped here.
+# VF8 Eco is the production VF8 body and uses the same 100° cap.
 VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 100.0, "VINFAST_VF8_ECO": 100.0, "VINFAST_VF9": 100.0}
 
 # VF9 is packaged with a 7/5/3 deg-per-step slew (~700 deg/s at standstill), which chases
@@ -241,16 +240,6 @@ class Car:
     set_car_specific_params(self.CP, self.CP_SP, self.params)
     apply_vinfast_steer_limits(self.CP, self.CI)
     apply_vinfast_stop_hold(self.CP)
-
-    # VinFast: MADS is not used; force off so CarParams/Panda match (no ENABLE_MADS=1024 in selfdrived).
-    if self.CP.brand == "vinfast":
-      self.params.put_bool("Mads", False)
-      _mads_mask = (
-        ALTERNATIVE_EXPERIENCE.ENABLE_MADS
-        | ALTERNATIVE_EXPERIENCE.MADS_DISENGAGE_LATERAL_ON_BRAKE
-        | ALTERNATIVE_EXPERIENCE.MADS_PAUSE_LATERAL_ON_BRAKE
-      )
-      self.CP.alternativeExperience &= ~_mads_mask
 
     # Dynamic Experimental Control
     self.dynamic_experimental_control = self.params.get_bool("DynamicExperimentalControl")

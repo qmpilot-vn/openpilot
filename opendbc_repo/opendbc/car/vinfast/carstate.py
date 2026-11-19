@@ -36,3 +36,20 @@ _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
 
+# Packed carstate treats any non-fault ACC mode as available. MADS needs ACC main.
+from opendbc.car import Bus as _Bus
+from opendbc.sunnypilot.car.vinfast.mads import cruise_available as _cruise_available
+
+_CarState = _mod.CarState
+_orig_update = _CarState.update
+
+def _update(self, can_parsers):
+  ret, ret_sp = _orig_update(self, can_parsers)
+  cp_cam = can_parsers[_Bus.cam]
+  if "ADAS_ACC_Status" in cp_cam.vl:
+    acc = cp_cam.vl["ADAS_ACC_Status"]
+    ret.cruiseState.available = _cruise_available(acc.get("ADAS_ACC_Main_Mode", 0), acc.get("ADAS_ACC_Mode", 0))
+  return ret, ret_sp
+
+_CarState.update = _update
+
