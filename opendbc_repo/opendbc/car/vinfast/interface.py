@@ -35,18 +35,3 @@ _mod.__file__ = str(_so)
 _mod.__loader__ = _spec.loader
 _mod.__spec__ = _spec
 sys.modules[__name__] = _mod
-
-# Packed _get_params gives VF8/VF9 a 0.32 s actuator delay and everything else 0.5 s.
-# Eco is the VF8 body, so it keeps the VF8 delay.
-_CI = getattr(_mod, "CarInterface", None)
-if _CI is not None and hasattr(_CI, "_get_params"):
-  _orig_get_params = _CI._get_params
-
-  def _get_params(ret, candidate, fingerprint, car_fw, alpha_long, is_release, docs):
-    ret = _orig_get_params(ret, candidate, fingerprint, car_fw, alpha_long, is_release, docs)
-    name = getattr(candidate, "name", None) or str(candidate)
-    if name == "VINFAST_VF8_ECO":
-      ret.longitudinalActuatorDelay = 0.32
-    return ret
-
-  _CI._get_params = _get_params

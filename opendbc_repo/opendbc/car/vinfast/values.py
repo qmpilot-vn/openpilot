@@ -80,6 +80,30 @@ else:
   _mod.CAR._member_names_.append(_VF8_PLUS)
   _mod.DBC[_plus] = _plus_cfg.dbc_dict
 
+# VF8 Eco 2023-24: VF8 body, DBC and MRR, Eco curb weight (2328 kg).
+_VF8_ECO = "VINFAST_VF8_ECO"
+if getattr(_mod.CAR, _VF8_ECO, None) is not None:
+  _eco = getattr(_mod.CAR, _VF8_ECO)
+else:
+  _vf8_for_eco = _mod.CAR.VINFAST_VF8.config
+  _eco_cfg = _vf8_for_eco.override(
+    car_docs=[_mod.VinFastCarDocs("VinFast VF8 Eco 2023-24", "All", car_parts=_vf8_for_eco.car_docs[0].car_parts)],
+    specs=_vf8_for_eco.specs.override(mass=2328.0),
+  )
+  _eco_cfg.platform_str = _VF8_ECO
+  _eco_cfg.freeze()
+  _eco = str.__new__(_mod.CAR, _VF8_ECO)
+  _eco._name_ = _VF8_ECO
+  _eco._value_ = _VF8_ECO
+  _eco.config = _eco_cfg
+  _eco._sort_order_ = len(_mod.CAR._member_names_)
+  setattr(_mod.CAR, _VF8_ECO, _eco)
+  _mod.CAR._member_map_[_VF8_ECO] = _eco
+  _mod.CAR._value2member_map_[_VF8_ECO] = _eco
+  _mod.CAR._member_names_.append(_VF8_ECO)
+  _mod.DBC[_eco] = _eco_cfg.dbc_dict
+
+
 _orig_is_vf6 = _mod.is_vf6_safety_platform
 
 def _is_vf6_safety_platform(candidate) -> bool:
@@ -104,3 +128,21 @@ def _params_init(self, CP):
   self.ANGLE_MAX_LOOKUP = (bp, _mod.VF6_STEER_ANGLE_MAX_V_DEG)
 
 _mod.CarControllerParams.__init__ = _params_init
+
+# Packed radard and radar_interface call mrr_half_width. Eco is the VF8 body.
+def _alias_vf8(table):
+  if isinstance(table, dict) and "VINFAST_VF8" in table and _VF8_ECO not in table:
+    table[_VF8_ECO] = table["VINFAST_VF8"]
+
+_alias_vf8(getattr(_mod, "MRR_WIDTH_M", None))
+_alias_vf8(getattr(_mod, "MRR_HALF_WIDTH", None))
+
+_orig_mrr_half = getattr(_mod, "mrr_half_width", None)
+if _orig_mrr_half is not None:
+  def _mrr_half_width(fingerprint):
+    name = fingerprint if isinstance(fingerprint, str) else getattr(fingerprint, "name", None)
+    if name == _VF8_ECO:
+      return _orig_mrr_half("VINFAST_VF8")
+    return _orig_mrr_half(fingerprint)
+
+  _mod.mrr_half_width = _mrr_half_width
