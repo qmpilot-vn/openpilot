@@ -9,6 +9,7 @@ from collections.abc import Callable
 from functools import cache
 
 from openpilot.selfdrive.ui.mici.widgets.button import BigButton, BigToggle, GreyBigButton
+from openpilot.selfdrive.car.vf_car_set_speed import car_set_speed_enabled, set_car_set_speed
 from openpilot.selfdrive.controls.lib.vn_follow import set_vn_follow, vn_follow_enabled
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.vinfast import _reengage_enabled, _set_reengage
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.platform_selector import CAR_LIST_JSON_OUT
@@ -117,6 +118,8 @@ class VehicleLayoutMici(NavScroller):
     self._reengage_toggle.set_enabled(lambda: not ui_state.engaged)
     self._follow_toggle = BigToggle(tr("vn follow"), initial_state=vn_follow_enabled(), toggle_callback=set_vn_follow)
     self._follow_toggle.set_enabled(lambda: not ui_state.engaged)
+    self._set_speed_toggle = BigToggle(tr("car set speed"), initial_state=car_set_speed_enabled(), toggle_callback=set_car_set_speed)
+    self._set_speed_toggle.set_enabled(lambda: not ui_state.engaged)
 
     self._status_card = GreyBigButton(tr("car model"), "")
 
@@ -124,12 +127,13 @@ class VehicleLayoutMici(NavScroller):
     self._vinfast_btn = BigButton(tr("vinfast"), "")
     self._vinfast_btn.set_click_callback(lambda: gui_app.push_widget(self._picker))
 
-    self._scroller.add_widgets([self._reengage_toggle, self._follow_toggle, self._status_card, self._vinfast_btn])
+    self._scroller.add_widgets([self._vinfast_btn, self._status_card, self._reengage_toggle, self._follow_toggle, self._set_speed_toggle])
 
   def show_event(self):
     super().show_event()
     self._reengage_toggle.set_checked(_reengage_enabled())
     self._follow_toggle.set_checked(vn_follow_enabled())
+    self._set_speed_toggle.set_checked(car_set_speed_enabled())
 
   def _status_text(self, selected: str | None, offroad: bool) -> str:
     platforms = vinfast_platforms()
@@ -148,6 +152,7 @@ class VehicleLayoutMici(NavScroller):
 
     self._reengage_toggle.set_value(tr("on") if self._reengage_toggle._checked else tr("off"))
     self._follow_toggle.set_value(tr("on") if self._follow_toggle._checked else tr("off"))
+    self._set_speed_toggle.set_value(tr("on") if self._set_speed_toggle._checked else tr("off"))
 
     status = self._status_text(selected, offroad)
     if self._status_card.get_value() != status:
