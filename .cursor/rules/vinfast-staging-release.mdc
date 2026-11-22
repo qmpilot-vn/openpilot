@@ -1,0 +1,48 @@
+---
+description: Hard rules for vf-staging-c4 and vf-release-c4 (not tai). Lane change, DM, and version bumps.
+alwaysApply: true
+---
+
+# vf-staging-c4 / vf-release-c4
+
+These branches are shared builds. Do not copy tai-only behavior onto them. `vf-release-c4-tai` keeps its own nerfs; leave them there.
+
+## Lane change = 33 km/h
+
+`selfdrive/controls/lib/desire_helper.py` must be:
+
+```python
+LANE_CHANGE_SPEED_MIN = 33 * CV.KPH_TO_MS
+```
+
+Never `20 * CV.KPH_TO_MS` (tai) and never `20 * CV.MPH_TO_MS` (old ~32 km/h). Do not checkout `desire_helper.py` from `vf-release-c4-tai`.
+
+## Driver monitoring = medium
+
+`selfdrive/monitoring/policy.py` (and matching `test_monitoring.py`) stay at the medium staging/release level:
+
+- Wheel-touch alerts 22 / 40 / 60 s
+- Vision alerts 12 / 22 / 45 s
+- `_SKIP_ALERT_1 = False` (keep the silent green pre-alert)
+- `_POSE_DISTRACTED_SCALE = 1.5`
+
+Do not copy the tai nerf (30/55/90, 20/40/80, `_SKIP_ALERT_1 = True`, scale 2.0).
+
+## Version follows the commit date
+
+Every commit that ships to `origin` / `install` for staging or release must bump:
+
+`sunnypilot/common/version.h` → `#define SUNNYPILOT_VERSION "YYYY.MM.DD-NN"`
+
+- `YYYY.MM.DD` is the **commit date in Vietnam time (UTC+7)**
+- `NN` is the build index that day (`01`, `02`, …), starting at `01` for the first publish that day on that branch
+- Do not leave a stale date from an older pack when publishing new work
+
+## When bringing tai experiments
+
+Copy only the requested VinFast features. Always re-check after the copy:
+
+1. `LANE_CHANGE_SPEED_MIN` is still `33 * CV.KPH_TO_MS`
+2. DM policy is still medium
+3. `SUNNYPILOT_VERSION` matches today’s date
+4. Staging keeps VF8 Eco overlays and the carcontroller reengage host shim
