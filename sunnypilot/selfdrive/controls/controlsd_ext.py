@@ -75,6 +75,8 @@ class ControlsExt(ModelStateBase):
     if self.blinker_pause_lateral.update(sm['carState']):
       return False
 
+    # Match C3XL: do not inhibit lateral when ACC is available but not enabled
+    # (ADAS_ACC_Mode != 4). Lateral follows MADS / selfdriveState.active instead.
     ss_sp = sm['selfdriveStateSP']
     if ss_sp.mads.available:
       return bool(ss_sp.mads.active)

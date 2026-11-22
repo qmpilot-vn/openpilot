@@ -2,17 +2,17 @@
 
 Max angle for full factor:
   VF6 / VF7 Plus / VF8 Plus          180
-  VF8 2023-24 production / VF9       100
+  VF8 2023-24 production / VF9        90
   VF8 non-production only            470
 """
 _VF6_MAX_ANGLE = 180.0
 _VF6_MIN_FACTOR = 0.5
 _VF6_MAX_FACTOR = 1.0
 
-# origin/vf6 VF8/VF9 factors; only the full-torque angle changes by platform
+# Production VF8/VF9: 0.5 at center, 0.9 at the 90° cap.
 _VF8_MIN_FACTOR = 0.5
-_VF8_MAX_FACTOR = 0.8
-_VF8_VF9_PROD_MAX_ANGLE = 100.0
+_VF8_MAX_FACTOR = 0.9
+_VF8_VF9_PROD_MAX_ANGLE = 90.0
 _VF8_NON_PROD_MAX_ANGLE = 470.0
 
 _VF6_PLATFORMS = ("VINFAST_VF6", "VINFAST_VF7_PLUS", "VINFAST_VF8_PLUS")

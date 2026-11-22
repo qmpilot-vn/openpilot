@@ -5,7 +5,7 @@ import threading
 import time
 import uuid
 
-from openpilot.common.params import Params, ParamKeyFlag, UnknownKeyName
+from openpilot.common.params import Params, ParamKeyFlag, UnknownKeyName, clear_would_wipe
 
 class TestParams:
   def setup_method(self):
@@ -139,3 +139,12 @@ class TestParams:
     now = datetime.datetime.now(datetime.UTC)
     self.params.put("InstallDate", now, block=True)
     assert self.params.get("InstallDate") == now
+
+
+def test_clear_refuses_to_wipe_unrecognized_params():
+  disk = [f"Param{i}" for i in range(40)]
+  assert clear_would_wipe([], disk)
+  assert clear_would_wipe([f"Other{i}" for i in range(80)], disk)
+  known = {f"Param{i}" for i in range(60)}
+  assert not clear_would_wipe(known, disk)
+  assert not clear_would_wipe(known, disk + ["leftover-removed-key"])

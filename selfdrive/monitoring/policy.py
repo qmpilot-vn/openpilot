@@ -25,47 +25,47 @@ def to_percent(v):
 class DRIVER_MONITOR_SETTINGS:
   def __init__(self):
     # https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:42018X1947&rid=2
-    # VF staging: halfway between stock (15/24/30 s, 3/5/11 s) and the tai nerf (30/55/90 s, 20/40/80 s).
-    self._WHEELTOUCH_POLICY_ALERT_1_TIMEOUT = 22.
-    self._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT = 40.
-    self._WHEELTOUCH_POLICY_ALERT_3_TIMEOUT = 60.
-    self._VISION_POLICY_ALERT_1_TIMEOUT = 12.
-    self._VISION_POLICY_ALERT_2_TIMEOUT = 22.
-    self._VISION_POLICY_ALERT_3_TIMEOUT = 45.
-    self._SKIP_ALERT_1 = False  # stock keeps the silent green pre-alert; tai drops it
+    self._WHEELTOUCH_POLICY_ALERT_1_TIMEOUT = 30.
+    self._WHEELTOUCH_POLICY_ALERT_2_TIMEOUT = 55.
+    self._WHEELTOUCH_POLICY_ALERT_3_TIMEOUT = 90.
+    # VF fork: no silent green; orange/red only after a long look-away.
+    self._VISION_POLICY_ALERT_1_TIMEOUT = 20.
+    self._VISION_POLICY_ALERT_2_TIMEOUT = 40.
+    self._VISION_POLICY_ALERT_3_TIMEOUT = 80.
+    self._SKIP_ALERT_1 = True
 
     self._TIMEOUT_RECOVERY_FACTOR_MAX = 5.
-    self._TIMEOUT_RECOVERY_FACTOR_MIN = 1.6
+    self._TIMEOUT_RECOVERY_FACTOR_MIN = 2.0
 
     # distraction filter band: recover below recover_x, decay above decay_x
-    self._AWARENESS_RECOVER_X = 0.31
-    self._AWARENESS_DECAY_X = 0.69
+    self._AWARENESS_RECOVER_X = 0.25
+    self._AWARENESS_DECAY_X = 0.75
 
     self._MAX_TERMINAL_ALERTS = 3  # not allowed to engage after 3 terminal alerts
     self._MAX_TERMINAL_DURATION = int(30 / DT_DMON)  # not allowed to engage after 30s of terminal alerts
 
     self._FACE_THRESHOLD = 0.7
-    self._FACE_OFF_THRESHOLD = 0.55
+    self._FACE_OFF_THRESHOLD = 0.40
     self._FACE_ON_FRAMES = 1  # latch quickly; off-hold is what stops flicker
-    self._FACE_OFF_FRAMES = int(0.75 / DT_DMON)
-    self._POLICY_VISION_ENTER_FRAMES = int(1.0 / DT_DMON)
-    self._ALERT_CLEAR_FRAMES = int(1.0 / DT_DMON)
+    self._FACE_OFF_FRAMES = int(1.5 / DT_DMON)
+    self._POLICY_VISION_ENTER_FRAMES = int(2.0 / DT_DMON)
+    self._ALERT_CLEAR_FRAMES = int(2.0 / DT_DMON)
     self._EYE_THRESHOLD = 0.65
     self._SG_THRESHOLD = 0.9
-    self._BLINK_THRESHOLD = 0.91
-    self._PHONE_THRESH = 0.60
-    self._POSE_PITCH_THRESHOLD = 0.43
-    self._POSE_PITCH_THRESHOLD_SLACK = 0.51
+    self._BLINK_THRESHOLD = 0.95
+    self._PHONE_THRESH = 0.70
+    self._POSE_PITCH_THRESHOLD = 0.55
+    self._POSE_PITCH_THRESHOLD_SLACK = 0.70
     self._POSE_PITCH_THRESHOLD_STRICT = self._POSE_PITCH_THRESHOLD
-    self._POSE_YAW_THRESHOLD = 0.55
-    self._POSE_YAW_THRESHOLD_SLACK = 0.70
+    self._POSE_YAW_THRESHOLD = 0.70
+    self._POSE_YAW_THRESHOLD_SLACK = 0.90
     self._POSE_YAW_THRESHOLD_STRICT = self._POSE_YAW_THRESHOLD
-    self._POSE_DISTRACTED_SCALE = 1.5  # a cluster glance is not distracted
+    self._POSE_DISTRACTED_SCALE = 2.0  # cluster glances must not count as distracted
     self._POSE_YAW_MIN_STEER_DEG = 30
     self._POSE_YAW_STEER_FACTOR = 0.15
     self._POSE_YAW_STEER_MAX_OFFSET = 0.3927
     self._PITCH_NATURAL_OFFSET = 0.011 # initial value before offset is learned
-    self._PITCH_NATURAL_THRESHOLD = 0.57
+    self._PITCH_NATURAL_THRESHOLD = 0.70
     self._YAW_NATURAL_OFFSET = 0.075 # initial value before offset is learned
     self._PITCH_NATURAL_VAR = 3*0.01
     self._YAW_NATURAL_VAR = 3*0.05
@@ -78,9 +78,8 @@ class DRIVER_MONITOR_SETTINGS:
     self._DCAM_UNCERTAIN_ALERT_COUNT = int(60  / DT_DMON)
     self._DCAM_UNCERTAIN_RESET_COUNT = int(2  / DT_DMON)
     self._HI_STD_THRESHOLD = 0.3
-    self._HI_STD_FALLBACK_TIME = int(20 / DT_DMON)
-    self._DISTRACTED_FILTER_TS = 0.42
-    self._STANDSTILL_RECOVERY_BOOST = 0.0025
+    self._HI_STD_FALLBACK_TIME = int(30 / DT_DMON)
+    self._DISTRACTED_FILTER_TS = 0.60
 
     self._POSE_CALIB_MIN_SPEED = 13  # 30 mph
     self._POSE_OFFSET_MIN_COUNT = int(60 / DT_DMON)  # valid data counts before calibration completes, 1min cumulative
@@ -414,7 +413,7 @@ class DriverMonitoring:
       self.awareness = min(self.awareness + ((self.settings._TIMEOUT_RECOVERY_FACTOR_MAX-self.settings._TIMEOUT_RECOVERY_FACTOR_MIN)*
                                              (1.-self.awareness)+self.settings._TIMEOUT_RECOVERY_FACTOR_MIN)*self.step_change, 1.)
       if standstill_exemption:
-        self.awareness = min(self.awareness + self.settings._STANDSTILL_RECOVERY_BOOST, 1.)
+        self.awareness = min(self.awareness + 0.005, 1.)
       if self.awareness == 1.:
         self.last_wheeltouch_awareness = min(self.last_wheeltouch_awareness + self.step_change, 1.)
       # don't display alert banner when awareness is recovering and has cleared orange

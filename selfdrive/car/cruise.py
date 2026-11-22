@@ -4,6 +4,7 @@ import numpy as np
 from cereal import car
 from openpilot.common.constants import CV
 from opendbc.car.vinfast.values import is_vf6_safety_platform
+from openpilot.selfdrive.car.vf_car_set_speed import applies_to as _vf8_vf9_set_speed, car_set_speed_enabled
 from openpilot.sunnypilot.selfdrive.car.cruise_ext import VCruiseHelperSP
 
 
@@ -15,7 +16,7 @@ V_CRUISE_MAX = 145
 V_CRUISE_UNSET = 255
 V_CRUISE_INITIAL = 40
 V_CRUISE_INITIAL_EXPERIMENTAL_MODE = 105
-VINFAST_V_CRUISE_INITIAL_EXPERIMENTAL_MODE = 60
+VINFAST_V_CRUISE_INITIAL_EXPERIMENTAL_MODE = 20
 IMPERIAL_INCREMENT = round(CV.MPH_TO_KPH, 1)  # round here to avoid rounding errors incrementing set speed
 
 ButtonEvent = car.CarState.ButtonEvent
@@ -53,6 +54,11 @@ class VCruiseHelper(VCruiseHelperSP):
     self.adjusting_vmax_init = False
     self.vmax_init_adjust_timer = 0
     self.vf6_platform = is_vf6_safety_platform(CP.carFingerprint)
+    self._vf8_vf9 = _vf8_vf9_set_speed(CP.carFingerprint)
+
+  def _follow_car_set_speed(self) -> bool:
+    """VF6 already follows the car. VF8/VF9 do too when the vehicle switch is on."""
+    return self.vf6_platform or (self._vf8_vf9 and car_set_speed_enabled())
 
   @property
   def v_cruise_initialized(self):
@@ -64,8 +70,8 @@ class VCruiseHelper(VCruiseHelperSP):
     self.get_minimum_set_speed(is_metric)
     _enabled = self.update_enabled_state(CS, enabled)
 
-    # VF6/VF7 (origin/vf6): ADAS_ACC_TagSpeed on InfoCAN → pcmCruiseSpeed sync
-    if self.vf6_platform:
+    # VF6/VF7 follow ADAS_ACC_TagSpeed. VF8/VF9 do the same when the vehicle switch is on.
+    if self._follow_car_set_speed():
       if CS.cruiseState.available:
         if self.CP_SP.pcmCruiseSpeed or self.CP.pcmCruise:
           self.v_cruise_kph = CS.cruiseState.speed * CV.MS_TO_KPH
@@ -287,8 +293,8 @@ class VCruiseHelper(VCruiseHelperSP):
     return False
 
   def initialize_v_cruise(self, CS, experimental_mode: bool, dynamic_experimental_control: bool) -> None:
-    # VF6/VF7: set speed comes from ADAS_ACC_TagSpeed on InfoCAN (origin/vf6)
-    if self.vf6_platform and (self.CP.pcmCruise or self.CP_SP.pcmCruiseSpeed):
+    # VF6/VF7, and VF8/VF9 with the vehicle switch: set speed comes from the car.
+    if self._follow_car_set_speed() and (self.CP.pcmCruise or self.CP_SP.pcmCruiseSpeed):
       return
 
     if self.CP.pcmCruise:

@@ -7,7 +7,15 @@ See the LICENSE.md file in the root directory for more details.
 from enum import IntEnum
 
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.cruise_sub_layouts.speed_limit_settings import SpeedLimitSettingsLayout
-from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.vinfast import DESC, TITLE, _reengage_enabled, _set_reengage
+from openpilot.selfdrive.controls.lib.vn_follow import set_vn_follow, vn_follow_enabled
+from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.vinfast import (
+  DESC,
+  FOLLOW_DESC,
+  FOLLOW_TITLE,
+  TITLE,
+  _reengage_enabled,
+  _set_reengage,
+)
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.sunnypilot.widgets.list_view import toggle_item_sp, option_item_sp, simple_button_item_sp
@@ -48,6 +56,13 @@ class CruiseLayout(Widget):
       description=lambda: tr(DESC),
       initial_state=_reengage_enabled(),
       callback=_set_reengage,
+      enabled=lambda: not ui_state.engaged,
+    )
+    self.vf_follow_toggle = toggle_item_sp(
+      title=lambda: tr(FOLLOW_TITLE),
+      description=lambda: tr(FOLLOW_DESC),
+      initial_state=vn_follow_enabled(),
+      callback=set_vn_follow,
       enabled=lambda: not ui_state.engaged,
     )
 
@@ -98,6 +113,7 @@ class CruiseLayout(Widget):
 
     items = [
       self.vf_reengage_toggle,
+      self.vf_follow_toggle,
       self.icbm_toggle,
       self.dec_toggle,
       self.scc_v_toggle,
@@ -120,6 +136,7 @@ class CruiseLayout(Widget):
     self._scroller.show_event()
     self.icbm_toggle.show_description(True)
     self.custom_acc_toggle.show_description(True)
+    self.vf_follow_toggle.action_item.set_state(vn_follow_enabled())
 
   def _set_current_panel(self, panel: PanelType):
     self._current_panel = panel

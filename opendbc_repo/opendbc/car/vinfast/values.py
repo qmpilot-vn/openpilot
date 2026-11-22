@@ -51,6 +51,9 @@ _mod.CarControllerParams.STEER_YIELD_ARM_BLEND = 0.3
 _mod.CarControllerParams.STEER_YIELD_ARM_FRAMES = 5
 _mod.CarControllerParams.STEER_RECLAIM_FRAMES = 200
 _mod.CarControllerParams.STEER_RECLAIM_RATE_MIN = 0.08
+# 00000451 / 36ee U-turn: leave follow-hold only when back inside the OEM stop
+# and within this gap of the path, then reclaim.
+_mod.CarControllerParams.STEER_FOLLOW_GAP_EXIT = 25.0
 
 
 # VF8 Plus 2025-26: VF8 specs, VF6/VF7 DBC and steer limits, VF6 safety and InfoCAN.
@@ -80,7 +83,7 @@ else:
   _mod.CAR._member_names_.append(_VF8_PLUS)
   _mod.DBC[_plus] = _plus_cfg.dbc_dict
 
-# VF8 Eco 2023-24: VF8 body, DBC and MRR, Eco curb weight (2328 kg).
+# VF8 Eco 2023-24: VF8 body, DBC and MRR, Eco curb weight (2328 kg). Keep on staging.
 _VF8_ECO = "VINFAST_VF8_ECO"
 if getattr(_mod.CAR, _VF8_ECO, None) is not None:
   _eco = getattr(_mod.CAR, _VF8_ECO)

@@ -55,11 +55,9 @@ def panda_reconnect_window(prev_mtime: float | None, mtime: float | None, now: f
 
 EventName = log.OnroadEvent.EventName
 
-# The car port allows the EPS's full authority (VF8 ±470° non-production, VF9 ±90°),
-# far more angle than the planner should ever ask for on the road. VF8 Plus uses the
-# VF6/VF7 speed-dependent angle (180° @0 → 40° @100+ km/h), so it is not capped here.
-# VF8 Eco is the production VF8 body and uses the same 100° cap.
-VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 100.0, "VINFAST_VF8_ECO": 100.0, "VINFAST_VF9": 100.0}
+# Production VF8/VF9 are capped at 90°. The port allows more on non-production VF8.
+# VF8 Plus uses the VF6/VF7 speed-dependent angle (180° @0 → 40° @100+ km/h), so it is not capped here.
+VINFAST_STEER_ANGLE_MAX = {"VINFAST_VF8": 90.0, "VINFAST_VF8_ECO": 90.0, "VINFAST_VF9": 90.0}
 
 # VF9 is packaged with a 7/5/3 deg-per-step slew (~700 deg/s at standstill), which chases
 # the plan more abruptly than the car needs. deg/step at 100 Hz, keyed by speed in m/s.
@@ -209,7 +207,7 @@ class Car:
         fixed_fingerprint = VINFAST_CAR.VINFAST_VF9.name
         cloudlog.warning(f"No CarPlatformBundle.platform; using default fixed fingerprint {fixed_fingerprint}")
       # VF9: default alpha longitudinal so Experimental mode and OP long are available without dev settings.
-      if fixed_fingerprint in (VINFAST_CAR.VINFAST_VF8.name, VINFAST_CAR.VINFAST_VF8_PLUS.name, VINFAST_CAR.VINFAST_VF8_ECO.name, VINFAST_CAR.VINFAST_VF9.name) and self.params.get("AlphaLongitudinalEnabled") is None:
+      if fixed_fingerprint in (VINFAST_CAR.VINFAST_VF8.name, VINFAST_CAR.VINFAST_VF8_PLUS.name, getattr(VINFAST_CAR, "VINFAST_VF8_ECO", VINFAST_CAR.VINFAST_VF8).name, VINFAST_CAR.VINFAST_VF9.name) and self.params.get("AlphaLongitudinalEnabled") is None:
         self.params.put_bool("AlphaLongitudinalEnabled", True)
       alpha_long_allowed = self.params.get_bool("AlphaLongitudinalEnabled")
 
