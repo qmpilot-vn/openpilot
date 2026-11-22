@@ -51,6 +51,9 @@ _mod.CarControllerParams.STEER_YIELD_ARM_BLEND = 0.3
 _mod.CarControllerParams.STEER_YIELD_ARM_FRAMES = 5
 _mod.CarControllerParams.STEER_RECLAIM_FRAMES = 200
 _mod.CarControllerParams.STEER_RECLAIM_RATE_MIN = 0.08
+# 00000451 / 36ee U-turn: leave follow-hold only when back inside the OEM stop
+# and within this gap of the path, then reclaim.
+_mod.CarControllerParams.STEER_FOLLOW_GAP_EXIT = 25.0
 
 
 # VF8 Plus 2025-26: VF8 specs, VF6/VF7 DBC and steer limits, VF6 safety and InfoCAN.

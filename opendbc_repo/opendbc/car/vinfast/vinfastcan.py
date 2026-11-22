@@ -60,12 +60,15 @@ def create_steering_control(packer, CP, frame, apply_angle, lat_active, yield_bl
   factor = _torque_factor(apply_angle, lat_active, CP.carFingerprint)
   if lat_active:
     factor = scale_torque_factor(factor, yield_blend)
+  # Always publish the angle request. Zeroing AOLReq on every lat drop (override
+  # flap mid U-turn) yanked the EPS from ~450° to 0 on 00000451 / 36ee 0000000c.
+  # AOLAct still gates whether the overlay is driving.
   values = {
     "CHKSM_ADAS_EPS_LATE_CON": 0,
     "ALV_ADAS_EPS_LATE_CON": alive,
     "ADAS_EPS_StrWhe_TOLAct": 0,
     "ADAS_EPS_StrWhe_AOLAct": 1 if lat_active else 0,
-    "ADAS_EPS_AOLReq": apply_angle if lat_active else 0.0,
+    "ADAS_EPS_AOLReq": apply_angle,
     "ADAS_EPS_Torq_Fact_Req": factor,
     "SECCAN_ADAS_EPS_LATE_CON": 0,
   }
