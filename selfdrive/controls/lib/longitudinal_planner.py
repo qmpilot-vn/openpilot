@@ -14,7 +14,7 @@ from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import Longi
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import T_IDXS as T_IDXS_MPC
 from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, get_accel_from_plan
 from openpilot.selfdrive.car.cruise import V_CRUISE_MAX, V_CRUISE_UNSET
-from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_min_follow_m
+from openpilot.selfdrive.controls.lib.vn_follow import effective_t_follow, vn_follow_enabled, vn_min_follow_m
 from openpilot.selfdrive.controls.lib.vf_departure import DEPART_FINGERPRINTS, VfDeparture
 from openpilot.selfdrive.controls.lib.vf_stop_follow import FOLLOW_FINGERPRINTS, VfStopFollow
 from openpilot.selfdrive.controls.lib.vf_brake_shaping import VfBrakeShaper, brake_floor_gain
@@ -38,7 +38,7 @@ _A_TOTAL_MAX_BP = [20., 40.]
 # Thresholds still need committed stop intent so green/coast approaches do not
 # brake early, but they must trigger during the approach: while this reads False
 # the softening below is what is applied instead.
-VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF8_PLUS", "VINFAST_VF8_ECO", "VINFAST_VF9"}
+VF_REDLIGHT_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF8_PLUS", "VINFAST_VF9"}
 VF_REDLIGHT_ACCEL_SCALE = 1.03
 VF_REDLIGHT_BRAKE_PROB = 0.60
 # The model path is "short" relative to where a free-driving prediction would end,
@@ -251,7 +251,7 @@ def slew_highway_accel(previous: float, target: float, dt: float, *, snap: bool)
 # (683068420a0d15ba 00000012/18: green light, lead rolled at 46 s, MRR had it 3 m out and
 # at 1.2 m/s by 52 s, the model released at 56.3 s). Once MRR confirms the same track has
 # left and the MPC is not stopping, the model gets this long to agree before the MPC goes.
-VF_RADAR_LAUNCH_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF8_ECO", "VINFAST_VF9"}
+VF_RADAR_LAUNCH_FINGERPRINTS = {"VINFAST_VF8", "VINFAST_VF9"}
 VF_RADAR_LAUNCH_MOVED_M = 3.0      # [m] same track, from the closest range seen at this stop
 VF_RADAR_LAUNCH_VLEAD = 0.8        # [m/s]
 VF_RADAR_LAUNCH_HOLD_S = 1.5       # [s] model still stopping after that
@@ -441,7 +441,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
       else:
         self.mpc.stop_lead_obstacle_adjust_m = vf_stop_lead_adjust_m(
           sm['selfdriveState'].personality, self.CP.carFingerprint)
-      if VN_LEGAL_FOLLOW:
+      if VN_LEGAL_FOLLOW and vn_follow_enabled():
         # Highway floor: max(personality T_FOLLOW, legal 35/55/70/100 m). No-op below 60 km/h.
         self.vn_follow_m = vn_min_follow_m(v_ego, self.vn_follow_m)
         t_follow = effective_t_follow(v_ego, get_T_FOLLOW(sm['selfdriveState'].personality), self.vn_follow_m)

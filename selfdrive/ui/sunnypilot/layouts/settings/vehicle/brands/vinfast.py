@@ -7,6 +7,8 @@ See the LICENSE.md file in the root directory for more details.
 from pathlib import Path
 
 from openpilot.common.params import Params
+from openpilot.selfdrive.car.vf_car_set_speed import car_set_speed_enabled, set_car_set_speed
+from openpilot.selfdrive.controls.lib.vn_follow import set_vn_follow, vn_follow_enabled
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.base import BrandSettings
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.multilang import tr, tr_noop
@@ -20,6 +22,17 @@ DESC = tr_noop(
   "Every VinFast uses the new stop-and-go latch. "
   "Turn this off if you want to press Resume / ACC yourself. The car will stay stopped "
   "at a light until you resume."
+)
+SET_SPEED_TITLE = tr_noop("VinFast - Car set speed")
+SET_SPEED_DESC = tr_noop(
+  "VF8 and VF9 follow the car's cruise set speed, the same way VF6 does. "
+  "SET+ and SET- change the speed on the cluster, and qmpilot uses that number. "
+  "Turn this off and qmpilot keeps its own set speed."
+)
+FOLLOW_TITLE = tr_noop("VinFast - VN follow distance")
+FOLLOW_DESC = tr_noop(
+  "Above 60 km/h, keep at least the legal gap (35, 55, 70, or 100 m). "
+  "Turn this off to use only the personality gap."
 )
 
 
@@ -62,7 +75,26 @@ class VinFastSettings(BrandSettings):
       callback=_set_reengage,
       enabled=lambda: not ui_state.engaged,
     )
-    self.items = [self.reengage_toggle]
+    self.follow_toggle = toggle_item_sp(
+      lambda: tr(FOLLOW_TITLE),
+      description=lambda: tr(FOLLOW_DESC),
+      initial_state=vn_follow_enabled(),
+      callback=set_vn_follow,
+      enabled=lambda: not ui_state.engaged,
+    )
+    self.set_speed_toggle = toggle_item_sp(
+      lambda: tr(SET_SPEED_TITLE),
+      description=lambda: tr(SET_SPEED_DESC),
+      initial_state=car_set_speed_enabled(),
+      callback=set_car_set_speed,
+      enabled=lambda: not ui_state.engaged,
+    )
+    self.items = [self.reengage_toggle, self.follow_toggle, self.set_speed_toggle]
 
   def update_settings(self):
-    self.reengage_toggle.action_item.set_enabled(not ui_state.engaged)
+    offroad = not ui_state.engaged
+    self.reengage_toggle.action_item.set_enabled(offroad)
+    self.follow_toggle.action_item.set_enabled(offroad)
+    self.follow_toggle.action_item.set_state(vn_follow_enabled())
+    self.set_speed_toggle.action_item.set_enabled(offroad)
+    self.set_speed_toggle.action_item.set_state(car_set_speed_enabled())

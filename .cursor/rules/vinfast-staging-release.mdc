@@ -38,7 +38,12 @@ Every commit that ships to `origin` / `install` for staging or release must bump
 - `NN` is the build index that day (`01`, `02`, …), starting at `01` for the first publish that day on that branch
 - Do not leave a stale date from an older pack when publishing new work
 
-## When bringing tai experiments
+## Steer cap vs torque factor
+
+- **Steer angle cap** on staging/release: `selfdrive/car/card.py` `VINFAST_STEER_ANGLE_MAX` for production VF8 / VF8 Eco / VF9 is **90°**.
+- **Torque factor on release stays release’s own curve.** Do not copy `opendbc_repo/opendbc/car/vinfast/steer_torque.py` from tai/staging onto `vf-release-c4`. Release keeps `_VF8_MAX_FACTOR = 0.8` and `_VF8_VF9_PROD_MAX_ANGLE = 100.0` for the torque factor ramp. Steer cap in `card.py` is separate.
+
+## When bringing tai / staging experiments onto release
 
 Copy only the requested VinFast features. Always re-check after the copy:
 
@@ -46,3 +51,4 @@ Copy only the requested VinFast features. Always re-check after the copy:
 2. DM policy is still medium
 3. `SUNNYPILOT_VERSION` matches today’s date
 4. Staging keeps VF8 Eco overlays and the carcontroller reengage host shim
+5. Release `steer_torque.py` was not overwritten
