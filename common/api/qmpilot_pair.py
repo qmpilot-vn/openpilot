@@ -7,6 +7,8 @@ from openpilot.common.api.base import BaseApi
 from openpilot.common.api.comma_connect import set_upload_backend, store_qmpilot_file
 
 PAIR_HOST = "https://qmpilot-connect.com"
+# Keep the QR screen awake for a full nonce (5 min) plus Google login headroom.
+PAIR_UI_TIMEOUT_S = 360
 
 
 class PairRejected(Exception):
@@ -41,7 +43,10 @@ def save_pair(params, api_host: str, api_key: str, persist_dir: str = "/persist/
 
 
 def key_from_status(body: dict) -> tuple[str, str] | None:
-  """A string api_key on pair/status is the device's key, including when paired is already true."""
+  """A string api_key on pair/status is the device's key, including when paired is already true.
+
+  paired: false with api_key: null means still waiting. Only a non-empty api_key counts.
+  """
   if not isinstance(body, dict):
     return None
   key = body.get("api_key")
@@ -62,7 +67,12 @@ class QmpilotPairClient:
   def _token(self) -> str:
     return self.api.get_token()
 
-  def start(self) -> tuple[str, int]:
+  def start(self) -> tuple[str | None, int]:
+    """Return (pair_nonce, expires_in). nonce is None when the car is already owned.
+
+    pair/start never returns the API key. When paired is already true the phone
+    link may have finished; the key still comes from pair/status.
+    """
     if not self.public_key:
       raise PairRejected("missing public key")
     resp = self.api.post(
@@ -72,8 +82,17 @@ class QmpilotPairClient:
       json={"public_key": self.public_key},
     )
     self._raise_for_status(resp)
-    data = resp.json()
-    return str(data["pair_nonce"]), int(data.get("expires_in") or 300)
+    data = resp.json() if hasattr(resp, "json") else {}
+    if not isinstance(data, dict):
+      data = {}
+    expires = int(data.get("expires_in") or 300)
+    nonce = data.get("pair_nonce")
+    if isinstance(nonce, str) and nonce:
+      return nonce, expires
+    # Already owned / no fresh QR: still poll status for the key.
+    if data.get("paired") is True:
+      return None, expires
+    raise RuntimeError("pair/start missing pair_nonce")
 
   def status(self) -> dict:
     resp = self.api.get("v1/pair/status", timeout=10, access_token=self._token())
@@ -92,17 +111,20 @@ class QmpilotPairClient:
 
 
 class PairWorker:
-  """Reads pair/status first. A car the phone already linked gets its key with no new QR.
+  """Poll pair/status until api_key appears. Do not stop on paired: false.
 
+  Reads status first so a car the phone already linked gets its key with no new QR.
   pair/start runs only when status has no key yet. A 409 from start checks status
   once more, because qmpilot keeps the key on status after the phone links.
   """
 
-  def __init__(self, client: QmpilotPairClient, on_wifi, poll_s: float = 2.0, refresh_lead_s: float = 20.0):
+  def __init__(self, client: QmpilotPairClient, on_wifi, poll_s: float = 2.0,
+               refresh_lead_s: float = 20.0, on_key=None):
     self.client = client
     self.on_wifi = on_wifi
     self.poll_s = poll_s
     self.refresh_lead_s = refresh_lead_s
+    self.on_key = on_key
     self._lock = threading.Lock()
     self._stop = threading.Event()
     self._thread: threading.Thread | None = None
@@ -135,6 +157,12 @@ class PairWorker:
       return False
     key, host = found
     self._set(api_key=key, api_host=host, message="paired")
+    if self.on_key is not None:
+      try:
+        self.on_key(host, key)
+      except Exception:
+        # UI may retry save from snapshot; keep message=paired so the screen can finish.
+        pass
     return True
 
   def _read_status(self) -> str:
@@ -147,6 +175,18 @@ class PairWorker:
       return ""
     if self._apply_status(body):
       return "paired"
+    return ""
+
+  def _poll_until_key_or_deadline(self, deadline: float) -> str:
+    """Keep calling pair/status every poll_s until api_key, reject, stop, or deadline."""
+    while time.monotonic() < deadline and not self._stop.is_set():
+      found = self._read_status()
+      if found == "paired":
+        return "paired"
+      if found == "rejected":
+        self._set(message="rejected")
+        return "rejected"
+      self._stop.wait(self.poll_s)
     return ""
 
   def _run(self) -> None:
@@ -177,14 +217,18 @@ class PairWorker:
         self._stop.wait(3)
         continue
 
-      url = pair_url(self.client.dongle_id, nonce)
-      self._set(url=url, message="")
+      if nonce:
+        url = pair_url(self.client.dongle_id, nonce)
+        self._set(url=url, message="")
+      else:
+        # pair/start said already paired but left the key on status only.
+        self._set(url="", message="")
+
+      # Poll for nearly the full nonce life. paired:false / api_key:null stays here.
       deadline = time.monotonic() + max(self.poll_s, float(expires) - self.refresh_lead_s)
-      while time.monotonic() < deadline and not self._stop.is_set():
-        found = self._read_status()
-        if found == "paired":
-          return
-        if found == "rejected":
-          self._set(message="rejected")
-          return
-        self._stop.wait(self.poll_s)
+      found = self._poll_until_key_or_deadline(deadline)
+      if found == "paired":
+        return
+      if found == "rejected":
+        return
+      # Deadline: outer loop calls pair/start again for a fresh nonce / QR.

@@ -5,10 +5,10 @@ import pyray as rl
 import qrcode
 from cereal import log
 
-from openpilot.common.api.qmpilot_pair import PairWorker, QmpilotPairClient, save_pair
+from openpilot.common.api.qmpilot_pair import PAIR_UI_TIMEOUT_S, PairWorker, QmpilotPairClient, save_pair
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.selfdrive.ui.ui_state import device, ui_state
 from openpilot.system.ui.lib.application import FontWeight, gui_app
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.text_measure import measure_text_cached
@@ -50,20 +50,28 @@ class QmpilotPairingDialog(Widget):
 
   def show_event(self):
     super().show_event()
+    # Default ignition timeout is 10s on C4; Google login routinely takes longer.
+    device.set_override_interactive_timeout(PAIR_UI_TIMEOUT_S)
     if self._worker is not None or not self.dongle_id:
       return
     client = QmpilotPairClient(self.dongle_id)
-    self._worker = PairWorker(client, _on_wifi)
+    self._worker = PairWorker(client, _on_wifi, on_key=self._save_key)
     self._worker.start()
 
   def hide_event(self):
     if self._worker is not None:
       self._worker.stop()
       self._worker = None
+    device.set_override_interactive_timeout(None)
     super().hide_event()
 
   def _close(self):
     gui_app.pop_widget()
+
+  def _save_key(self, api_host: str, api_key: str) -> None:
+    save_pair(self.params, api_host, api_key)
+    self._saved = True
+    self._close_at = time.monotonic() + 1.2
 
   def _update_state(self):
     if self._saved:
@@ -75,15 +83,15 @@ class QmpilotPairingDialog(Widget):
     url, message, api_key, api_host = self._worker.snapshot()
     if message == "paired" and isinstance(api_key, str) and api_host:
       try:
-        save_pair(self.params, api_host, api_key)
+        self._save_key(api_host, api_key)
       except Exception:
         cloudlog.exception("qmpilot pair save failed")
         return
-      self._saved = True
-      self._close_at = time.monotonic() + 1.2
       return
     if url and url != self._drawn_url:
       self._draw_qr(url)
+      # Fresh QR: keep the screen awake for another nonce window.
+      device.set_override_interactive_timeout(PAIR_UI_TIMEOUT_S)
 
   def _draw_qr(self, url: str) -> None:
     if "api_key" in url or "QmpilotApiKey" in url:

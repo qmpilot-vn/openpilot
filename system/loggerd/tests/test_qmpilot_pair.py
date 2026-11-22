@@ -42,6 +42,7 @@ class FakeClient:
     self.dongle_id = "0123456789abcdef"
     self.steps = list(steps)
     self.starts = 0
+    self.status_calls = 0
 
   def start(self):
     self.starts += 1
@@ -51,6 +52,7 @@ class FakeClient:
     return step
 
   def status(self):
+    self.status_calls += 1
     step = self.steps.pop(0)
     if isinstance(step, Exception):
       raise step
@@ -85,6 +87,55 @@ def test_worker_stores_key_from_status():
   assert host == "https://qmpilot-connect.com"
   assert url.endswith("pair_nonce=nonce-1")
   assert "the-key" not in url
+
+
+def test_worker_keeps_polling_while_paired_false():
+  """paired:false + api_key:null is waiting. Do not stop after a few polls."""
+  waiting = {"api_key": None, "paired": False, "api_host": PAIR_HOST}
+  client = FakeClient([
+    waiting,
+    ("nonce-1", 300),
+    waiting,
+    waiting,
+    waiting,
+    waiting,
+    waiting,
+    {"api_key": "late-key", "paired": True, "api_host": PAIR_HOST},
+  ])
+  saved = []
+  worker = PairWorker(client, lambda: True, poll_s=0.01, refresh_lead_s=20,
+                      on_key=lambda host, key: saved.append((host, key)))
+  worker.start()
+  try:
+    _, message, key, host = _wait_done(worker, timeout=3.0)
+  finally:
+    worker.stop()
+  assert message == "paired"
+  assert key == "late-key"
+  assert host == PAIR_HOST
+  assert client.status_calls >= 6
+  assert saved == [(PAIR_HOST, "late-key")]
+
+
+def test_worker_polls_status_when_start_says_already_paired():
+  """pair/start may return paired:true with no nonce; key still comes from status."""
+  client = FakeClient([
+    {"api_key": None, "paired": False},
+    (None, 300),
+    {"api_key": None, "paired": True},
+    {"api_key": "owned-key", "paired": True, "api_host": PAIR_HOST},
+  ])
+  worker = PairWorker(client, lambda: True, poll_s=0.01, refresh_lead_s=20)
+  worker.start()
+  try:
+    url, message, key, host = _wait_done(worker)
+  finally:
+    worker.stop()
+  assert message == "paired"
+  assert key == "owned-key"
+  assert host == PAIR_HOST
+  assert url == ""
+  assert client.starts == 1
 
 
 def test_worker_stops_on_conflict():
