@@ -3,10 +3,10 @@ import pyray as rl
 import qrcode
 from cereal import log
 
-from openpilot.common.api.qmpilot_pair import PairWorker, QmpilotPairClient, save_pair
+from openpilot.common.api.qmpilot_pair import PAIR_UI_TIMEOUT_S, PairWorker, QmpilotPairClient, save_pair
 from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
-from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.selfdrive.ui.ui_state import device, ui_state
 from openpilot.system.ui.lib.application import FontWeight, gui_app
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets.label import UnifiedLabel
@@ -63,37 +63,47 @@ class QmpilotPairingDialog(NavWidget):
 
   def show_event(self):
     super().show_event()
+    # mici ignition timeout is 5s; without this the stack pops and pair/status stops.
+    device.set_override_interactive_timeout(PAIR_UI_TIMEOUT_S)
     if self._worker is not None or not self.dongle_id:
       return
-    self._worker = PairWorker(QmpilotPairClient(self.dongle_id), _on_wifi)
+    self._worker = PairWorker(QmpilotPairClient(self.dongle_id), _on_wifi, on_key=self._save_key)
     self._worker.start()
 
   def hide_event(self):
     if self._worker is not None:
       self._worker.stop()
       self._worker = None
+    device.set_override_interactive_timeout(None)
     super().hide_event()
+
+  def _save_key(self, api_host: str, api_key: str) -> None:
+    save_pair(self.params, api_host, api_key)
+    self._saved = True
 
   def _update_state(self):
     super()._update_state()
-    if self._saved or self._worker is None:
+    if self._saved:
+      # First link closes itself. Already-paired reopen stays so the key reclaim is visible.
+      if not self._opened_paired:
+        self.dismiss()
+      return
+    if self._worker is None:
       return
     url, message, api_key, api_host = self._worker.snapshot()
     if message == "paired" and isinstance(api_key, str) and api_key and api_host:
       try:
-        save_pair(self.params, api_host, api_key)
+        self._save_key(api_host, api_key)
       except Exception:
         cloudlog.exception("qmpilot pair save failed")
         self._save_failed = True
         return
-      self._saved = True
-      # The first link closes itself. Opening an already paired car stays here,
-      # otherwise the status key comes back immediately and the screen pops.
       if not self._opened_paired:
         self.dismiss()
       return
     if url and url != self._drawn_url:
       self._draw_qr(url)
+      device.set_override_interactive_timeout(PAIR_UI_TIMEOUT_S)
     elif not url and self._drawn_url:
       self._clear_qr()
 
