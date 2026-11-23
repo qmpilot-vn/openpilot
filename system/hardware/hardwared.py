@@ -25,6 +25,7 @@ from openpilot.system.statsd import statlog
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.hardware.power_monitoring import PowerMonitoring
 from openpilot.system.hardware.fan_controller import FanController
+from openpilot.system.hardware.sensor_sampler import SensorSampler, thermal_readers, thermal_temps
 from openpilot.system.hardware.chestnut.status import ChestnutStatus, firmware_mismatch
 from openpilot.system.version import terms_version, training_version, get_build_metadata, terms_version_sp
 from openpilot.sunnypilot import jetlink_adapter
@@ -37,6 +38,8 @@ TEMP_TAU = 5.   # 5s time constant
 DISCONNECT_TIMEOUT = 5.  # wait 5 seconds before going offroad after disconnect so you get an alert
 PANDA_STATES_TIMEOUT = round(1000 / SERVICE_LIST['pandaStates'].frequency * 1.5)  # 1.5x the expected pandaState frequency
 ONROAD_CYCLE_TIME = 1  # seconds to wait offroad after requesting an onroad cycle
+# Sensor reads that block for a few seconds are tolerated; past this deviceState goes invalid so selfdrived still reacts
+SENSOR_STALE_TIMEOUT = 15.
 
 ThermalBand = namedtuple("ThermalBand", ['min_temp', 'max_temp'])
 HardwareState = namedtuple("HardwareState", ['network_type', 'network_info', 'network_strength', 'network_stats',
@@ -206,6 +209,16 @@ def hardware_thread(end_event, hw_queue) -> None:
 
   HARDWARE.initialize_hardware()
   thermal_config = HARDWARE.get_thermal_config()
+  sensors = SensorSampler({
+    **thermal_readers(thermal_config),
+    "freeSpacePercent": lambda: get_available_percent(default=100.0),
+    "gpuUsagePercent": HARDWARE.get_gpu_usage_percent,
+    "screenBrightnessPercent": HARDWARE.get_screen_brightness,
+    "powerDrawW": HARDWARE.get_current_power_draw,
+    "somPowerDrawW": HARDWARE.get_som_power_draw,
+  })
+  threading.Thread(target=sensors.run, args=(end_event,), daemon=True).start()
+  sensors_stale = False
 
   fan_controller = FanController(int(1./DT_HW))
   chestnut_status = ChestnutStatus()
@@ -242,8 +255,13 @@ def hardware_thread(end_event, hw_queue) -> None:
     if (sm.frame % round(SERVICE_LIST['pandaStates'].frequency * DT_HW) != 0) and not ign_edge:
       continue
 
-    msg = messaging.new_message('deviceState', valid=True)
-    msg.deviceState = thermal_config.get_msg()
+    sensor_values, sensor_age = sensors.get()
+    if (sensor_age > SENSOR_STALE_TIMEOUT) and not sensors_stale:
+      cloudlog.event("sensors stale", age=round(sensor_age, 1), error=True)
+    sensors_stale = sensor_age > SENSOR_STALE_TIMEOUT
+
+    msg = messaging.new_message('deviceState', valid=not sensors_stale)
+    msg.deviceState = thermal_temps(thermal_config, sensor_values)
     msg.deviceState.deviceType = HARDWARE.get_device_type()
 
     try:
@@ -251,9 +269,9 @@ def hardware_thread(end_event, hw_queue) -> None:
     except queue.Empty:
       pass
 
-    msg.deviceState.freeSpacePercent = get_available_percent(default=100.0)
+    msg.deviceState.freeSpacePercent = sensor_values["freeSpacePercent"]
     msg.deviceState.memoryUsagePercent = int(round(psutil.virtual_memory().percent))
-    msg.deviceState.gpuUsagePercent = int(round(HARDWARE.get_gpu_usage_percent()))
+    msg.deviceState.gpuUsagePercent = int(round(sensor_values["gpuUsagePercent"]))
     online_cpu_usage = [int(round(n)) for n in psutil.cpu_percent(percpu=True)]
     offline_cpu_usage = [0., ] * (len(msg.deviceState.cpuTempC) - len(online_cpu_usage))
     msg.deviceState.cpuUsagePercent = online_cpu_usage + offline_cpu_usage
@@ -278,7 +296,7 @@ def hardware_thread(end_event, hw_queue) -> None:
     set_offroad_alert_if_changed("Offroad_AcceleratorUnavailable", accelerator_error is not None,
                                  extra_text=accelerator_error)
 
-    msg.deviceState.screenBrightnessPercent = HARDWARE.get_screen_brightness()
+    msg.deviceState.screenBrightnessPercent = sensor_values["screenBrightnessPercent"]
 
     # this subset is only used for offroad
     temp_sources = [
@@ -341,7 +359,7 @@ def hardware_thread(end_event, hw_queue) -> None:
     is_unsupported_combo = TICI and HARDWARE.get_device_type() == "tici" and build_metadata.channel_type != "tici"
     startup_conditions["not_tici"] = not is_unsupported_combo
     onroad_conditions["not_tici"] = not is_unsupported_combo
-    set_offroad_alert("Offroad_TiciSupport", is_unsupported_combo, extra_text=build_metadata.channel)
+    set_offroad_alert_if_changed("Offroad_TiciSupport", is_unsupported_combo, extra_text=build_metadata.channel)
 
     # if the temperature enters the danger zone, go offroad to cool down
     onroad_conditions["device_temp_good"] = thermal_status < ThermalStatus.critical
@@ -358,13 +376,13 @@ def hardware_thread(end_event, hw_queue) -> None:
       should_start = should_start and all(startup_conditions.values())
 
     if should_start != should_start_prev or (count == 0):
-      params.put_bool("IsEngaged", False, block=True)
+      params.put_bool("IsEngaged", False)
       engaged_prev = False
 
     if sm.updated['selfdriveState']:
       engaged = sm['selfdriveState'].enabled
       if engaged != engaged_prev:
-        params.put_bool("IsEngaged", engaged, block=True)
+        params.put_bool("IsEngaged", engaged)
         engaged_prev = engaged
 
       try:
@@ -408,11 +426,11 @@ def hardware_thread(end_event, hw_queue) -> None:
     power_monitor.calculate(voltage, onroad_conditions["ignition"])
     msg.deviceState.offroadPowerUsageUwh = power_monitor.get_power_used()
     msg.deviceState.carBatteryCapacityUwh = max(0, power_monitor.get_car_battery_capacity())
-    current_power_draw = HARDWARE.get_current_power_draw()
+    current_power_draw = sensor_values["powerDrawW"]
     statlog.sample("power_draw", current_power_draw)
     msg.deviceState.powerDrawW = current_power_draw
 
-    som_power_draw = HARDWARE.get_som_power_draw()
+    som_power_draw = sensor_values["somPowerDrawW"]
     statlog.sample("som_power_draw", som_power_draw)
     msg.deviceState.somPowerDrawW = som_power_draw
 
@@ -469,7 +487,7 @@ def hardware_thread(end_event, hw_queue) -> None:
       # save last one before going onroad
       if rising_edge_started:
         try:
-          params.put("LastOffroadStatusPacket", dat, block=True)
+          params.put("LastOffroadStatusPacket", dat)
         except Exception:
           cloudlog.exception("failed to save offroad status")
 
@@ -483,8 +501,8 @@ def hardware_thread(end_event, hw_queue) -> None:
     last_uptime_ts = now_ts
 
     if (count % int(60. / DT_HW)) == 0:
-      params.put("UptimeOffroad", uptime_offroad, block=True)
-      params.put("UptimeOnroad", uptime_onroad, block=True)
+      params.put("UptimeOffroad", uptime_offroad)
+      params.put("UptimeOnroad", uptime_onroad)
 
     count += 1
     should_start_prev = should_start
