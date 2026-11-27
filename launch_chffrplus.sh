@@ -30,6 +30,25 @@ function agnos_init {
   fi
 }
 
+# AGNOS 19.9 does not ship these. loggerd, pigeond, athenad, model manager, and qcomgpsd import them.
+function ensure_device_python_deps {
+  local py="/usr/local/venv/bin/python"
+  local pip="/usr/local/venv/bin/pip"
+  [ -x "$py" ] && [ -x "$pip" ] || return 0
+  if "$py" - <<'PY'
+import importlib
+for name in ("xattr", "serial", "jsonrpc", "aiohttp", "crcmod"):
+    importlib.import_module(name)
+PY
+  then
+    return 0
+  fi
+  echo "installing device python packages"
+  timeout 90 "$pip" install --disable-pip-version-check \
+    'pyxattr==0.8.1' 'pyserial==3.5' 'json-rpc==1.15.0' 'aiohttp==3.14.5' 'crcmod==1.7' \
+    || echo "python package install failed"
+}
+
 function launch {
   # Remove orphaned git lock if it exists on boot
   [ -f "$DIR/.git/index.lock" ] && rm -f $DIR/.git/index.lock
@@ -78,6 +97,7 @@ function launch {
   # hardware specific init
   if [ -f /AGNOS ]; then
     agnos_init
+    ensure_device_python_deps
   fi
 
   # write tmux scrollback to a file
