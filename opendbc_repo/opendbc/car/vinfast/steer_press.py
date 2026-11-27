@@ -18,8 +18,8 @@ reading. The model can shrink the reading. It cannot add to it or flip it.
   from the lowest estimate of the last STEER_YIELD_PERSIST_FRAMES, so one bump
   half-wave does not move the angle request.
 - steeringPressed latches when the torque impulse above STEER_TAKEOVER_NM
-  reaches STEER_TAKEOVER_IMPULSE_NMS in one direction: 2.0 Nm for 240 ms,
-  2.5 Nm for 120 ms, about 60 ms at 3.5 Nm and above. A sign change starts over.
+  reaches STEER_TAKEOVER_IMPULSE_NMS in one direction: 2.6 Nm for 240 ms,
+  3.25 Nm for 120 ms, about 60 ms at 4.55 Nm and above. A sign change starts over.
   Release stays sticky: below STEER_DRIVER_RELEASE_NM for STEER_RELEASE_MIN_COUNT.
 """
 from collections import deque
@@ -40,9 +40,9 @@ _DEFAULTS = SimpleNamespace(
   STEER_YIELD_START_NM=1.2,
   STEER_YIELD_FULL_NM=2.2,
   STEER_YIELD_PERSIST_FRAMES=4,
-  STEER_TAKEOVER_NM=1.5,
-  STEER_TAKEOVER_NM_CAP=3.5,
-  STEER_TAKEOVER_IMPULSE_NMS=0.12,
+  STEER_TAKEOVER_NM=1.95,
+  STEER_TAKEOVER_NM_CAP=4.55,
+  STEER_TAKEOVER_IMPULSE_NMS=0.156,
 )
 
 
