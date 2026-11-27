@@ -1,7 +1,17 @@
 import select
-from serial import Serial
-from crcmod import mkCrcFun
 from struct import pack, unpack_from, calcsize
+
+from openpilot.common.serial import Serial
+
+
+def _crc16(data: bytes) -> int:
+  # Same bytes as crcmod.mkCrcFun(0x11021, initCrc=0, xorOut=0xffff). rev=True is that call's default.
+  crc = 0xFFFF
+  for byte in data:
+    crc ^= byte
+    for _ in range(8):
+      crc = (crc >> 1) ^ 0x8408 if crc & 1 else crc >> 1
+  return crc ^ 0xFFFF
 
 class ModemDiag:
   def __init__(self):
@@ -15,7 +25,7 @@ class ModemDiag:
     serial.reset_output_buffer()
     return serial
 
-  ccitt_crc16 = mkCrcFun(0x11021, initCrc=0, xorOut=0xffff)
+  ccitt_crc16 = staticmethod(_crc16)
   ESCAPE_CHAR = b'\x7d'
   TRAILER_CHAR = b'\x7e'
 

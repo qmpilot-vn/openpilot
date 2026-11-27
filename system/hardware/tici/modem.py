@@ -3,7 +3,7 @@ import fcntl
 import json
 import logging
 import os
-import serial
+import openpilot.common.serial as serial
 import signal
 import subprocess
 import tempfile

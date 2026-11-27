@@ -16,7 +16,7 @@ import ssl
 import threading
 import time
 
-from jsonrpc import dispatcher
+from openpilot.system.athena.rpc import dispatcher
 from functools import partial
 from openpilot.common.params import Params, ParamKeyType
 from openpilot.common.realtime import set_core_affinity

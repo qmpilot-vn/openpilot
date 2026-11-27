@@ -6,7 +6,7 @@ import fcntl
 import hashlib
 import os
 import requests
-import serial
+import openpilot.common.serial as serial
 import subprocess
 import sys
 import termios

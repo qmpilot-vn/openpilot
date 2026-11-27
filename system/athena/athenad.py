@@ -24,7 +24,7 @@ from collections.abc import Callable
 
 import requests
 from requests.adapters import HTTPAdapter, DEFAULT_POOLBLOCK
-from jsonrpc import JSONRPCResponseManager, dispatcher
+from openpilot.system.athena.rpc import dispatcher, handle
 from websocket import (ABNF, WebSocket, WebSocketException, WebSocketTimeoutException,
                        create_connection)
 
@@ -214,8 +214,7 @@ def jsonrpc_handler(end_event: threading.Event, localProxyHandler = None) -> Non
       data = recv_queue.get(timeout=1)
       if "method" in data:
         cloudlog.event("athena.jsonrpc_handler.call_method", data=data)
-        response = JSONRPCResponseManager.handle(data, dispatcher)
-        send_queue.put_nowait(response.json)
+        send_queue.put_nowait(handle(data, dispatcher))
       elif "id" in data and ("result" in data or "error" in data):
         log_recv_queue.put_nowait(data)
       else:
